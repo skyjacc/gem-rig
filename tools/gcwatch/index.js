@@ -24,6 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { mergeLedger, effectiveDelay } = require('./lib.js');
 
 const EMsg = { CacheSubscribed: 24, UpdateMultiple: 26, ClientWelcome: 4004, ClientHello: 4006, UpgradeLeagueItem: 7203, UpgradeResponse: 7204, WatchDownloadedReplay: 7206 };
 const APPID = 570;
@@ -35,6 +36,7 @@ const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 && argv[i + 1] 
 
 const DRY = flag('--dry') || !flag('--send');
 const DELAY = Number(opt('--delay', 2000));
+const DELAY_GIVEN = flag('--delay');
 const LIMIT = Number(opt('--limit', 0));
 const IDS_FILE = opt('--ids', null);
 const MSG = opt('--msg', 'upgrade');        // upgrade | watch
@@ -82,15 +84,24 @@ function readText(file) {
 
 const ledgerFile = () => path.join(__dirname, 'sent-' + path.basename(IDS_FILE || 'none') + '.json');
 
-function loadLedger() {
-  if (!RESUME || !IDS_FILE || !fs.existsSync(ledgerFile())) return new Set();
-  try { return new Set(JSON.parse(fs.readFileSync(ledgerFile(), 'utf8'))); }
-  catch (e) { return new Set(); }
+// --no-resume влияет только на то, что ПРОПУСКАЕТСЯ в этом прогоне.
+// На содержимое файла он больше не влияет: запись всегда идёт слиянием.
+function readLedgerFile() {
+  if (!IDS_FILE || !fs.existsSync(ledgerFile())) return [];
+  try { return JSON.parse(fs.readFileSync(ledgerFile(), 'utf8')); }
+  catch (e) { return []; }
 }
 
+function loadLedger() {
+  if (!RESUME) return new Set();
+  return new Set(readLedgerFile());
+}
+
+// Пишем слиянием с тем, что уже на диске: --no-resume и параллельный прогон
+// больше не стирают чужие записи. Так уже потерялись 8 матчей из 23.
 function saveLedger(set) {
   if (!IDS_FILE) return;
-  fs.writeFileSync(ledgerFile(), JSON.stringify([...set]));
+  fs.writeFileSync(ledgerFile(), JSON.stringify(mergeLedger(readLedgerFile(), [...set])));
 }
 
 function loadIds(ledger) {
@@ -155,11 +166,10 @@ async function qrRefreshToken() {
 // Темп в режиме очереди: число миллисекунд в delay.txt перекрывает --delay без перезапуска.
 const DELAY_FILE = path.join(__dirname, 'delay.txt');
 function currentDelay() {
-  try {
-    const v = Number(fs.readFileSync(DELAY_FILE, 'utf8').trim());
-    if (Number.isFinite(v) && v >= 500) return v;
-  } catch (e) { /* нет файла — работаем на --delay */ }
-  return DELAY;
+  let fromFile = null;
+  try { fromFile = Number(fs.readFileSync(DELAY_FILE, 'utf8').trim()); }
+  catch (e) { /* нет файла — работаем на --delay */ }
+  return effectiveDelay(DELAY_GIVEN, DELAY, fromFile);
 }
 
 // Живое состояние для панели: последние события и общий счёт.
@@ -185,8 +195,10 @@ async function main() {
   else {
     if (!ids.length) throw new Error(ledger.size ? 'все матчи из файла уже отправлены (см. ' + path.basename(ledgerFile()) + ')' : 'нет match_id — передай --ids <файл>');
     if (ledger.size) console.log('в журнале уже ' + ledger.size + ' отправленных, они пропущены');
-    console.log('режим: отправка ' + MSG + ', ' + ids.length + ' матчей, пауза ' + DELAY + ' мс');
-    console.log('расчётное время: ' + hhmm(ids.length * DELAY));
+    // Печатаем действующую паузу, а не флаг: раньше шапка показывала --delay,
+    // хотя прожиг шёл по значению из delay.txt, и темп в логе был ложью.
+    console.log('режим: отправка ' + MSG + ', ' + ids.length + ' матчей, пауза ' + currentDelay() + ' мс');
+    console.log('расчётное время: ' + hhmm(ids.length * currentDelay()));
   }
 
   let SteamUser;
@@ -257,9 +269,20 @@ async function main() {
     other.set(type, (other.get(type) || 0) + 1);
   });
 
-  const waitGC = () => new Promise(resolve => {
+  // Ждём Welcome от GC, но не бесконечно. Открытый Steam-клиент занимает
+  // единственную сессию аккаунта, и раньше отправщик в этом случае висел молча:
+  // процесс жив, панель зелёная, в логе тишина. Выглядело как «накрутка сломалась».
+  const GC_TIMEOUT = 90_000;
+  const waitGC = () => new Promise((resolve, reject) => {
     if (gcReady) return resolve();
-    const t = setInterval(() => { if (gcReady) { clearInterval(t); resolve(); } }, 1000);
+    const started = Date.now();
+    const t = setInterval(() => {
+      if (gcReady) { clearInterval(t); return resolve(); }
+      if (Date.now() - started > GC_TIMEOUT) {
+        clearInterval(t);
+        reject(new Error('GC не ответил Welcome за 90 секунд — закрой Steam и Dota, они занимают сессию'));
+      }
+    }, 1000);
   });
 
   await waitGC();

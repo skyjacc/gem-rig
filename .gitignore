@@ -1,0 +1,19 @@
+node_modules/
+dist/
+
+# ключи и сессии — никогда в репозиторий
+tools/opendota.key
+tools/steam.key
+tools/gcwatch/token.json
+
+# рабочие данные
+tools/gcwatch/sent-*.json
+tools/gcwatch/status.json
+tools/gcwatch/delay.txt
+tools/gcwatch/*.csv
+tools/rig.db
+tools/rig.db-*
+tools/gemtrack-data/
+
+# скачанный референс — чужой сайт, в репозиторий не нужен
+_ref/site/

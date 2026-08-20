@@ -1,0 +1,137 @@
+[
+ {
+  "def": 20353,
+  "name": "Nether Lord's Regalia Set",
+  "partner": "BzzIsPerfect",
+  "hero": "pugna",
+  "price_cents": 399,
+  "created": "2014-01-13",
+  "pieces": 7
+ },
+ {
+  "def": 20755,
+  "name": "Golden Nether Lord's Regalia Set",
+  "partner": "BzzIsPerfect",
+  "hero": "pugna",
+  "price_cents": null,
+  "created": "2016-08-10",
+  "pieces": 7
+ },
+ {
+  "def": 20356,
+  "name": "Shadow Hunter Set",
+  "partner": "CaspeRRR",
+  "hero": "nyx_assassin",
+  "price_cents": 799,
+  "created": "2014-01-14",
+  "pieces": 4
+ },
+ {
+  "def": 20302,
+  "name": "Garb of the Cruel Magician Set",
+  "partner": "Cruel Pro Gear",
+  "hero": "rubick",
+  "price_cents": 799,
+  "created": "2013-11-06",
+  "pieces": 4
+ },
+ {
+  "def": 20290,
+  "name": "Azuremir & Nexon Invitational Super Match Bundle",
+  "partner": "Dragonspawn",
+  "hero": "",
+  "price_cents": 1299,
+  "created": "2013-10-30",
+  "pieces": 2
+ },
+ {
+  "def": 20301,
+  "name": "Glacier Duster Set",
+  "partner": "Frosty Pro Gear",
+  "hero": "crystal_maiden",
+  "price_cents": 799,
+  "created": "2013-11-06",
+  "pieces": 5
+ },
+ {
+  "def": 20306,
+  "name": "Dread of the Gleaming Seal Set",
+  "partner": "Gleaming Pro Gear",
+  "hero": "phantom_assassin",
+  "price_cents": 1099,
+  "created": "2013-11-07",
+  "pieces": 5
+ },
+ {
+  "def": 20484,
+  "name": "Bindings of Deep Magma",
+  "partner": "Hot",
+  "hero": "earthshaker",
+  "price_cents": 1099,
+  "created": "2014-04-21",
+  "pieces": 6
+ },
+ {
+  "def": 29344,
+  "name": "Legacy Bindings of Deep Magma",
+  "partner": "Hot",
+  "hero": "earthshaker",
+  "price_cents": null,
+  "created": "2023-08-13",
+  "pieces": 6
+ },
+ {
+  "def": 20307,
+  "name": "Spoils from the Shifting Sorcerer Bundle",
+  "partner": "Magic Hating Pro Gear",
+  "hero": "antimage",
+  "price_cents": 799,
+  "created": "2013-11-07",
+  "pieces": 6
+ },
+ {
+  "def": 20305,
+  "name": "Wings of Obelis Set",
+  "partner": "Navi",
+  "hero": "chen",
+  "price_cents": 399,
+  "created": "2013-11-29",
+  "pieces": 5
+ },
+ {
+  "def": 20455,
+  "name": "Redrage Crawler",
+  "partner": "Redrage Crawler",
+  "hero": "life_stealer",
+  "price_cents": null,
+  "created": "2014-03-24",
+  "pieces": 5
+ },
+ {
+  "def": 20311,
+  "name": "Artillery of the Crested Cannoneer Set",
+  "partner": "Sing",
+  "hero": "kunkka",
+  "price_cents": 799,
+  "created": "2013-11-11",
+  "pieces": 8
+ },
+ {
+  "def": 20308,
+  "name": "Death Charge Set",
+  "partner": "Skull Bashing Pro Gear",
+  "hero": "spirit_breaker",
+  "price_cents": 799,
+  "created": "2013-11-07",
+  "pieces": 6
+ },
+ {
+  "def": 20310,
+  "name": "Formed Alloy Set",
+  "partner": "Stronger than Steel",
+  "hero": "alchemist",
+  "price_cents": 799,
+  "created": "2013-11-08",
+  "pieces": 7
+ }
+]

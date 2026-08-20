@@ -1,0 +1,547 @@
+[
+ {
+  "name": "Genuine Spectator: Evil Geniuses",
+  "kind": "team",
+  "entity_id": 39,
+  "entity_name": "Evil Geniuses (Steam team_id 39; сегодня та же сущность подписана в OpenDota как Shopify Rebellion, tag SR)",
+  "matches_estimate": 2674,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator:",
+  "kind": "unknown",
+  "entity_id": null,
+  "entity_name": "",
+  "matches_estimate": null,
+  "confidence": "UNKNOWN",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Adrian 'Era' Kryeziu",
+  "kind": "player",
+  "entity_id": 100317750,
+  "entity_name": "Adrian 'Era' Kryeziu (Швеция, р. 1995-09-03)",
+  "matches_estimate": 2117,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Alliance",
+  "kind": "team",
+  "entity_id": 111474,
+  "entity_name": "Alliance (Швеция)",
+  "matches_estimate": 2340,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Aren 'VeRsuta' Zurabyan",
+  "kind": "unknown",
+  "entity_id": null,
+  "entity_name": "Арен 'VeRsuta' Зурабян (комментатор/стример, Россия, р. 1989-01-17)",
+  "matches_estimate": null,
+  "confidence": "UNKNOWN",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Arrow Gaming",
+  "kind": "team",
+  "entity_id": 1277104,
+  "entity_name": "Arrow Gaming (Малайзия; в OpenDota подписана 'Nvidia.ArrowGaming.AVF', tag Arrow)",
+  "matches_estimate": 244,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Ars-Art",
+  "kind": "player",
+  "entity_id": 107644273,
+  "entity_name": "Сергей Антонович Ревин, ARS-ART (ныне ник Smile; Россия, р. 1988-08-12)",
+  "matches_estimate": 559,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Arteezy",
+  "kind": "player",
+  "entity_id": 86745912,
+  "entity_name": "Artour 'Arteezy' Babaev (Канада, р. 1996-07-01)",
+  "matches_estimate": 2343,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: BZZ",
+  "kind": "player",
+  "entity_id": 96196828,
+  "entity_name": "Станислав '633' (BZZ, BzzIsPerfect) Глушан (Россия, р. 1992-11-09)",
+  "matches_estimate": 1990,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Benedict 'HyHy' Lim",
+  "kind": "player",
+  "entity_id": 68740191,
+  "entity_name": "Benedict \"hyhy\" Lim Han Yong (林汉勇), Сингапур, статус Retired",
+  "matches_estimate": 41,
+  "confidence": "OBSERVED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Beyond the Summit",
+  "kind": "studio",
+  "entity_id": null,
+  "entity_name": "Beyond The Summit (BTS) — продакшн-компания, Лос-Анджелес, основана 2012-03, закрыта 2023-03-27 (LD и GoDz)",
+  "matches_estimate": 7740,
+  "confidence": "OBSERVED",
+  "league_ids": [
+   7,
+   1157,
+   1936,
+   2422,
+   2661,
+   3530,
+   3779,
+   3781,
+   3960,
+   4442,
+   5850,
+   10145,
+   10558,
+   11147,
+   11162,
+   11371,
+   11741,
+   11791,
+   11863,
+   12113,
+   12532,
+   12734,
+   12735,
+   13092,
+   13119,
+   13120,
+   13237,
+   13409,
+   13498,
+   13499,
+   13659,
+   13747,
+   13748,
+   13756,
+   13939,
+   13940,
+   13945,
+   14066,
+   14067,
+   14068,
+   14166,
+   14187,
+   14256,
+   14269,
+   14270,
+   14271,
+   14294,
+   14295,
+   14296,
+   14552,
+   14778,
+   14999
+  ]
+ },
+ {
+  "name": "Spectator: BuLba",
+  "kind": "player",
+  "entity_id": 30237211,
+  "entity_name": "Kanishka \"BuLba\" Sosale (ಕನಿಷ್ಕ ಸೋಸಲೆ), США/Индия, ныне тренер (status Active, roles=coach)",
+  "matches_estimate": 1525,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: BurNIng",
+  "kind": "player",
+  "entity_id": 90892734,
+  "entity_name": "Xu \"BurNIng\" Zhilei (徐志雷), Китай, Liquipedia status=Retired, roles=streamer/coach, сооснователь Team Aster",
+  "matches_estimate": 1321,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: CIS Game",
+  "kind": "team",
+  "entity_id": 1312775,
+  "entity_name": "CIS Game (тег CIS) — КИТАЙСКИЙ клуб из Куньшаня, основан нач. 2014, распущен 2014 (состав выкуплен Vici Gaming)",
+  "matches_estimate": 78,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: CaspeRRR",
+  "kind": "unknown",
+  "entity_id": 53482884,
+  "entity_name": "Роман Володимирович Лепьохін / Roman \"CaspeRRR\" Lepokhin, Украина (Horishni Plavni) — РУССКОЯЗЫЧНЫЙ КОММЕНТАТОР, Liquipedia roles=caster, status=Active",
+  "matches_estimate": 3,
+  "confidence": "HYPOTHESIS",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Clinton 'Fear' Loomis",
+  "kind": "player",
+  "entity_id": 87177591,
+  "entity_name": "Clinton \"Fear\" Loomis, США (Evil Geniuses, чемпион TI5, герой фильма Free to Play), Liquipedia status=Active, roles=analyst/caster",
+  "matches_estimate": 1653,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Cloud9",
+  "kind": "team",
+  "entity_id": 1333179,
+  "entity_name": "Cloud9 (дота-дивизион, дебют 2014-02-09 покупкой Speed Gaming, орг. закрыл доту 2024-11-01). В OpenDota НЕТ единой сущности C9 — имя носили 5 разных регистраций",
+  "matches_estimate": 598,
+  "confidence": "HYPOTHESIS",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: D2L",
+  "kind": "league",
+  "entity_id": null,
+  "entity_name": "Dota 2 League (D2L) — онлайн-лига, которую вела организация Evil Geniuses, касты Ayesee и Maelk/Draskyl",
+  "matches_estimate": 727,
+  "confidence": "VERIFIED",
+  "league_ids": [
+   12,
+   22,
+   48,
+   104,
+   1135,
+   2096
+  ]
+ },
+ {
+  "name": "Spectator: DD",
+  "kind": "player",
+  "entity_id": 89371588,
+  "entity_name": "Xie 'DD' Bin (谢彬) — LGD.cn",
+  "matches_estimate": 508,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: DK",
+  "kind": "team",
+  "entity_id": 7,
+  "entity_name": "Team DK",
+  "matches_estimate": 573,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Danil 'Dendi' Ishutin",
+  "kind": "player",
+  "entity_id": 70388657,
+  "entity_name": "Danil 'Dendi' Ishutin (Na'Vi / B8)",
+  "matches_estimate": 2250,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Dota Cinema",
+  "kind": "studio",
+  "entity_id": 690740,
+  "entity_name": "Dota Cinema (DotaCinema)",
+  "matches_estimate": 256,
+  "confidence": "OBSERVED",
+  "league_ids": [
+   89,
+   203,
+   1084,
+   1741,
+   2140,
+   4289
+  ]
+ },
+ {
+  "name": "Spectator: EternaLEnVy",
+  "kind": "player",
+  "entity_id": 43276219,
+  "entity_name": "Jacky 'EternaLEnVy' Mao",
+  "matches_estimate": 2073,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Evil Geniuses",
+  "kind": "team",
+  "entity_id": 39,
+  "entity_name": "Evil Geniuses (Steam-команда 39; в OpenDota сейчас отдаётся как 'Shopify Rebellion')",
+  "matches_estimate": 2674,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Fnatic",
+  "kind": "team",
+  "entity_id": 350190,
+  "entity_name": "Fnatic (Steam-команда 350190; в OpenDota сейчас отдаётся как 'Ascent Esports')",
+  "matches_estimate": 2473,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Funn1k",
+  "kind": "player",
+  "entity_id": 86723143,
+  "entity_name": "Glib 'Funn1k' Lipatnikov (Гліб Липатніков)",
+  "matches_estimate": 1942,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Hao",
+  "kind": "player",
+  "entity_id": 88508515,
+  "entity_name": "Chen 'Hao' Zhihao (陈智豪)",
+  "matches_estimate": 1110,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Kuroky",
+  "kind": "player",
+  "entity_id": 82262664,
+  "entity_name": "Kuro Salehi Takhasomi (KuroKy)",
+  "matches_estimate": 2466,
+  "confidence": "VERIFIED",
+  "league_ids": [],
+  "Steam market": "exists"
+ },
+ {
+  "name": "Spectator: LGD",
+  "kind": "team",
+  "entity_id": 15,
+  "entity_name": "LGD Gaming / PSG.LGD",
+  "matches_estimate": 2943,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Lee 'Kyxy' Kang Yang",
+  "kind": "player",
+  "entity_id": 91644707,
+  "entity_name": "Lee 'kYxY' Kang Yang (李康阳)",
+  "matches_estimate": 1620,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Liquid",
+  "kind": "team",
+  "entity_id": 2163,
+  "entity_name": "Team Liquid",
+  "matches_estimate": 3163,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Liquid`ixmike88",
+  "kind": "player",
+  "entity_id": 86715129,
+  "entity_name": "Michael 'ixmike88' Ghannam",
+  "matches_estimate": 1449,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: MVP Phoenix",
+  "kind": "team",
+  "entity_id": 1148284,
+  "entity_name": "MVP Phoenix",
+  "matches_estimate": 683,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Mousesports",
+  "kind": "team",
+  "entity_id": 26,
+  "entity_name": "mousesports / MOUZ (регистрация 2012-2017)",
+  "matches_estimate": 694,
+  "confidence": "OBSERVED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Mushi",
+  "kind": "player",
+  "entity_id": 89871557,
+  "entity_name": "Chai 'Mushi' Yee Fung (蔡宜风)",
+  "matches_estimate": 1644,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: NS",
+  "kind": "player",
+  "entity_id": 93712171,
+  "entity_name": "Ярослав Владимирович Кузнецов (NS)",
+  "matches_estimate": 658,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: NaVi",
+  "kind": "team",
+  "entity_id": 36,
+  "entity_name": "Natus Vincere (Valve loc: \"NaVi\")",
+  "matches_estimate": 2722,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: NaVi NA",
+  "kind": "team",
+  "entity_id": 1642908,
+  "entity_name": "Natus Vincere US (Valve loc: \"NaVi NA\", OpenDota name \"Natus Vincere US\", tag \"Na`Vi US\")",
+  "matches_estimate": 137,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Newbee",
+  "kind": "team",
+  "entity_id": 1375614,
+  "entity_name": "Newbee (Valve loc: \"Newbee\")",
+  "matches_estimate": 1712,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Ohaiyo",
+  "kind": "player",
+  "entity_id": 93616251,
+  "entity_name": "Chong Xin 'Ohaiyo' Khoo (Малайзия)",
+  "matches_estimate": 1672,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: RoX.KIS.yol",
+  "kind": "player",
+  "entity_id": 76600360,
+  "entity_name": "'yol' (Valve loc: \"RoX.KIS.yol\"; OpenDota персона 'yy', алиас 'yol')",
+  "matches_estimate": 1353,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: SOLO",
+  "kind": "player",
+  "entity_id": 134556694,
+  "entity_name": "Alexey 'Solo' Berezin (Россия)",
+  "matches_estimate": 2560,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Sergey 'G' Bragin",
+  "kind": "player",
+  "entity_id": 87586992,
+  "entity_name": "Sergey 'G' Bragin (Россия)",
+  "matches_estimate": 1840,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Sing",
+  "kind": "player",
+  "entity_id": 19757254,
+  "entity_name": "Wehsing 'SingSing' Yuen (Нидерланды)",
+  "matches_estimate": 959,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Team Empire",
+  "kind": "team",
+  "entity_id": 46,
+  "entity_name": "Team Empire (Valve loc: \"Team Empire\")",
+  "matches_estimate": 2440,
+  "confidence": "VERIFIED",
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Titan",
+  "kind": "team",
+  "confidence": "VERIFIED",
+  "entity_id": 999689,
+  "entity_name": "Titan / Titan eSports (Малайзия, ex-Orange ростер: XtiNcT, Net, Ohaiyo, kYxY + Ice, позже Meracle / YamateH)",
+  "matches_estimate": 303,
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: ViCi Gaming",
+  "kind": "team",
+  "confidence": "VERIFIED",
+  "entity_id": 726228,
+  "entity_name": "Vici Gaming (VG, Китай)",
+  "matches_estimate": 2659,
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Virtus.pro",
+  "kind": "team",
+  "confidence": "OBSERVED",
+  "entity_id": 1883502,
+  "entity_name": "Virtus.pro — старая регистрация 2012-2022 (team_id 1883502)",
+  "matches_estimate": 2496,
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: YYF",
+  "kind": "player",
+  "confidence": "VERIFIED",
+  "entity_id": 90045009,
+  "entity_name": "YYF — Jiang Cen (姜岑), Китай, offlane; Invictus Gaming (2012-07 .. 2014-07), затем Old Boys (шоу-матчи 2015-2020)",
+  "matches_estimate": 536,
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: ZSMJ",
+  "kind": "player",
+  "confidence": "VERIFIED",
+  "entity_id": 113705693,
+  "entity_name": "ZSMJ — Gong Jian (龚建), Китай, carry; ViCi Gaming → TongFu/Newbee.mgb → Hyper Glory Team → Team FanTuan (2013-2016), позже Old Boys",
+  "matches_estimate": 644,
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: Zephyr",
+  "kind": "team",
+  "confidence": "VERIFIED",
+  "entity_id": 1245961,
+  "entity_name": "Zephyr (западный ростер, базировался в Южной Корее: Corey, SexyBamboe, BlitZ, Eosin, Purge; позже Merlini, sLICKz)",
+  "matches_estimate": 95,
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: iG",
+  "kind": "team",
+  "confidence": "VERIFIED",
+  "entity_id": 5,
+  "entity_name": "Invictus Gaming (iG, Китай, чемпион TI2)",
+  "matches_estimate": 2724,
+  "league_ids": []
+ },
+ {
+  "name": "Spectator: iceiceice",
+  "kind": "player",
+  "confidence": "VERIFIED",
+  "entity_id": 84772440,
+  "entity_name": "iceiceice — Daryl Koh Pei Xiang (许培祥), Сингапур; Zenith → Team DK → Vici Gaming → EHOME → Team Faceless → Mineski → Fnatic → Evil Geniuses → Team Secret → BLEED",
+  "matches_estimate": 2009,
+  "league_ids": []
+ }
+]

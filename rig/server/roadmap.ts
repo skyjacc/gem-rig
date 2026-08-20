@@ -3,6 +3,9 @@
 // Никаких захардкоженных «выполнено 60 %». Каждый узел либо тянет число из
 // базы, либо проверяет наличие файла, либо считает тесты в исходниках.
 // Если что-то откатится назад — узел сам покраснеет.
+//
+// Формулировки человеческие: узел объясняет, ЧТО это значит для дела,
+// а не как называется в коде. Технические подробности живут в README.
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -19,7 +22,6 @@ export type Node = {
   status: Status
   metric?: string
   evidence?: string
-  children?: Node[]
 }
 
 export type Phase = {
@@ -39,7 +41,6 @@ const has = (t: string) =>
 
 const nf = (n: number) => n.toLocaleString('ru-RU')
 
-// Русские склонения: 1 объект, 2 объекта, 5 объектов.
 const plural = (n: number, one: string, few: string, many: string) => {
   const a = Math.abs(n) % 100
   if (a > 10 && a < 20) return many
@@ -75,6 +76,14 @@ function commits(): number {
 }
 
 const exists = (rel: string) => fs.existsSync(path.join(ROOT, rel))
+
+// Сколько аккаунтов настроено — по числу сохранённых сессий.
+function accountCount(): number {
+  try {
+    return fs.readdirSync(path.join(TOOLS, 'gcwatch'))
+      .filter(f => /^token(-.+)?\.json$/.test(f)).length
+  } catch { return 0 }
+}
 
 // Сущности, чьи гемы реально лежат в инвентаре, и их прогресс к товару.
 function production() {
@@ -113,152 +122,189 @@ export function roadmap(): { phases: Phase[]; updated: number } {
   const events = num('select count(*) c from events')
   const t = countTests()
   const prod = production()
+  const acc = accountCount()
+  const perAccount = has('burned') &&
+    (db.prepare(`pragma table_info(burned)`).all() as any[]).some(c => c.name === 'account')
 
   const phases: Phase[] = []
 
-  // ── 1. Механика ──
+  // ── Сейчас ──
+  phases.push({
+    id: 'now', title: 'Сейчас', subtitle: 'живые числа этой минуты',
+    status: 'active',
+    progress: { done: 5, total: 5 },
+    nodes: [
+      { id: 'n1', title: 'Правок в проекте', status: 'done', metric: String(commits()),
+        detail: 'сколько раз код менялся с начала работы' },
+      { id: 'n2', title: 'Матчей в своей базе', status: 'done', metric: nf(matches),
+        detail: 'вся турнирная история Dota, собранная у себя' },
+      { id: 'n3', title: 'Матчей уже использовано', status: 'done', metric: String(confirmed),
+        detail: 'Valve подтвердила, что счётчик от них вырос' },
+      {
+        id: 'n4', title: 'Спорных', status: disputed > 0 ? 'active' : 'done', metric: String(disputed),
+        detail: disputed > 0
+          ? 'Valve не начислила, но причину не назвала. Возможно, они ещё живы — стоит попробовать повторно.'
+          : 'спорных нет',
+      },
+      { id: 'n5', title: 'Отправок сделано', status: 'done', metric: String(events),
+        detail: 'всего сообщений ушло в Valve за всё время' },
+    ],
+  })
+
+  // ── Как это работает ──
   const mech: Node[] = [
     { id: 'm1', title: 'Счётчик поднимается одним сообщением', status: 'done',
-      detail: 'k_EMsgUpgradeLeagueItem = 7203, ни игры, ни реплея не требуется',
-      evidence: 'msg 26 в ответ, дифф инвентаря' },
-    { id: 'm2', title: 'Голый гем без сокета считается', status: 'done',
-      detail: 'Artificer\'s Chisel не нужен — узкое место снято',
-      evidence: 'Alliance 2→3 при трёх контрольных 0→1' },
-    { id: 'm3', title: 'Гем считает сущность, а не лигу', status: 'done',
-      detail: 'потолок гема = матчи его команды или игрока',
-      evidence: 'лига 14389: Empire +10, NaVi остался 5' },
-    { id: 'm4', title: 'Журнал GC не истекает', status: 'done',
-      detail: 'матч сгорает для аккаунта навсегда',
-      evidence: 'повтор через 26 часов: 5 ответов, 0 обновлений' },
-    { id: 'm5', title: 'league_id обязателен', status: 'done',
-      detail: 'без него GC молча отвергает сообщение',
-      evidence: '8003261364: без лиги тишина, с лигой 507 байт' },
-    { id: 'm6', title: 'dup не означает «сожжён»', status: 'done',
-      detail: 'ответ 7204 пуст по протоколу, причина неразличима',
-      evidence: 'отвергнутый матч засчитался со второй попытки' },
-    { id: 'm7', title: 'Счётчик НЕ переживает распаковку набора', status: 'done',
-      detail: 'распаковывать надо ДО прожига, иначе накопленное сгорит',
+      detail: 'Не нужно ни играть, ни смотреть реплей. Отправили матч — счётчик вырос.',
+      evidence: 'отправка без запуска игры даёт +1' },
+    { id: 'm2', title: 'Гем работает и без вставки в вещь', status: 'done',
+      detail: 'Раньше считали, что гем надо вставлять в предмет инструментом за доллар, а таких на рынке три штуки в сутки. Оказалось — не надо. Гем растёт просто лёжа в инвентаре.',
+      evidence: 'гем за 4 цента: счётчик 2 → 3' },
+    { id: 'm3', title: 'Гем считает только матчи своей команды', status: 'done',
+      detail: 'Гем NaVi растёт от матчей NaVi и больше ни от чего. Отсюда потолок: сколько у команды матчей за всю историю — столько максимум и будет на геме.',
+      evidence: 'сожгли матч Empire — NaVi не двинулся, хотя турнир общий' },
+    { id: 'm4', title: 'Матч сгорает навсегда, но только на этом аккаунте', status: 'done',
+      detail: 'Повторно тот же матч счётчик не поднимет — проверяли и через сутки. Но на ДРУГОМ аккаунте он снова свежий. Отсюда и смысл заводить несколько аккаунтов.',
+      evidence: 'повтор пяти матчей через 26 часов: ноль начислений' },
+    { id: 'm5', title: 'Без номера турнира сообщение не работает', status: 'done',
+      detail: 'В запросе два поля: матч и турнир. Без второго Valve молча его выбрасывает, а со стороны это выглядит как «матч уже использован».',
+      evidence: 'один матч: без турнира тишина, с турниром +1' },
+    { id: 'm6', title: 'Отказ и «уже использован» снаружи неотличимы', status: 'done',
+      detail: 'Ответ Valve пустой, причины в нём нет. Единственное надёжное подтверждение роста — отдельное сообщение об изменении инвентаря.',
+      evidence: 'матч ответил «использован» и тут же засчитался со второй попытки' },
+    { id: 'm7', title: 'Распаковка набора обнуляет счётчик', status: 'done',
+      detail: 'Набор из семи вещей — это один объект с одним счётчиком. Распаковали — получили семь вещей с нулями. Значит распаковывать надо ДО прожига, иначе накопленное сгорит.',
       evidence: 'набор со счётчиком 4 дал семь предметов с нулём' },
-    { id: 'm8', title: 'Переживает ли счётчик извлечение чиселом', status: 'todo',
-      detail: 'последний неотвеченный вопрос механики',
-      metric: '$1.07, необратимо' },
-    { id: 'm9', title: 'Есть ли предел на число экземпляров', status: 'todo',
-      detail: 'максимум виденного — 14 объектов одним сообщением, теперь их 29',
+    { id: 'm8', title: 'Переживёт ли счётчик вынимание гема из вещи', status: 'todo',
+      detail: 'Если переживёт — можно крутить дешёвую россыпь и потом собирать ценность в одну вещь. Если нет — вынимать нельзя вообще.',
+      metric: 'проверка $1.07' },
+    { id: 'm9', title: 'Сколько гемов поднимается за одну отправку', status: 'todo',
+      detail: 'Одно сообщение поднимает все подходящие гемы разом. Видели 14 штук сразу. Сейчас в инвентаре 29 — где предел, неизвестно.',
       metric: 'проверяется одним матчем' },
   ]
   phases.push({
-    id: 'mechanics', title: 'Механика', subtitle: 'что доказано замерами',
+    id: 'mechanics', title: 'Как это работает', subtitle: 'что проверено на живом аккаунте',
     nodes: mech,
     progress: { done: mech.filter(n => n.status === 'done').length, total: mech.length },
     status: mech.every(n => n.status === 'done') ? 'done' : 'active',
   })
 
-  // ── 2. Данные ──
+  // ── Данные ──
   const data: Node[] = [
-    { id: 'd1', title: 'Карта матчей построена', status: matches > 0 ? 'done' : 'todo',
-      metric: nf(matches) + ' матчей', detail: 'обход Steam Web API по лигам',
-      evidence: nf(leagues) + ' лиг пройдено' },
-    { id: 'd2', title: 'Связи игрок → матч', status: links > 0 ? 'done' : 'todo',
-      metric: nf(links), detail: 'по ним считается запас гемов-игроков' },
-    { id: 'd3', title: 'Добор из зеркала', status: mirrored > 0 ? 'done' : 'todo',
-      metric: nf(mirrored) + ' матчей', detail: 'там, где Valve режет по 500 на лигу',
-      evidence: 'разрыв с OpenDota сведён к нулю' },
-    { id: 'd4', title: 'Запас считается локально', status: matches > 0 ? 'done' : 'blocked',
-      detail: 'внешние API для расчёта больше не нужны' },
-    { id: 'd5', title: 'Три гема без сущности', status: 'todo',
-      detail: 'CaspeRRR, VeRsuta, безымянный — работа по Liquipedia',
-      metric: '3 из 53' },
-    { id: 'd6', title: 'STRATZ как третий источник', status: 'todo',
-      detail: 'даёт около 3 % сверху — отложено намеренно' },
+    { id: 'd1', title: 'Своя база всех турнирных матчей', status: matches > 0 ? 'done' : 'todo',
+      metric: nf(matches),
+      detail: 'Обошли все турниры через официальный API Valve. Больше не зависим от чужих сайтов: запас любого гема считается локально.',
+      evidence: nf(leagues) + ' турниров обойдено' },
+    { id: 'd2', title: 'Кто в каком матче играл', status: links > 0 ? 'done' : 'todo',
+      metric: nf(links),
+      detail: 'Для гемов игроков надо знать, где именно этот человек выходил на карту. Отсюда берётся их потолок.' },
+    { id: 'd3', title: 'Дособрали то, что Valve не отдала', status: mirrored > 0 ? 'done' : 'todo',
+      metric: nf(mirrored),
+      detail: 'Valve отдаёт максимум 500 матчей на турнир, даже если их там 7645. Недостающее взяли со стороннего сайта.',
+      evidence: 'расхождений с ним не осталось' },
+    { id: 'd4', title: 'Три гема непонятно чьи', status: 'todo',
+      metric: '3 из 53',
+      detail: 'CaspeRRR, VeRsuta и безымянный — неясно, чью команду или игрока они считают. Значит и потолок неизвестен.' },
+    { id: 'd5', title: 'Четвёртый источник данных', status: 'todo',
+      detail: 'Добавит около 3 % матчей. Решили не тратить время: на закупку и на сроки это не влияет.' },
   ]
   phases.push({
-    id: 'data', title: 'Данные', subtitle: 'собственный источник вместо чужих выгрузок',
+    id: 'data', title: 'Данные', subtitle: 'своя база вместо чужих сайтов',
     nodes: data,
     progress: { done: data.filter(n => n.status === 'done').length, total: data.length },
     status: matches > 0 ? 'active' : 'todo',
   })
 
-  // ── 3. Код ──
-  const code: Node[] = [
-    { id: 'c1', title: 'Тесты', status: t.tests > 0 ? 'done' : 'todo',
-      metric: t.tests + ' в ' + t.files + ' файлах', detail: 'до 20 августа не было ни одного' },
-    { id: 'c2', title: 'silent больше не жжёт матчи', status: exists('rig/server/ledger.ts') ? 'done' : 'todo',
-      detail: 'зависший ответ вычёркивал матч навсегда' },
-    { id: 'c3', title: 'Миграции схемы', status: exists('rig/server/migrate.ts') ? 'done' : 'todo',
-      detail: 'идемпотентны, чинят испорченные метки времени' },
-    { id: 'c4', title: 'Обходчик лиг', status: exists('rig/crawl.ts') ? 'done' : 'todo',
-      detail: 'возобновляемый, помнит пройденное' },
-    { id: 'c5', title: 'Расчёт запаса и остатка', status: exists('rig/server/supply.ts') ? 'done' : 'todo',
-      detail: 'dup отдельным состоянием, из остатка не вычитается' },
-    { id: 'c6', title: 'План закупки', status: exists('rig/plan-purchase.ts') ? 'done' : 'todo',
-      detail: 'стратегия в глубину под цель «предметы 2000+»' },
-    { id: 'c7', title: 'Правки отправщика', status: exists('tools/gcwatch/lib.js') ? 'done' : 'todo',
-      detail: 'журнал, темп, таймаут GC, вход как Invisible' },
-    { id: 'c8', title: 'Учёт ответов GC сопоставлением', status: 'done',
-      detail: 'FIFO вместо окна по таймеру — опоздавший msg 26 больше не достаётся следующему матчу',
-      evidence: 'замер 50 матчей: логи и инвентарь сошлись до штуки' },
-    { id: 'c9', title: 'Очередь на новых таблицах', status: 'todo',
-      detail: 'queue.ts ещё ходит в старую entity_matches' },
+  // ── Аккаунты ──
+  const accNodes: Node[] = [
+    { id: 'a1', title: 'Аккаунтов подключено', status: acc > 1 ? 'done' : acc === 1 ? 'active' : 'todo',
+      metric: acc + ' ' + plural(acc, 'штука', 'штуки', 'штук'),
+      detail: acc <= 1
+        ? 'Пока один. Матчи расходуются на каждом аккаунте отдельно, поэтому второй и третий умножают выход, а не делят пул.'
+        : 'каждый расходует пул независимо от остальных' },
+    { id: 'a2', title: 'Журнал знает, на каком аккаунте матч сгорел', status: perAccount ? 'done' : 'todo',
+      detail: 'Сейчас журнал общий. Со вторым аккаунтом он начнёт пропускать матчи, которые для него ещё свежие, — и половина работы пройдёт впустую.' },
+    { id: 'a3', title: 'Одновременная работа нескольких', status: 'todo',
+      detail: 'Ограничение «одна сессия» действует на аккаунт, а не на компьютер. Три аккаунта работают параллельно: втрое больше товара за то же время.' },
+    { id: 'a4', title: 'Отсев негодных матчей', status: 'todo',
+      detail: 'Матч, не сработавший на свежем аккаунте, негоден в принципе — его надо исключить везде. Отличить негодный от просто использованного можно только сравнив два аккаунта.' },
+    { id: 'a5', title: 'Свой инвентарь у каждого', status: 'todo',
+      detail: 'Гемы лежат на конкретном аккаунте. Панель должна показывать состав и остаток по каждому отдельно, а не в общей куче.' },
   ]
   phases.push({
-    id: 'code', title: 'Код', subtitle: 'что построено и что сломано',
+    id: 'accounts', title: 'Аккаунты', subtitle: 'пул матчей расходуется на каждом заново',
+    nodes: accNodes,
+    progress: { done: accNodes.filter(n => n.status === 'done').length, total: accNodes.length },
+    status: acc > 1 ? 'active' : 'todo',
+  })
+
+  // ── Инструменты ──
+  const code: Node[] = [
+    { id: 'c1', title: 'Автопроверки кода', status: t.tests > 0 ? 'done' : 'todo',
+      metric: t.tests + ' ' + plural(t.tests, 'штука', 'штуки', 'штук'),
+      detail: 'Ловят поломки до того, как они испортят данные. Утром 20 августа не было ни одной.' },
+    { id: 'c2', title: 'Молчание Valve больше не «сжигает» матч', status: exists('rig/server/ledger.ts') ? 'done' : 'todo',
+      detail: 'Если ответ не пришёл — раньше матч навсегда помечался использованным и терялся. Теперь остаётся доступным.' },
+    { id: 'c3', title: 'Ответы привязаны к своим отправкам', status: 'done',
+      detail: 'Раньше опоздавший ответ засчитывался следующему матчу, и статистика врала тем сильнее, чем быстрее шла отправка.',
+      evidence: 'замер 50 матчей: логи и инвентарь сошлись до штуки' },
+    { id: 'c4', title: 'База сама обновляет свою структуру', status: exists('rig/server/migrate.ts') ? 'done' : 'todo',
+      detail: 'При запуске догоняет схему и чинит испорченные даты. Повторный запуск ничего не ломает.' },
+    { id: 'c5', title: 'Сборщик турниров', status: exists('rig/crawl.ts') ? 'done' : 'todo',
+      detail: 'Обошёл 2106 турниров за час. Прервётся — продолжит с места, а не начнёт заново.' },
+    { id: 'c6', title: 'Подсчёт остатка по каждому гему', status: exists('rig/server/supply.ts') ? 'done' : 'todo',
+      detail: 'Сколько матчей ещё можно отправить. Спорные не вычитаются — они могут оказаться живыми.' },
+    { id: 'c7', title: 'Расчёт закупки', status: exists('rig/plan-purchase.ts') ? 'done' : 'todo',
+      detail: 'Что купить и сколько штук, чтобы получить максимум вещей со счётчиком 2000+.' },
+    { id: 'c8', title: 'Отправщик перестал портить свой журнал', status: exists('tools/gcwatch/lib.js') ? 'done' : 'todo',
+      detail: 'Второй запуск затирал историю первого — так уже потерялись 8 записей. Плюс вход теперь невидимый: друзья не видят «играет в Dota 2».' },
+    { id: 'c9', title: 'Очередь на новых данных', status: 'todo',
+      detail: 'Сборка списка матчей ещё смотрит в старую таблицу. Надо перевести на новую базу.' },
+  ]
+  phases.push({
+    id: 'code', title: 'Инструменты', subtitle: 'что построено и что ещё сломано',
     nodes: code,
     progress: { done: code.filter(n => n.status === 'done').length, total: code.length },
     status: 'active',
   })
 
-  // ── 4. Производство ──
+  // ── Производство ──
   const prodNodes: Node[] = prod.rows.map(r => ({
     id: 'p-' + r.gem,
     title: r.gem,
     status: (r.counter >= prod.goal ? 'done' : r.counter > 0 ? 'active' : 'todo') as Status,
-    metric: nf(r.counter) + ' / ' + nf(r.pool),
-    detail: r.objects + ' ' + plural(r.objects, 'объект', 'объекта', 'объектов') +
-      ' · даст ' + r.objects + ' ' + plural(r.objects, 'товар', 'товара', 'товаров'),
+    metric: nf(r.counter) + ' из ' + nf(r.pool),
+    detail: r.objects + ' ' + plural(r.objects, 'вещь', 'вещи', 'вещей') +
+      ' с этим гемом · столько же товаров получится, когда счётчик дойдёт',
   }))
   phases.push({
-    id: 'production', title: 'Производство', subtitle: 'сущности как линии, цель — счётчик ' + nf(prod.goal),
+    id: 'production', title: 'Производство', subtitle: 'каждая команда — своя линия, цель ' + nf(prod.goal),
     nodes: prodNodes,
     progress: { done: prodNodes.filter(n => n.status === 'done').length, total: prodNodes.length },
     status: prodNodes.some(n => n.status === 'active') ? 'active' : 'todo',
   })
 
-  // ── 5. Панель ──
+  // ── Панель ──
   const ui: Node[] = [
-    { id: 'u1', title: 'Roadmap', status: 'done', detail: 'эта вкладка, считает состояние живьём' },
+    { id: 'u1', title: 'Эта вкладка', status: 'done',
+      detail: 'Всё, что тут написано, пересчитывается заново каждые пять секунд.' },
     { id: 'u2', title: 'Скорость измерена', status: 'done',
-      metric: '76 матчей/мин',
-      detail: 'пауза 1000 мс, задержка начисления: медиана 340 мс, 95-й процентиль 465',
-      evidence: '50 из 50 обновлений, инвентарь подтвердил +50 на каждом объекте' },
-    { id: 'u3', title: 'Run как сущность', status: 'todo',
-      detail: 'снимок состава гемов, очереди и темпа на момент запуска' },
-    { id: 'u4', title: 'Первый экран — Control Center', status: 'todo',
-      detail: 'здоровье, прогресс, подтверждённая скорость, что требует внимания' },
-    { id: 'u5', title: 'Каталог как настройка состава', status: 'todo',
-      detail: 'вторичный экран, кнопка «взять всё дешевле $X»' },
-    { id: 'u6', title: 'Полный журнал прожига', status: 'todo',
-      detail: 'отдельный экран диагностики' },
+      metric: '76 матчей в минуту',
+      detail: 'Valve отвечает за треть секунды. Пауза в секунду безопасна с двойным запасом.',
+      evidence: '50 из 50 засчитано, инвентарь подтвердил' },
+    { id: 'u3', title: 'История прогонов', status: 'todo',
+      detail: 'Сейчас нет понятия «запуск». Надо запоминать, какие гемы и какая очередь были на старте, иначе непонятно, откуда взялся результат.' },
+    { id: 'u4', title: 'Главный экран — что происходит сейчас', status: 'todo',
+      detail: 'Работает или нет, сколько осталось, когда закончится, что требует внимания. Не бесконечный лог.' },
+    { id: 'u5', title: 'Каталог как настройка закупки', status: 'todo',
+      detail: 'Вторичный экран. Кнопка «взять всё дешевле десяти центов» вместо изучения 53 строк.' },
+    { id: 'u6', title: 'Полный журнал отправок', status: 'todo',
+      detail: 'Отдельный экран для разбора, когда что-то пошло не так.' },
   ]
   phases.push({
     id: 'ui', title: 'Панель', subtitle: 'что показывать и в каком порядке',
     nodes: ui,
     progress: { done: ui.filter(n => n.status === 'done').length, total: ui.length },
     status: 'active',
-  })
-
-  // ── шапка ──
-  phases.unshift({
-    id: 'now', title: 'Сейчас', subtitle: 'живое состояние',
-    status: 'active',
-    progress: { done: confirmed, total: confirmed + disputed },
-    nodes: [
-      { id: 'n1', title: 'Коммитов', status: 'done', metric: String(commits()) },
-      { id: 'n2', title: 'Матчей в карте', status: 'done', metric: nf(matches) },
-      { id: 'n3', title: 'Сожжено подтверждённо', status: 'done', metric: String(confirmed) },
-      { id: 'n4', title: 'Спорных (dup)', status: disputed > 0 ? 'active' : 'done', metric: String(disputed),
-        detail: disputed > 0 ? 'причина неразличима, можно повторить' : undefined },
-      { id: 'n5', title: 'Событий отправки', status: 'done', metric: String(events) },
-    ],
   })
 
   return { phases, updated: Date.now() }

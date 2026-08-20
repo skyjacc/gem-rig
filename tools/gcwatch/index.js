@@ -234,7 +234,10 @@ async function main() {
 
   user.on('loggedOn', () => {
     console.log('вошёл как ' + user.steamID.getSteamID64());
-    user.setPersona(SteamUser.EPersonaState.Online);
+    // Invisible, а не Online: снаружи аккаунт выглядит оффлайн, друзья не видят
+    // ни статуса, ни «играет в Dota 2». На GC это не влияет — соединение с ним
+    // держится через gamesPlayed, а не через статус присутствия.
+    user.setPersona(SteamUser.EPersonaState.Invisible);
     user.gamesPlayed([APPID]);
     clearTimeout(helloTimer);
     setTimeout(hello, 1500);

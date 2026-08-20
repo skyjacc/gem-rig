@@ -4,6 +4,7 @@ dist/
 # ключи и сессии — никогда в репозиторий
 tools/opendota.key
 tools/steam.key
+tools/stratz.key
 tools/gcwatch/token.json
 
 # рабочие данные

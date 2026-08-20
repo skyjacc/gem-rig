@@ -20,15 +20,20 @@ const ADD: [string, string, string][] = [
   ['burned', 'state', `alter table burned add column state text default 'confirmed'`],
   ['supply', 'supply_kind', `alter table supply add column supply_kind text default 'measured'`],
   ['counters', 'carrier', `alter table counters add column carrier text default 'item'`],
+  // Откуда пришёл матч. valve — обход первоисточника, mirror — добор из
+  // OpenDota или STRATZ там, где Valve упёрся в свой потолок 500 на лигу.
+  ['vmatch', 'source', `alter table vmatch add column source text default 'valve'`],
 ]
 
 export function migrate(target: DatabaseSync): string[] {
   const applied: string[] = []
 
   for (const [table, column, sql] of ADD) {
-    const has = (target.prepare(`pragma table_info(${table})`).all() as any[])
-      .some(c => c.name === column)
-    if (has) continue
+    const info = target.prepare(`pragma table_info(${table})`).all() as any[]
+    // Таблицы vmatch и vplayer создаёт обходчик. Если его ещё не запускали,
+    // их нет — это нормально, мигрировать нечего.
+    if (!info.length) continue
+    if (info.some(c => c.name === column)) continue
     target.exec(sql)
     applied.push(`${table}.${column}`)
   }

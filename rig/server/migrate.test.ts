@@ -64,3 +64,18 @@ test('пустой журнал не вызывает ложной починк�
   const applied = migrate(db)
   assert.equal(applied.some(a => a.startsWith('burned.ts')), false)
 })
+
+test('таблицы обходчика мигрируются, когда они есть', () => {
+  const db = old()
+  db.exec(`create table vmatch (match_id text primary key, league_id text,
+    radiant integer, dire integer, start_time integer, lobby_type integer)`)
+  migrate(db)
+  assert.ok(cols(db, 'vmatch').includes('source'))
+})
+
+test('отсутствие таблиц обходчика не ломает миграцию', () => {
+  const db = old()
+  const applied = migrate(db)
+  assert.equal(applied.includes('vmatch.source'), false)
+  assert.ok(applied.includes('burned.state'), 'остальное всё равно применилось')
+})

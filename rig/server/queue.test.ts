@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
-import { buildQueue, queueFor, type Pick } from './queue.ts'
+import { buildQueue, entityStat, queueFor, type Pick } from './queue.ts'
 
 const M = (match: string, league: string) => ({ match, league })
 
@@ -114,4 +114,32 @@ test('спорное НЕ вычитается — оно может быть ж
 test('неизвестная сущность не роняет сборку', () => {
   assert.deepEqual(queueFor(fresh(), [{ key: 'X', kind: 'team', id: 99999 }]), [])
   assert.deepEqual(queueFor(fresh(), []), [])
+})
+
+// ── потолок по сущности ──
+
+test('потолок считается по карте, а не по чужой оценке', () => {
+  const s = entityStat(fresh(), EMPIRE)
+  assert.equal(s.supply, 2, 'матч 4 без турнира отправить нельзя — в потолок не идёт')
+  assert.equal(s.burned, 0)
+  assert.equal(s.left, 2)
+})
+
+test('сожжённое вычитается из остатка, но не из потолка', () => {
+  const db = fresh()
+  db.prepare('insert into burned values (?,?,?,?,?)').run('1', null, 1, 'live', 'confirmed')
+  const s = entityStat(db, EMPIRE)
+  assert.equal(s.supply, 2)
+  assert.equal(s.burned, 1)
+  assert.equal(s.left, 1)
+})
+
+test('спорное не уменьшает остаток', () => {
+  const db = fresh()
+  db.prepare('insert into burned values (?,?,?,?,?)').run('1', null, 1, 'live', 'dup')
+  assert.equal(entityStat(db, EMPIRE).left, 2)
+})
+
+test('у неизвестной сущности потолок ноль', () => {
+  assert.deepEqual(entityStat(fresh(), { key: 'X', kind: 'team', id: 99999 }), { supply: 0, burned: 0, left: 0 })
 })

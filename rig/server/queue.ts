@@ -74,3 +74,19 @@ export function queueFor(target: DatabaseSync, picks: Pick[]): QueueRow[] {
   for (const p of picks) sets.set(p.key, matchesOf(target, p))
   return buildQueue(sets, burnedSet(target))
 }
+
+// Потолок сущности — не оценка со стороны, а число матчей, которые реально
+// можно отправить: они есть в карте и у них известен турнир.
+//
+// Старая таблица supply врала в обе стороны: у Ohaiyo показывала 0 при 1672
+// пригодных, у DD — 1017 при 508. Считаем по той же выборке, из которой
+// строится очередь, иначе панель обещает то, чего отправщик не сделает.
+export function entityStat(target: DatabaseSync, p: Pick) {
+  const rows = matchesOf(target, p).filter(m => usable(m.league))
+  if (!rows.length) return { supply: 0, burned: 0, left: 0 }
+
+  const burnedIds = burnedSet(target)
+  let burned = 0
+  for (const m of rows) if (burnedIds.has(m.match)) burned++
+  return { supply: rows.length, burned, left: rows.length - burned }
+}

@@ -178,3 +178,17 @@ export function recentEvents(limit = 240) {
 export function supplyRows() {
   return db.prepare(`select * from supply`).all() as any[]
 }
+
+// Последняя отправка, которую Valve засчитала. Пульту нужна одна строка:
+// «последнее подтверждение N секунд назад» отвечает на «оно вообще живое?».
+export function lastConfirmed() {
+  return db.prepare(`select ts, match_id, league_id, bytes from events where result = 'update' order by ts desc limit 1`).get() as any ?? null
+}
+
+// Сколько отправок засчитано за последние N минут — текущий темп по факту,
+// а не по настройке паузы.
+export function ratePerMinute(windowMs = 120_000) {
+  const since = Date.now() - windowMs
+  const r = db.prepare(`select count(*) c from events where ts >= ? and result in ('update','dup')`).get(since) as any
+  return Math.round((r?.c ?? 0) / (windowMs / 60_000))
+}

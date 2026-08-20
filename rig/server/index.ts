@@ -15,6 +15,7 @@ import { buildState } from './state.ts'
 import { isBurned } from './db.ts'
 import { listFiles, senderState, start, stop } from './sender.ts'
 import { roadmap } from './roadmap.ts'
+import { autopilotState, setAutopilot, tick } from './autopilot.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.resolve(here, '..', 'dist')
@@ -66,6 +67,15 @@ app.get('/api/roadmap', async () => {
 app.post('/api/sender/start', async (req: any) => {
   const { file, delay } = req.body ?? {}
   const r = start(String(file), Number(delay) || 30000, () => push())
+  push()
+  return r
+})
+
+app.get('/api/autopilot', async () => autopilotState())
+
+app.post('/api/autopilot', async (req: any) => {
+  const { on, delay } = req.body ?? {}
+  const r = setAutopilot(!!on, Number(delay) || undefined)
   push()
   return r
 })
@@ -167,5 +177,9 @@ const cycle = async () => {
   await warmOwned()
   if (changed || clients.size) push()
 }
+
+// Автопилот тикает отдельно и чаще: он должен замечать смерть отправщика
+// быстрее, чем обновляется инвентарь.
+setInterval(() => { tick(() => push()).catch(e => console.error('автопилот:', e.message)) }, 20_000)
 cycle()
 setInterval(cycle, 20_000)

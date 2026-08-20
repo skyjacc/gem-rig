@@ -7,19 +7,21 @@ import { Tape } from './components/Tape.tsx'
 import { Rig } from './components/Rig.tsx'
 import { BundleTable, CatalogTable, MineTable } from './components/Tables.tsx'
 import { Roadmap } from './components/Roadmap.tsx'
+import { Pult } from './components/Pult.tsx'
 
 const TABS = [
-  { id: 'rig', label: 'Пульт' },
+  { id: 'pult', label: 'Пульт' },
   { id: 'mine', label: 'Мои гемы' },
   { id: 'cat', label: 'Каталог' },
   { id: 'bund', label: 'Наборы' },
+  { id: 'rig', label: 'Журнал' },
   { id: 'road', label: 'Roadmap' },
 ] as const
 type TabId = typeof TABS[number]['id']
 
 export default function App() {
   const { state, online } = useLive()
-  const [tab, setTab] = useState<TabId>('rig')
+  const [tab, setTab] = useState<TabId>('pult')
   const [now, setNow] = useState(() => new Date())
   const body = useRef<HTMLDivElement>(null)
   const booted = useRef(false)
@@ -83,11 +85,12 @@ export default function App() {
         </nav>
       </header>
 
-      {tab !== 'road' && <Seam state={state} />}
-      {tab !== 'road' && <Tape state={state} />}
+      {tab !== 'road' && tab !== 'pult' && <Seam state={state} />}
+      {tab !== 'road' && tab !== 'pult' && <Tape state={state} />}
 
       <main className="px-6 pb-16">
         <div ref={body}>
+          {tab === 'pult' && <Pult state={state} />}
           {tab === 'rig' && <Rig state={state} />}
           {tab === 'mine' && <MineTable state={state} />}
           {tab === 'cat' && <CatalogTable state={state} />}

@@ -12,6 +12,9 @@ export type Gem = {
   entityId: number | null
   entityName: string | null
   supply: number | null
+  left: number | null
+  spent: number | null
+  supplyKind: 'measured' | 'estimated' | 'empty'
 }
 
 export type CatalogRow = {
@@ -25,6 +28,7 @@ export type CatalogRow = {
   entityId: number | null
   entityName: string | null
   supply: number | null
+  supplyKind: 'measured' | 'estimated' | 'empty'
   per1000: number | null
   ownedItems: number
   ownedValue: number | null
@@ -62,6 +66,22 @@ export type SenderState = {
 
 export type MatchFile = { name: string; rows: number; mtime: number }
 
+export type AutopilotState = {
+  enabled: boolean
+  delay: number
+  goal: number
+  queueLength: number
+  action: 'idle' | 'start' | 'restart' | 'rebuild' | 'watch' | 'halt'
+  why: string
+  lastTick: number
+  rebuiltAt: number
+  failures: number
+  objects: number
+  gems: { gem: string; objects: number }[]
+  log: { ts: number; action: string; why: string }[]
+  etaMinutes: number
+}
+
 export type State = {
   ts: number
   steamid: string
@@ -74,6 +94,9 @@ export type State = {
   bundles: Bundle[]
   chart: { stamps: number[]; series: { gem: string; points: (number | null)[] }[] }
   sender: SenderState
+  autopilot: AutopilotState
+  confirmed: { ts: number; match_id: string; league_id: string; bytes: number } | null
+  rate: number
   files: MatchFile[]
   inv: { error: string | null; age: number | null; items: number }
   burned: number

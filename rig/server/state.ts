@@ -4,8 +4,36 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { TOOLS, GC, readJson, odKey, steamKey, STEAMID } from './paths.ts'
 import { inv } from './steam.ts'
-import { burnedCount, counterSeries, entitySpent, recentEvents, supplyRows } from './db.ts'
+import { burnedCount, counterSeries, entitySpent, lastConfirmed, ratePerMinute, recentEvents, supplyRows } from './db.ts'
 import { listFiles, senderState } from './sender.ts'
+import { db } from './db.ts'
+import { entityStat } from './queue.ts'
+import { classifySupply } from './supply.ts'
+import { autopilotState } from './autopilot.ts'
+
+// Потолок и остаток считаются по локальной карте — по той же выборке,
+// из которой строится очередь. Таблица supply хранит только старую оценку
+// и врёт: у Ohaiyo там 0 при 1672 пригодных, у DD 1017 при 508.
+//
+// Запросы индексированы и стоят миллисекунды, но состояние уходит в браузер
+// часто. Держим короткий кеш и сбрасываем его, когда журнал сожжённого вырос.
+const statCache = new Map<string, { supply: number; burned: number; left: number }>()
+let statBurned = -1
+let statAt = 0
+
+function stat(kind: string, id: number) {
+  if (kind !== 'team' && kind !== 'player') return null
+  const n = burnedCount()
+  if (n !== statBurned || Date.now() - statAt > 10_000) {
+    statCache.clear()
+    statBurned = n
+    statAt = Date.now()
+  }
+  const key = kind + ':' + id
+  let v = statCache.get(key)
+  if (!v) { v = entityStat(db, { key, kind, id }); statCache.set(key, v) }
+  return v
+}
 
 const norm = (s: string) => String(s ?? '').replace(/^(Genuine\s+)?Spectator:\s*/, '').trim().toLowerCase()
 
@@ -36,11 +64,16 @@ export function buildState() {
 
   const mine = [...groups.values()].map(e => {
     const s = supBy.get(norm(e.gem))
+    const st = s?.kind && s?.entity_id ? stat(s.kind, s.entity_id) : null
+    const estimate = s?.matches ?? null
     return {
       gem: e.gem, items: e.items, equipped: e.equipped, min: e.min, max: e.max, icon: e.icon,
       heroes: [...e.heroes].join(', '),
       kind: s?.kind ?? null, entityId: s?.entity_id ?? null, entityName: s?.entity_name ?? null,
-      supply: s?.matches ?? null,
+      supply: st && st.supply > 0 ? st.supply : estimate,
+      left: st ? st.left : null,
+      spent: st ? st.burned : null,
+      supplyKind: classifySupply(st?.supply ?? 0, estimate),
     }
   }).sort((a, b) => b.items - a.items || b.max - a.max)
 
@@ -49,14 +82,17 @@ export function buildState() {
     const s = supBy.get(key)
     const own = mine.find(m => norm(m.gem) === key)
     const price = parseFloat(String(c.price).replace(/[^\d.]/g, '')) || 0
+    const st = s?.kind && s?.entity_id ? stat(s.kind, s.entity_id) : null
+    const measured = st && st.supply > 0 ? st.supply : (s?.matches ?? null)
     return {
       name: c.name,
       short: c.name.replace(/^(Genuine\s+)?Spectator:\s*/, '').trim() || 'без имени',
       price: c.price, listings: c.listings, icon: c.icon,
       market: 'https://steamcommunity.com/market/listings/570/' + encodeURIComponent(c.name),
       kind: s?.kind ?? null, entityId: s?.entity_id ?? null, entityName: s?.entity_name ?? null,
-      supply: s?.matches ?? null,
-      per1000: s?.matches ? price / s.matches * 1000 : null,
+      supply: measured,
+      supplyKind: classifySupply(st?.supply ?? 0, s?.matches ?? null),
+      per1000: measured ? price / measured * 1000 : null,
       ownedItems: own?.items ?? 0, ownedValue: own?.max ?? null,
     }
   }).sort((a, b) => (b.supply ?? 0) - (a.supply ?? 0))
@@ -65,13 +101,13 @@ export function buildState() {
   const primary = mine.find(m => m.entityId && m.supply) ?? null
   let seam = null
   if (primary) {
-    const spent = entitySpent(primary.kind!, primary.entityId!)
+    const spent = primary.spent ?? entitySpent(primary.kind!, primary.entityId!)
     seam = {
       gem: primary.gem,
       entity: primary.entityName ?? primary.gem,
       total: primary.supply!,
       spent,
-      left: Math.max(0, primary.supply! - spent),
+      left: primary.left ?? Math.max(0, primary.supply! - spent),
       items: primary.items,
     }
   }
@@ -88,6 +124,9 @@ export function buildState() {
     bundles,
     chart: counterSeries(),
     sender: senderState(),
+    autopilot: autopilotState(),
+    confirmed: lastConfirmed(),
+    rate: ratePerMinute(),
     files: listFiles(),
     inv: { error: inv.error, age: inv.ts ? Math.round((Date.now() - inv.ts) / 1000) : null, items: inv.rows.length },
     burned: burnedCount(),

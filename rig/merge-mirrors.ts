@@ -55,11 +55,14 @@ for (const b of behind.slice(0, 8)) {
     ' у зеркала', String(b.od).padStart(5), ' разрыв', String(b.od - b.mine).padStart(5))
 }
 
+// process.exit тут ронял libuv ассертом: выход при живых fetch-хендлах.
+// Поэтому не выходим, а пропускаем запись.
 if (!WRITE) {
   console.log()
   console.log('ничего не записано. --write чтобы добрать')
-  process.exit(0)
 }
+
+if (WRITE) {
 
 // ── добор ──
 const insM = db.prepare(
@@ -104,3 +107,4 @@ const mirrored = (db.prepare(`select count(*) c from vmatch where source = 'mirr
 console.log()
 console.log('готово. добрано матчей:', addedM, ' связей:', addedP)
 console.log('в базе всего матчей:', vm, ' из них от зеркал:', mirrored)
+}

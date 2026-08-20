@@ -18,7 +18,9 @@ import { roadmap } from './roadmap.ts'
 import { autopilotState, setAutopilot, tick } from './autopilot.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const DIST = path.resolve(here, '..', 'dist')
+// Фронт живёт в отдельной папке: оформление переделано с нуля,
+// и держать его внутри движка больше незачем.
+const DIST = path.resolve(here, '..', '..', 'dash', 'dist')
 const PORT = Number(process.env.PORT ?? 4322)
 
 const app = Fastify({ logger: false })
@@ -150,7 +152,7 @@ if (fs.existsSync(DIST)) {
 }
 
 await app.listen({ port: PORT, host: '0.0.0.0' })
-console.log('Жила: http://localhost:' + PORT)
+console.log('Gemtrack: http://localhost:' + PORT)
 console.log('гемов в базе:', supplyRows().length)
 
 ingestStatus()

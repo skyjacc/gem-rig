@@ -138,3 +138,56 @@ test('счётчик неразрешённых показывает, сколь
   t.onResponse(1100);
   assert.equal(t.outstanding(), 1);
 });
+
+const { classifyError } = require('./lib.js');
+
+test('протухший токен — фатально, надо переલогиниться заново', () => {
+  for (const m of ['InvalidPassword', 'AccessDenied', 'Expired', 'InvalidSignature']) {
+    assert.equal(classifyError(m), 'stale-token', m);
+  }
+});
+
+test('выбило другой сессией — восстановимо, не повод падать', () => {
+  for (const m of ['LoggedInElsewhere', 'LogonSessionReplaced', 'AlreadyLoggedInElsewhere']) {
+    assert.equal(classifyError(m), 'displaced', m);
+  }
+});
+
+test('лимит входов — ждём, а не падаем', () => {
+  assert.equal(classifyError('RateLimitExceeded'), 'rate-limit');
+});
+
+test('сетевые обрывы восстановимы', () => {
+  assert.equal(classifyError('ECONNRESET'), 'network');
+  assert.equal(classifyError('ETIMEDOUT'), 'network');
+  assert.equal(classifyError('NetworkFailure'), 'network');
+});
+
+test('незнакомое считаем фатальным — лучше остановиться, чем крутиться впустую', () => {
+  assert.equal(classifyError('что-то новое'), 'fatal');
+  assert.equal(classifyError(''), 'fatal');
+  assert.equal(classifyError(undefined), 'fatal');
+});
+
+test('восстановимое отличается от фатального одним признаком', () => {
+  const { isRecoverable } = require('./lib.js');
+  assert.equal(isRecoverable('LoggedInElsewhere'), true);
+  assert.equal(isRecoverable('RateLimitExceeded'), true);
+  assert.equal(isRecoverable('ECONNRESET'), true);
+  assert.equal(isRecoverable('InvalidPassword'), false);
+  assert.equal(isRecoverable('что-то новое'), false);
+});
+
+test('пауза перед повтором растёт, но не бесконечно', () => {
+  const { retryDelay } = require('./lib.js');
+  assert.equal(retryDelay(0), 15_000);
+  assert.equal(retryDelay(1), 30_000);
+  assert.equal(retryDelay(2), 60_000);
+  assert.equal(retryDelay(9), 300_000, 'потолок пять минут');
+  assert.equal(retryDelay(99), 300_000);
+});
+
+test('лимит входов ждёт дольше обычного', () => {
+  const { retryDelay } = require('./lib.js');
+  assert.ok(retryDelay(0, 'rate-limit') >= 300_000, 'Steam ловит частые входы, спешить нельзя');
+});

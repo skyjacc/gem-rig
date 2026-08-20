@@ -110,4 +110,38 @@ function createTracker() {
   };
 }
 
-module.exports = { mergeLedger, effectiveDelay, validateRow, createTracker };
+// Что делать с ошибкой Steam.
+//
+// Раньше обработчик убивал процесс на ЛЮБОЙ ошибке, хотя autoRelogin был
+// включён — шанса ему не давали. На прогоне в два часа это значит, что
+// одно обновление сессии десктопным Steam обрывает всю работу.
+//
+// «Выбило другой сессией» — не поломка. Steam допускает несколько входов,
+// но клиент периодически подтверждает свою сессию и выбивает чужую. Кто
+// оказался вторым — тот и вылетел. Правильная реакция: подождать и войти снова.
+function classifyError(message) {
+  const m = String(message || '');
+  if (!m) return 'fatal';
+  if (/InvalidPassword|AccessDenied|Expired|InvalidSignature/i.test(m)) return 'stale-token';
+  if (/LoggedInElsewhere|LogonSessionReplaced|AlreadyLoggedInElsewhere/i.test(m)) return 'displaced';
+  if (/RateLimit/i.test(m)) return 'rate-limit';
+  if (/ECONNRESET|ETIMEDOUT|ENOTFOUND|EPIPE|NetworkFailure|ServiceUnavailable|TryAnotherCM/i.test(m)) return 'network';
+  return 'fatal';
+}
+
+const isRecoverable = message =>
+  ['displaced', 'rate-limit', 'network'].includes(classifyError(message));
+
+// Пауза перед повторным входом. Растёт вдвое, потолок пять минут.
+// Для лимита входов сразу пять: Steam ловит именно частые ВХОДЫ,
+// и торопиться здесь дороже, чем подождать.
+function retryDelay(attempt, kind) {
+  const CAP = 300_000;
+  if (kind === 'rate-limit') return CAP;
+  return Math.min(CAP, 15_000 * Math.pow(2, Math.max(0, attempt)));
+}
+
+module.exports = {
+  mergeLedger, effectiveDelay, validateRow, createTracker,
+  classifyError, isRecoverable, retryDelay,
+};

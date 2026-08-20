@@ -24,7 +24,8 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { mergeLedger, effectiveDelay, validateRow, createTracker } = require('./lib.js');
+const { mergeLedger, effectiveDelay, validateRow, createTracker,
+        classifyError, isRecoverable, retryDelay } = require('./lib.js');
 
 const EMsg = { CacheSubscribed: 24, UpdateMultiple: 26, ClientWelcome: 4004, ClientHello: 4006, UpgradeLeagueItem: 7203, UpgradeResponse: 7204, WatchDownloadedReplay: 7206 };
 const APPID = 570;
@@ -200,6 +201,7 @@ async function main() {
   catch (e) { throw new Error('нет зависимостей: выполни npm i в папке tools/gcwatch'); }
 
   const user = new SteamUser({ autoRelogin: true });
+  let SAVED_LOGIN = null, SAVED_PASS = null;
   let gcReady = false;
   let updates = 0, responses = 0, lastBytes = 0;
   const other = new Map();   // прочие сообщения GC — чтобы видеть, если появится что-то новое
@@ -242,6 +244,7 @@ async function main() {
   if (USE_PASSWORD) {
     const accountName = await ask('Steam логин: ', false);
     const password = await ask('Пароль (ввод скрыт): ', true);
+    SAVED_LOGIN = accountName; SAVED_PASS = password;
     user.logOn({ accountName, password, machineName: 'gcwatch' });
     user.on('steamGuard', async (domain, callback) => {
       const code = await ask(domain ? 'Код Steam Guard с почты (' + domain + '): ' : 'Код мобильного Steam Guard: ', false);
@@ -251,17 +254,67 @@ async function main() {
     user.logOn({ refreshToken: await qrRefreshToken() });
   }
 
+  // Ошибки Steam делятся на восстановимые и фатальные. Раньше процесс падал
+  // на любой, хотя autoRelogin включён — шанса ему не давали, и одно
+  // обновление сессии десктопным клиентом обрывало весь многочасовой прогон.
+  let attempt = 0;
+  let reviving = false;
+
   user.on('error', e => {
-    // Протухший refreshToken выглядит как отказ входа — сносим его, чтобы следующий запуск дал QR.
-    const stale = /InvalidPassword|AccessDenied|Expired|InvalidSignature/i.test(e.message || '');
-    if (stale && !USE_PASSWORD && fs.existsSync(TOKEN_FILE)) {
-      fs.unlinkSync(TOKEN_FILE);
-      console.error('сохранённая сессия протухла, удалил token.json — запусти ещё раз, покажу QR');
-    } else {
-      console.error('ошибка Steam:', e.message);
+    const kind = classifyError(e.message);
+
+    if (kind === 'stale-token') {
+      if (!USE_PASSWORD && fs.existsSync(TOKEN_FILE)) {
+        fs.unlinkSync(TOKEN_FILE);
+        console.error('сохранённая сессия протухла, удалил token.json — запусти ещё раз, покажу QR');
+      } else {
+        console.error('вход отклонён:', e.message);
+      }
+      return process.exit(1);
     }
-    process.exit(1);
+
+    if (!isRecoverable(e.message)) {
+      console.error('ошибка Steam:', e.message);
+      return process.exit(1);
+    }
+
+    // Восстановимое: ждём и входим заново. Отправка сама встанет на waitGC.
+    gcReady = false;
+    if (reviving) return;
+
+    // Потолок попыток. Если Steam открыт и держит сессию — он будет выбивать
+    // бесконечно, и лучше остановиться с внятной причиной, чем крутиться.
+    if (attempt >= 6) {
+      console.error();
+      console.error('шесть попыток входа подряд отбиты. Скорее всего открыт Steam —');
+      console.error('он периодически подтверждает свою сессию и выбивает бота.');
+      console.error('Закрой Steam и Dota и запусти снова: отправленное уже в журнале.');
+      return process.exit(1);
+    }
+
+    reviving = true;
+    const wait = retryDelay(attempt, kind);
+    attempt++;
+    const why = kind === 'displaced' ? 'выбило другой сессией Steam'
+      : kind === 'rate-limit' ? 'Steam ограничил частоту входов'
+        : 'связь оборвалась';
+    console.log('  ! ' + why + ' (' + e.message + '). Жду ' +
+      Math.round(wait / 1000) + ' с и вхожу заново, попытка ' + attempt);
+
+    setTimeout(async () => {
+      reviving = false;
+      try {
+        if (USE_PASSWORD) user.logOn({ accountName: SAVED_LOGIN, password: SAVED_PASS, machineName: 'gcwatch' });
+        else user.logOn({ refreshToken: await qrRefreshToken() });
+      } catch (err) {
+        console.error('  ! повторный вход не удался:', err.message);
+      }
+    }, wait);
   });
+
+  // Успешный вход обнуляет счётчик попыток: следующий обрыв начнёт
+  // отсчёт заново, а не с пятиминутной паузы.
+  user.on('loggedOn', () => { attempt = 0; });
   user.on('disconnected', (eresult, msg) => {
     gcReady = false;
     console.log('  ! связь потеряна (' + (msg || eresult) + '), жду переподключения');
@@ -310,7 +363,10 @@ async function main() {
   // Ждём Welcome от GC, но не бесконечно. Открытый Steam-клиент занимает
   // единственную сессию аккаунта, и раньше отправщик в этом случае висел молча:
   // процесс жив, панель зелёная, в логе тишина. Выглядело как «накрутка сломалась».
-  const GC_TIMEOUT = 90_000;
+  // Щедро: восстановление после выбивания растёт до пяти минут, и таймаут
+  // не должен срабатывать посреди него. Безнадёжный случай ловится не здесь,
+  // а счётчиком попыток входа — см. обработчик ошибок.
+  const GC_TIMEOUT = 15 * 60_000;
   const waitGC = () => new Promise((resolve, reject) => {
     if (gcReady) return resolve();
     const started = Date.now();

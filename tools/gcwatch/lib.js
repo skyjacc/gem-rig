@@ -27,4 +27,16 @@ function effectiveDelay(flagWasGiven, flagValue, fileValue) {
   return flagValue;
 }
 
-module.exports = { mergeLedger, effectiveDelay };
+// Проверка строки списка перед отправкой.
+//
+// league_id обязателен — проверено 20 августа. Матч 8003261364 без лиги
+// вернул 7204 без обновления, он же с лигой 16710 дал ОБНОВЛЕНО и 507 байт.
+// GC молча отвергает сообщение без второго поля, и снаружи отказ выглядит
+// точно как дубль. Поэтому не отправляем вовсе, а не разбираемся потом.
+function validateRow(row) {
+  if (!row || !/^[0-9]{6,}$/.test(String(row.match || ''))) return 'нет match_id';
+  if (!/^[0-9]{1,10}$/.test(String(row.league || ''))) return 'нет league_id — GC отвергнет молча';
+  return null;
+}
+
+module.exports = { mergeLedger, effectiveDelay, validateRow };

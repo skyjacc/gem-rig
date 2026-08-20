@@ -15,10 +15,22 @@
 
 import type { DatabaseSync } from 'node:sqlite'
 
-export type BurnState = 'confirmed' | 'ledger' | 'reconstructed'
+export type BurnState = 'confirmed' | 'dup' | 'ledger' | 'reconstructed'
 
+// dup — НЕ синоним «сожжён». Проверено 20 августа на матче 8003261364:
+// отправка без league_id вернула 7204 без msg 26, то есть тот же самый dup,
+// а матч при этом остался целым и засчитался со второй попытки, с лигой.
+//
+// Значит 7204 без обновления означает «счётчика не будет», и только.
+// Причина может быть любой: матч уже израсходован, сообщение отвергнуто,
+// подходящих гемов не нашлось. Различить нельзя — ответ пустой по протоколу.
+//
+// Поэтому dup пишется отдельным состоянием: из очереди по умолчанию убирается,
+// но остаётся видимым и повторяемым. Ложно сожжённый матч не воскресить,
+// а лишний повтор стоит секунд.
 export function classify(result: string): BurnState | null {
-  if (result === 'update' || result === 'dup') return 'confirmed'
+  if (result === 'update') return 'confirmed'
+  if (result === 'dup') return 'dup'
   return null
 }
 

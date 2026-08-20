@@ -7,8 +7,11 @@ test('update означает засчитанный матч — пишем в 
   assert.equal(classify('update'), 'confirmed')
 })
 
-test('dup означает, что матч уже был засчитан — тоже пишем', () => {
-  assert.equal(classify('dup'), 'confirmed')
+// Раньше здесь стояло classify('dup') === 'confirmed'. Замер 20 августа
+// на матче 8003261364 это опроверг: отвергнутое сообщение отвечает тем же dup,
+// а матч остаётся целым. Подтверждением считается только update.
+test('dup пишется, но своим состоянием — это не подтверждение', () => {
+  assert.equal(classify('dup'), 'dup')
 })
 
 test('silent не даёт права писать в журнал', () => {
@@ -39,11 +42,11 @@ test('update записывает матч как confirmed', () => {
   assert.equal(r[0].source, 'live')
 })
 
-test('dup тоже записывает как confirmed', () => {
+test('dup записывается состоянием dup, а не confirmed', () => {
   const db = fresh()
   ingestOne(db, { match: '222', league: '9', result: 'dup', ts: 2 })
   const r = db.prepare('select state from burned').all() as any[]
-  assert.equal(r[0].state, 'confirmed')
+  assert.equal(r[0].state, 'dup')
 })
 
 test('silent не записывает ничего', () => {
@@ -73,4 +76,20 @@ test('дробная метка времени усекается, а не ло�
   ingestOne(db, { match: '666', league: null, result: 'update', ts: 1787232572351.9 })
   const r = db.prepare('select ts from burned').get() as any
   assert.equal(r.ts, 1787232572351)
+})
+
+test('dup НЕ равен confirmed — отвергнутый матч не должен считаться сожжённым', () => {
+  assert.equal(classify('dup'), 'dup')
+  assert.notEqual(classify('dup'), classify('update'))
+})
+
+test('update остаётся единственным надёжным подтверждением', () => {
+  assert.equal(classify('update'), 'confirmed')
+})
+
+test('dup пишется в журнал, но своим состоянием', () => {
+  const db = fresh()
+  ingestOne(db, { match: '777', league: '9', result: 'dup', ts: 7 })
+  const r = db.prepare('select state from burned').get() as any
+  assert.equal(r.state, 'dup')
 })

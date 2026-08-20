@@ -42,3 +42,19 @@ test('мусор в delay.txt игнорируется', () => {
 test('слишком малый --delay не проходит, откатываемся к файлу', () => {
   assert.equal(effectiveDelay(true, 100, 300000), 300000);
 });
+
+const { validateRow } = require('./lib.js');
+
+test('строка без league_id не проходит проверку', () => {
+  assert.match(validateRow({ match: '8003261364', league: '' }), /league_id/);
+  assert.match(validateRow({ match: '8003261364' }), /league_id/);
+});
+
+test('полная строка проходит', () => {
+  assert.equal(validateRow({ match: '8003261364', league: '16710' }), null);
+});
+
+test('строка без match_id не проходит', () => {
+  assert.match(validateRow({ match: '', league: '16710' }), /match_id/);
+  assert.match(validateRow({ match: 'abc', league: '16710' }), /match_id/);
+});

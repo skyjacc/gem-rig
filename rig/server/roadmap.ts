@@ -194,9 +194,9 @@ export function roadmap(): { phases: Phase[]; updated: number } {
       detail: 'стратегия в глубину под цель «предметы 2000+»' },
     { id: 'c7', title: 'Правки отправщика', status: exists('tools/gcwatch/lib.js') ? 'done' : 'todo',
       detail: 'журнал, темп, таймаут GC, вход как Invisible' },
-    { id: 'c8', title: 'Учёт ответов GC по времени прихода', status: 'todo',
-      detail: 'сейчас атрибуция смазана: опоздавший msg 26 засчитывается следующему матчу',
-      metric: 'блокирует замер скорости' },
+    { id: 'c8', title: 'Учёт ответов GC сопоставлением', status: 'done',
+      detail: 'FIFO вместо окна по таймеру — опоздавший msg 26 больше не достаётся следующему матчу',
+      evidence: 'замер 50 матчей: логи и инвентарь сошлись до штуки' },
     { id: 'c9', title: 'Очередь на новых таблицах', status: 'todo',
       detail: 'queue.ts ещё ходит в старую entity_matches' },
   ]
@@ -226,9 +226,10 @@ export function roadmap(): { phases: Phase[]; updated: number } {
   // ── 5. Панель ──
   const ui: Node[] = [
     { id: 'u1', title: 'Roadmap', status: 'done', detail: 'эта вкладка, считает состояние живьём' },
-    { id: 'u2', title: 'Замер скорости', status: 'blocked',
-      detail: 'нужен починенный учёт ответов — см. «Код»',
-      metric: 'без него ETA будет выдумкой' },
+    { id: 'u2', title: 'Скорость измерена', status: 'done',
+      metric: '76 матчей/мин',
+      detail: 'пауза 1000 мс, задержка начисления: медиана 340 мс, 95-й процентиль 465',
+      evidence: '50 из 50 обновлений, инвентарь подтвердил +50 на каждом объекте' },
     { id: 'u3', title: 'Run как сущность', status: 'todo',
       detail: 'снимок состава гемов, очереди и темпа на момент запуска' },
     { id: 'u4', title: 'Первый экран — Control Center', status: 'todo',

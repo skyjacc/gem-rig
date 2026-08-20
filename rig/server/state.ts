@@ -9,6 +9,7 @@ import { listFiles, senderState } from './sender.ts'
 import { db } from './db.ts'
 import { entityStat } from './queue.ts'
 import { classifySupply } from './supply.ts'
+import { ACCOUNT, active, list as accountList } from './accounts.ts'
 import { autopilotState } from './autopilot.ts'
 
 // Потолок и остаток считаются по локальной карте — по той же выборке,
@@ -20,18 +21,20 @@ import { autopilotState } from './autopilot.ts'
 const statCache = new Map<string, { supply: number; burned: number; left: number }>()
 let statBurned = -1
 let statAt = 0
+let statAccount = ''
 
 function stat(kind: string, id: number) {
   if (kind !== 'team' && kind !== 'player') return null
   const n = burnedCount()
-  if (n !== statBurned || Date.now() - statAt > 10_000) {
+  if (n !== statBurned || statAccount !== ACCOUNT() || Date.now() - statAt > 10_000) {
     statCache.clear()
     statBurned = n
+    statAccount = ACCOUNT()
     statAt = Date.now()
   }
   const key = kind + ':' + id
   let v = statCache.get(key)
-  if (!v) { v = entityStat(db, { key, kind, id }); statCache.set(key, v) }
+  if (!v) { v = entityStat(db, { key, kind, id }, ACCOUNT()); statCache.set(key, v) }
   return v
 }
 
@@ -123,7 +126,7 @@ export function buildState() {
     catalog: cat,
     bundles,
     chart: counterSeries(),
-    sender: senderState(),
+    sender: senderState(active()?.id ?? 'main'),
     autopilot: autopilotState(),
     confirmed: lastConfirmed(),
     rate: ratePerMinute(),

@@ -66,7 +66,7 @@ function fresh() {
     create table vmatch (match_id text primary key, league_id text,
       radiant integer, dire integer, start_time integer, lobby_type integer);
     create table vplayer (match_id text, account_id integer, primary key (match_id, account_id));
-    create table burned (match_id text primary key, league_id text, ts integer,
+    create table burned (account text, match_id text, league_id text, ts integer,
       source text, state text default 'confirmed');`)
   const m = db.prepare('insert into vmatch values (?,?,?,?,?,?)')
   const p = db.prepare('insert into vplayer values (?,?)')
@@ -83,17 +83,17 @@ const NAVI: Pick = { key: 'NaVi', kind: 'team', id: 36 }
 const PLAYER: Pick = { key: 'Игрок', kind: 'player', id: 555 }
 
 test('команда собирается с обеих сторон карты', () => {
-  const q = queueFor(fresh(), [EMPIRE])
+  const q = queueFor(fresh(), [EMPIRE], 'A')
   assert.deepEqual(q.map(r => r.match).sort(), ['1', '2'], 'матч 4 без турнира отброшен')
 })
 
 test('игрок собирается по связям', () => {
-  const q = queueFor(fresh(), [PLAYER])
+  const q = queueFor(fresh(), [PLAYER], 'A')
   assert.deepEqual(q.map(r => r.match).sort(), ['1', '2'])
 })
 
 test('две сущности сливаются, общий матч получает вес 2', () => {
-  const q = queueFor(fresh(), [EMPIRE, NAVI])
+  const q = queueFor(fresh(), [EMPIRE, NAVI], 'A')
   assert.equal(q.length, 2, 'матчи 1 и 2, без повторов')
   assert.equal(q[0].match, '1', 'общий идёт первым')
   assert.equal(q[0].weight, 2)
@@ -101,25 +101,25 @@ test('две сущности сливаются, общий матч получ
 
 test('подтверждённо сожжённое вычитается', () => {
   const db = fresh()
-  db.prepare('insert into burned values (?,?,?,?,?)').run('1', null, 1, 'live', 'confirmed')
-  assert.deepEqual(queueFor(db, [EMPIRE]).map(r => r.match), ['2'])
+  db.prepare('insert into burned values (?,?,?,?,?,?)').run('A', '1', null, 1, 'live', 'confirmed')
+  assert.deepEqual(queueFor(db, [EMPIRE], 'A').map(r => r.match), ['2'])
 })
 
 test('спорное НЕ вычитается — оно может быть живым', () => {
   const db = fresh()
-  db.prepare('insert into burned values (?,?,?,?,?)').run('1', null, 1, 'live', 'dup')
-  assert.deepEqual(queueFor(db, [EMPIRE]).map(r => r.match).sort(), ['1', '2'])
+  db.prepare('insert into burned values (?,?,?,?,?,?)').run('A', '1', null, 1, 'live', 'dup')
+  assert.deepEqual(queueFor(db, [EMPIRE], 'A').map(r => r.match).sort(), ['1', '2'])
 })
 
 test('неизвестная сущность не роняет сборку', () => {
-  assert.deepEqual(queueFor(fresh(), [{ key: 'X', kind: 'team', id: 99999 }]), [])
-  assert.deepEqual(queueFor(fresh(), []), [])
+  assert.deepEqual(queueFor(fresh(), [{ key: 'X', kind: 'team', id: 99999 }], 'A'), [])
+  assert.deepEqual(queueFor(fresh(), [], 'A'), [])
 })
 
 // ── потолок по сущности ──
 
 test('потолок считается по карте, а не по чужой оценке', () => {
-  const s = entityStat(fresh(), EMPIRE)
+  const s = entityStat(fresh(), EMPIRE, 'A')
   assert.equal(s.supply, 2, 'матч 4 без турнира отправить нельзя — в потолок не идёт')
   assert.equal(s.burned, 0)
   assert.equal(s.left, 2)
@@ -127,8 +127,8 @@ test('потолок считается по карте, а не по чужой
 
 test('сожжённое вычитается из остатка, но не из потолка', () => {
   const db = fresh()
-  db.prepare('insert into burned values (?,?,?,?,?)').run('1', null, 1, 'live', 'confirmed')
-  const s = entityStat(db, EMPIRE)
+  db.prepare('insert into burned values (?,?,?,?,?,?)').run('A', '1', null, 1, 'live', 'confirmed')
+  const s = entityStat(db, EMPIRE, 'A')
   assert.equal(s.supply, 2)
   assert.equal(s.burned, 1)
   assert.equal(s.left, 1)
@@ -136,10 +136,10 @@ test('сожжённое вычитается из остатка, но не и�
 
 test('спорное не уменьшает остаток', () => {
   const db = fresh()
-  db.prepare('insert into burned values (?,?,?,?,?)').run('1', null, 1, 'live', 'dup')
-  assert.equal(entityStat(db, EMPIRE).left, 2)
+  db.prepare('insert into burned values (?,?,?,?,?,?)').run('A', '1', null, 1, 'live', 'dup')
+  assert.equal(entityStat(db, EMPIRE, 'A').left, 2)
 })
 
 test('у неизвестной сущности потолок ноль', () => {
-  assert.deepEqual(entityStat(fresh(), { key: 'X', kind: 'team', id: 99999 }), { supply: 0, burned: 0, left: 0 })
+  assert.deepEqual(entityStat(fresh(), { key: 'X', kind: 'team', id: 99999 }, 'A'), { supply: 0, burned: 0, left: 0 })
 })

@@ -29,11 +29,14 @@ const { mergeLedger, effectiveDelay, validateRow, createTracker,
 
 const EMsg = { CacheSubscribed: 24, UpdateMultiple: 26, ClientWelcome: 4004, ClientHello: 4006, UpgradeLeagueItem: 7203, UpgradeResponse: 7204, WatchDownloadedReplay: 7206 };
 const APPID = 570;
-const TOKEN_FILE = path.join(__dirname, 'token.json');
-
 const argv = process.argv.slice(2);
 const flag = n => argv.includes(n);
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
+
+// Сессия аккаунта. По умолчанию token.json — первый и единственный аккаунт.
+// Для второго и третьего передаётся --token token-<метка>.json: у каждого
+// аккаунта своя сессия, свой журнал расхода и свой процесс.
+const TOKEN_FILE = path.resolve(__dirname, opt('--token', 'token.json'));
 
 const DRY = flag('--dry') || !flag('--send');
 const DELAY = Number(opt('--delay', 2000));
@@ -147,6 +150,9 @@ async function qrRefreshToken() {
   qrcode.generate(start.qrChallengeUrl, { small: true });
   console.log('\nссылка, если код не читается:');
   console.log(start.qrChallengeUrl + '\n');
+  // Метка для панели: она рисует этот же код у себя, чтобы не заставлять
+  // человека искать окно терминала.
+  console.log('QRURL ' + start.qrChallengeUrl);
 
   session.on('remoteInteraction', () => console.log('телефон увидел код, подтверди вход'));
 
@@ -155,7 +161,7 @@ async function qrRefreshToken() {
       console.log('вход подтверждён:', session.accountName);
       if (SAVE_TOKEN) {
         fs.writeFileSync(TOKEN_FILE, JSON.stringify({ refreshToken: session.refreshToken }, null, 2));
-        console.log('сессия записана в token.json — это ключ от аккаунта, никуда не выкладывай');
+        console.log('сессия записана в ' + path.basename(TOKEN_FILE) + ' — это ключ от аккаунта, никуда не выкладывай');
       }
       resolve(session.refreshToken);
     });
@@ -175,7 +181,9 @@ function currentDelay() {
 
 // Живое состояние для панели. Пишется из report(), когда GC действительно
 // ответил, а не по таймеру — см. createTracker в lib.js.
-const STATUS_FILE = path.join(__dirname, 'status.json');
+// Отчёт о ходе работы. У каждого аккаунта свой файл: два отправщика,
+// пишущие в один status.json, затирали бы друг друга.
+const STATUS_FILE = path.resolve(__dirname, opt('--status', 'status.json'));
 
 function hhmm(ms) {
   const m = Math.round(ms / 60000);
@@ -266,7 +274,7 @@ async function main() {
     if (kind === 'stale-token') {
       if (!USE_PASSWORD && fs.existsSync(TOKEN_FILE)) {
         fs.unlinkSync(TOKEN_FILE);
-        console.error('сохранённая сессия протухла, удалил token.json — запусти ещё раз, покажу QR');
+        console.error('сохранённая сессия протухла, удалил ' + path.basename(TOKEN_FILE) + ' — запусти ещё раз, покажу QR');
       } else {
         console.error('вход отклонён:', e.message);
       }
@@ -328,6 +336,7 @@ async function main() {
 
   user.on('loggedOn', () => {
     console.log('вошёл как ' + user.steamID.getSteamID64());
+    console.log('STEAMID ' + user.steamID.getSteamID64());
     // Invisible, а не Online: снаружи аккаунт выглядит оффлайн, друзья не видят
     // ни статуса, ни «играет в Dota 2». На GC это не влияет — соединение с ним
     // держится через gamesPlayed, а не через статус присутствия.

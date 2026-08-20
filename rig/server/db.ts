@@ -5,7 +5,8 @@ import { DatabaseSync } from 'node:sqlite'
 import fs from 'node:fs'
 import path from 'node:path'
 import { TOOLS, GC, SNAPS, readJson } from './paths.ts'
-import { migrate } from './migrate.ts'
+import { migrate, splitByAccount } from './migrate.ts'
+import { ACCOUNT } from './accounts.ts'
 
 export const db = new DatabaseSync(path.join(TOOLS, 'rig.db'))
 
@@ -69,13 +70,17 @@ db.exec(`
 const migrated = migrate(db)
 if (migrated.length) console.log('миграция:', migrated.join(', '))
 
+// Журнал расхода развязывается по аккаунтам. Всё, что накоплено до этого,
+// принадлежит первому аккаунту — другого тогда не было.
+if (splitByAccount(db, ACCOUNT())) console.log('миграция: журнал расхода развязан по аккаунтам')
+
 const meta = db.prepare(`select count(*) c from burned`).get() as { c: number }
 
 // ── перенос из JSON старой панели, один раз ──
 export function importLegacy() {
   if (meta.c > 0) return { skipped: true }
 
-  const insBurn = db.prepare(`insert or ignore into burned (match_id, league_id, ts, source) values (?,?,?,?)`)
+  const insBurn = db.prepare(`insert or ignore into burned (account, match_id, league_id, ts, source) values (?,?,?,?,?)`)
   let burned = 0
   if (fs.existsSync(GC)) {
     for (const f of fs.readdirSync(GC)) {
@@ -85,7 +90,7 @@ export function importLegacy() {
       const stat = fs.statSync(path.join(GC, f))
       // Math.trunc, а не `| 0`: побитовое И усекает до 32 бит, и метка
       // 1787158694876 превращалась в 455777412 — дату из 1984 года.
-      for (const id of list) { insBurn.run(String(id), null, Math.trunc(stat.mtimeMs), m[1]); burned++ }
+      for (const id of list) { insBurn.run(ACCOUNT(), String(id), null, Math.trunc(stat.mtimeMs), m[1]); burned++ }
     }
   }
 
@@ -119,10 +124,10 @@ export function importLegacy() {
 
 // ── операции ──
 export const isBurned = (id: string) =>
-  !!db.prepare(`select 1 from burned where match_id = ?`).get(id)
+  !!db.prepare(`select 1 from burned where account = ? and match_id = ?`).get(ACCOUNT(), id)
 
-export const burnedCount = () =>
-  (db.prepare(`select count(*) c from burned`).get() as { c: number }).c
+export const burnedCount = (account = ACCOUNT()) =>
+  (db.prepare(`select count(*) c from burned where account = ?`).get(String(account)) as { c: number }).c
 
 // markBurned удалён намеренно. Он писал в журнал без разбора результата,
 // и через него silent помечал матч сожжённым. Единственная точка записи —
@@ -141,8 +146,8 @@ export function entityMatchesFromDb(kind: string, id: number) {
 export function entitySpent(kind: string, id: number) {
   const r = db.prepare(`
     select count(*) c from entity_matches em
-    join burned b on b.match_id = em.match_id
-    where em.kind = ? and em.entity_id = ?`).get(kind, id) as { c: number }
+    join burned b on b.match_id = em.match_id and b.account = ?
+    where em.kind = ? and em.entity_id = ?`).get(ACCOUNT(), kind, id) as { c: number }
   return r.c
 }
 
@@ -166,9 +171,9 @@ export function counterSeries() {
   }
 }
 
-export function pushEvent(e: any) {
-  db.prepare(`insert or replace into events (ts, n, total, match_id, league_id, result, bytes) values (?,?,?,?,?,?,?)`)
-    .run(e.ts, e.n ?? null, e.total ?? null, String(e.match), String(e.league ?? ''), e.result, e.bytes ?? 0)
+export function pushEvent(e: any, account = ACCOUNT()) {
+  db.prepare(`insert or replace into events (ts, n, total, match_id, league_id, result, bytes, account) values (?,?,?,?,?,?,?,?)`)
+    .run(e.ts, e.n ?? null, e.total ?? null, String(e.match), String(e.league ?? ''), e.result, e.bytes ?? 0, String(account))
 }
 
 export function recentEvents(limit = 240) {

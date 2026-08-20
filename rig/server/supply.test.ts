@@ -27,7 +27,7 @@ function fresh() {
     create table vmatch (match_id text primary key, league_id text,
       radiant integer, dire integer, start_time integer, lobby_type integer);
     create table vplayer (match_id text, account_id integer, primary key (match_id, account_id));
-    create table burned (match_id text primary key, league_id text, ts integer,
+    create table burned (account text, match_id text, league_id text, ts integer,
       source text, state text default 'confirmed');`)
   const m = db.prepare('insert into vmatch values (?,?,?,?,?,?)')
   const p = db.prepare('insert into vplayer values (?,?)')
@@ -73,30 +73,30 @@ test('неизвестная сущность даёт пусто', () => {
 
 test('остаток = запас минус подтверждённо сожжённое', () => {
   const db = fresh()
-  db.prepare('insert into burned values (?,?,?,?,?)').run('1', null, 1, 'live', 'confirmed')
-  assert.deepEqual(leftFor(db, { kind: 'team', id: 46 }), { supply: 2, burned: 1, dup: 0, left: 1 })
+  db.prepare('insert into burned values (?,?,?,?,?,?)').run('A', '1', null, 1, 'live', 'confirmed')
+  assert.deepEqual(leftFor(db, { kind: 'team', id: 46 }, 'A'), { supply: 2, burned: 1, dup: 0, left: 1 })
 })
 
 test('dup считается отдельно и остаток не уменьшает', () => {
   const db = fresh()
-  db.prepare('insert into burned values (?,?,?,?,?)').run('1', null, 1, 'live', 'dup')
+  db.prepare('insert into burned values (?,?,?,?,?,?)').run('A', '1', null, 1, 'live', 'dup')
   // dup означает «счётчика не будет», но не доказывает, что матч израсходован:
   // отвергнутое сообщение отвечает тем же. Матч остаётся в очереди.
-  assert.deepEqual(leftFor(db, { kind: 'team', id: 46 }), { supply: 2, burned: 0, dup: 1, left: 2 })
+  assert.deepEqual(leftFor(db, { kind: 'team', id: 46 }, 'A'), { supply: 2, burned: 0, dup: 1, left: 2 })
 })
 
 test('reconstructed не вычитается — его ещё надо проверить', () => {
   const db = fresh()
-  db.prepare('insert into burned values (?,?,?,?,?)').run('1', null, 1, 'recon', 'reconstructed')
-  assert.deepEqual(leftFor(db, { kind: 'team', id: 46 }), { supply: 2, burned: 0, dup: 0, left: 2 })
+  db.prepare('insert into burned values (?,?,?,?,?,?)').run('A', '1', null, 1, 'recon', 'reconstructed')
+  assert.deepEqual(leftFor(db, { kind: 'team', id: 46 }, 'A'), { supply: 2, burned: 0, dup: 0, left: 2 })
 })
 
 test('сожжённое чужой сущности остаток не трогает', () => {
   const db = fresh()
-  db.prepare('insert into burned values (?,?,?,?,?)').run('3', null, 1, 'live', 'confirmed')
-  assert.deepEqual(leftFor(db, { kind: 'team', id: 46 }), { supply: 2, burned: 0, dup: 0, left: 2 })
+  db.prepare('insert into burned values (?,?,?,?,?,?)').run('A', '3', null, 1, 'live', 'confirmed')
+  assert.deepEqual(leftFor(db, { kind: 'team', id: 46 }, 'A'), { supply: 2, burned: 0, dup: 0, left: 2 })
 })
 
 test('пустая сущность даёт нули, а не падение', () => {
-  assert.deepEqual(leftFor(fresh(), { kind: 'team', id: 999 }), { supply: 0, burned: 0, dup: 0, left: 0 })
+  assert.deepEqual(leftFor(fresh(), { kind: 'team', id: 999 }, 'A'), { supply: 0, burned: 0, dup: 0, left: 0 })
 })

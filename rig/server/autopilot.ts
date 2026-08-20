@@ -1,59 +1,77 @@
-// Автопилот — цикл, который исполняет решения worker.decide().
+// Работник — то, что крутится само, пока человек покупает гемы.
 //
-// Живёт внутри панели. Раз в минуту смотрит инвентарь, пересобирает очередь,
-// держит отправщик живым. Ничего не делает, пока не включён: по умолчанию
-// выключен, потому что каждая отправка необратима.
+// Один работник на аккаунт. Включать можно любое их число: пул матчей общий,
+// журнал расхода у каждого свой, ограничение «одна сессия» — на аккаунт.
+// Два включённых аккаунта дают вдвое больше товара за то же время.
 //
-// Человек покупает гем — автопилот через минуту это видит, добавляет его
-// матчи в очередь и продолжает. Нажимать ничего не надо.
+// Каждые двадцать секунд по каждому включённому аккаунту:
+//   состав инвентаря изменился  → пересобрать очередь
+//   очередь пуста               → ждать
+//   отправщик мёртв             → поднять
+//   молчит минуту               → перезапустить
+//   цель достигнута             → встать
+//
+// Решение принимает worker.decide, здесь только исполнение и состояние.
+// По умолчанию всё выключено: каждая отправка необратима.
 
 import fs from 'node:fs'
 import path from 'node:path'
 import { GC, TOOLS } from './paths.ts'
-import { db } from './db.ts'
+import { burnedCount, db } from './db.ts'
 import { decide, type Action } from './worker.ts'
 import { queueFor, type Pick } from './queue.ts'
 import { inv, refreshInventory } from './steam.ts'
-import { senderState, start as startSender, stop as stopSender } from './sender.ts'
+import { queueFile, senderState, start as startSender, statusFile, stop as stopSender } from './sender.ts'
+import { advise, type Sample } from './pace.ts'
+import { active, list as accounts, type Account } from './accounts.ts'
 
-const QUEUE_FILE = 'autopilot.csv'
-const TICK = 20_000
+export const TICK = 20_000
+const GOAL = 2000
 
 type Log = { ts: number; action: Action; why: string }
 
-const S = {
-  enabled: false,
-  delay: 1000,
-  goal: 2000,
-  queueLength: 0,
-  fingerprint: '',
-  failures: 0,
-  lastAction: 'idle' as Action,
-  lastWhy: 'не запускался',
-  lastTick: 0,
-  rebuiltAt: 0,
-  log: [] as Log[],
+type Unit = {
+  enabled: boolean
+  delay: number
+  auto: boolean            // подбирать паузу самому
+  target: number | null    // сколько отправок заказано; null = до конца очереди
+  startedAt: number
+  startBurned: number      // журнал на момент старта — от него считаем сделанное
+  queueLength: number
+  fingerprint: string
+  failures: number
+  lastAction: Action
+  lastWhy: string
+  lastTick: number
+  rebuiltAt: number
+  log: Log[]
 }
 
-const note = (action: Action, why: string) => {
-  S.lastAction = action
-  S.lastWhy = why
-  if (S.log[0]?.action === action && S.log[0]?.why === why) return
-  S.log.unshift({ ts: Date.now(), action, why })
-  if (S.log.length > 40) S.log.pop()
+const U = new Map<string, Unit>()
+
+function unit(id: string): Unit {
+  let u = U.get(id)
+  if (!u) {
+    u = {
+      enabled: false, delay: 1000, auto: true, target: null,
+      startedAt: 0, startBurned: 0, queueLength: 0, fingerprint: '',
+      failures: 0, lastAction: 'idle', lastWhy: 'не запускался',
+      lastTick: 0, rebuiltAt: 0, log: [],
+    }
+    U.set(id, u)
+  }
+  return u
 }
 
-// Отпечаток состава: если изменился — в инвентаре что-то появилось или ушло,
-// и очередь пора пересобирать. Считаем по assetid, а не по счётчикам:
-// счётчики меняются каждую отправку, состав — только при покупке.
-function fingerprint(): string {
-  return inv.rows.map(r => r.assetid).sort().join(',')
+const note = (u: Unit, action: Action, why: string) => {
+  u.lastAction = action
+  u.lastWhy = why
+  if (u.log[0]?.action === action && u.log[0]?.why === why) return
+  u.log.unshift({ ts: Date.now(), action, why })
+  if (u.log.length > 40) u.log.pop()
 }
 
-// Что жечь: всё, чьи гемы лежат в инвентаре и чья сущность известна.
-// Выбирать вручную не нужно — состав и есть выбор.
-// Карта гемов читается на каждом такте и на каждой отправке состояния —
-// держим разбор, пока файл не изменился.
+// Карта гемов читается часто — держим разбор, пока файл не изменился.
 let mapCache: any[] = []
 let mapAt = 0
 function gemMap(): any[] {
@@ -65,7 +83,13 @@ function gemMap(): any[] {
   return mapCache
 }
 
-function picks(): (Pick & { objects: number })[] {
+// Отпечаток состава: считаем по assetid, а не по счётчикам. Счётчики
+// меняются каждую отправку, состав — только при покупке.
+const fingerprint = () => inv.rows.map(r => r.assetid).sort().join(',')
+
+// Что жечь: всё, чьи гемы лежат в инвентаре и чья сущность известна.
+// Выбирать вручную не нужно — состав и есть выбор.
+export function picks(): (Pick & { objects: number })[] {
   const map = gemMap()
   if (!map.length) return []
 
@@ -84,104 +108,192 @@ function picks(): (Pick & { objects: number })[] {
   return out
 }
 
-function rebuild(): number {
+function rebuild(a: Account, u: Unit): number {
   const list = picks()
-  if (!list.length) { S.queueLength = 0; return 0 }
+  if (!list.length) { u.queueLength = 0; return 0 }
 
-  const queue = queueFor(db, list)
-  fs.writeFileSync(
-    path.join(GC, QUEUE_FILE),
-    queue.map(r => r.match + ',' + r.league).join('\n') + '\n',
-    'utf8',
-  )
-  // Журнал отправщика привязан к имени файла. Очередь пересобирается,
-  // но уже отправленное вычтено из неё запросом — журнал только мешал бы,
-  // заставляя пропускать строки, которых в новой очереди и так нет.
-  try { fs.unlinkSync(path.join(GC, 'sent-' + QUEUE_FILE + '.json')) } catch { }
+  const queue = queueFor(db, list, a.steamid)
+  const file = queueFile(a.id)
+  fs.writeFileSync(path.join(GC, file), queue.map(r => r.match + ',' + r.league).join('\n') + '\n', 'utf8')
+  // Журнал отправщика привязан к имени файла. Уже отправленное вычтено
+  // запросом, поэтому старый журнал только мешал бы.
+  try { fs.unlinkSync(path.join(GC, 'sent-' + file + '.json')) } catch { }
 
-  S.queueLength = queue.length
-  S.fingerprint = fingerprint()
-  S.rebuiltAt = Date.now()
+  u.queueLength = queue.length
+  u.fingerprint = fingerprint()
+  u.rebuiltAt = Date.now()
   return queue.length
 }
 
-// Когда отправщик последний раз что-то отправил — по его же журналу событий.
-function lastSendAt(): number {
-  try {
-    const st = JSON.parse(fs.readFileSync(path.join(GC, 'status.json'), 'utf8'))
-    return Number(st?.current?.ts) || 0
-  } catch { return 0 }
+function status(id: string): any {
+  try { return JSON.parse(fs.readFileSync(path.join(GC, statusFile(id)), 'utf8')) } catch { return null }
 }
 
-export async function tick(push: () => void) {
-  S.lastTick = Date.now()
-  if (!S.enabled) { note('idle', 'работник выключен'); return }
+const lastSendAt = (id: string) => Number(status(id)?.current?.ts) || 0
 
-  await refreshInventory()
+// Сделано в этом заходе — по журналу расхода, а не по счётчику в памяти:
+// перезапуск панели не должен обнулять заказанный прогон.
+function made(a: Account, u: Unit): number {
+  if (!u.startedAt) return 0
+  return Math.max(0, burnedCount(a.steamid) - u.startBurned)
+}
 
-  const sender = senderState()
+// Замеры для подбора паузы: последние отправки этого аккаунта с их темпом.
+function samples(id: string, delay: number): Sample[] {
+  const st = status(id)
+  const recent: any[] = st?.recent ?? []
+  return recent
+    .filter(e => e?.result)
+    .map(e => ({ delay, ts: Number(e.ts) || 0, result: e.result as Sample['result'] }))
+    .reverse()
+}
+
+export function paceAdvice(id: string) {
+  return advise(samples(id, unit(id).delay))
+}
+
+async function tickOne(a: Account, push: () => void) {
+  const u = unit(a.id)
+  u.lastTick = Date.now()
+  if (!u.enabled) { note(u, 'idle', 'работник выключен'); return }
+
+  const sender = senderState(a.id)
+  const count = made(a, u)
+
   const d = decide({
-    enabled: S.enabled,
+    enabled: u.enabled,
     senderAlive: sender.running,
-    queueLength: S.queueLength,
-    inventoryChanged: inv.rows.length > 0 && fingerprint() !== S.fingerprint,
-    lastSendAt: lastSendAt(),
+    queueLength: u.queueLength,
+    inventoryChanged: inv.rows.length > 0 && fingerprint() !== u.fingerprint,
+    lastSendAt: lastSendAt(a.id),
     now: Date.now(),
-    failures: S.failures,
+    failures: u.failures,
+    target: u.target,
+    done: count,
   })
 
-  note(d.action, d.why)
+  note(u, d.action, d.why)
 
-  if (d.action === 'halt') { S.enabled = false; push(); return }
-  if (d.action === 'idle' || d.action === 'watch') { push(); return }
-
-  if (d.action === 'rebuild') {
-    const n = rebuild()
-    note('rebuild', n ? 'очередь пересобрана: ' + n + ' матчей' : 'в инвентаре нет гемов с известной сущностью')
-    if (sender.running) stopSender()
+  if (d.action === 'halt') {
+    u.enabled = false
+    if (sender.running) stopSender(a.id)
     push()
     return
   }
 
-  if (d.action === 'restart') { stopSender(); push(); return }
+  if (d.action === 'idle') { push(); return }
+
+  if (d.action === 'watch') {
+    // Пауза подбирается на ходу: пока GC отвечает на каждую отправку,
+    // темп можно поднимать. Отправщик перечитывает delay.txt сам.
+    if (u.auto) {
+      const adv = advise(samples(a.id, u.delay))
+      if (adv.suggest !== u.delay && adv.measured >= 40) {
+        u.delay = adv.suggest
+        fs.writeFileSync(path.join(GC, 'delay.txt'), String(u.delay))
+        note(u, 'watch', 'пауза ' + u.delay + ' мс — ' + adv.why)
+      }
+    }
+    push()
+    return
+  }
+
+  if (d.action === 'rebuild') {
+    const n = rebuild(a, u)
+    note(u, 'rebuild', n ? 'очередь пересобрана: ' + n + ' матчей' : 'в инвентаре нет гемов с известной сущностью')
+    if (sender.running) stopSender(a.id)
+    push()
+    return
+  }
+
+  if (d.action === 'restart') { stopSender(a.id); push(); return }
 
   if (d.action === 'start') {
-    const r = startSender(QUEUE_FILE, S.delay, push)
+    const left = u.target === null ? null : Math.max(0, u.target - count)
+    const r = startSender(a.id, a.token, queueFile(a.id), u.delay, push, left)
     if ((r as any).error) {
-      S.failures++
-      note('start', 'не удалось запустить: ' + (r as any).error)
+      u.failures++
+      note(u, 'start', 'не удалось запустить: ' + (r as any).error)
     } else {
-      S.failures = 0
+      u.failures = 0
     }
     push()
   }
 }
 
-export function autopilotState() {
-  const list = picks()
-  const units = list.reduce((a, p) => a + p.objects, 0)
+export async function tick(push: () => void) {
+  const on = accounts().filter(a => unit(a.id).enabled)
+  if (on.length) await refreshInventory()
+  for (const a of accounts()) await tickOne(a, push)
+}
+
+export function unitState(a: Account) {
+  const u = unit(a.id)
+  const s = senderState(a.id)
   return {
-    enabled: S.enabled,
-    delay: S.delay,
-    goal: S.goal,
-    queueLength: S.queueLength,
-    action: S.lastAction,
-    why: S.lastWhy,
-    lastTick: S.lastTick,
-    rebuiltAt: S.rebuiltAt,
-    failures: S.failures,
-    objects: units,
-    gems: list.map(p => ({ gem: p.key, objects: p.objects })),
-    log: S.log.slice(0, 20),
-    // 76 отправок в минуту — измерено 20 августа при паузе 1000 мс.
-    etaMinutes: S.queueLength ? Math.round(S.queueLength / 76) : 0,
+    id: a.id,
+    label: a.label,
+    steamid: a.steamid,
+    enabled: u.enabled,
+    delay: u.delay,
+    auto: u.auto,
+    target: u.target,
+    done: made(a, u),
+    queueLength: u.queueLength,
+    action: u.lastAction,
+    why: u.lastWhy,
+    lastTick: u.lastTick,
+    rebuiltAt: u.rebuiltAt,
+    failures: u.failures,
+    running: s.running,
+    pid: s.pid,
+    exit: s.exit,
+    lines: s.lines.slice(-40),
+    burned: burnedCount(a.steamid),
+    etaMinutes: u.queueLength ? Math.round((u.queueLength * u.delay) / 60_000) : 0,
+    log: u.log.slice(0, 20),
   }
 }
 
-export function setAutopilot(on: boolean, delay?: number) {
-  S.enabled = !!on
-  if (delay && delay >= 500) S.delay = delay
-  if (!on) { stopSender(); note('idle', 'выключен вручную') }
-  else { S.failures = 0; S.fingerprint = ''; note('idle', 'включён, собираю очередь') }
-  return autopilotState()
+export function autopilotState() {
+  const list = picks()
+  const a = active()
+  return {
+    goal: GOAL,
+    objects: list.reduce((n, p) => n + p.objects, 0),
+    gems: list.map(p => ({ gem: p.key, objects: p.objects })),
+    units: accounts().map(unitState),
+    pace: a ? paceAdvice(a.id) : null,
+    // Поля активного аккаунта подняты наверх: дашборд смотрит на него.
+    ...(a ? unitState(a) : {}),
+  }
+}
+
+// on не передан — трогаем только настройки, выключатель остаётся как был.
+export function setAutopilot(
+  id: string,
+  patch: { on?: boolean; delay?: number; target?: number | null; auto?: boolean },
+) {
+  const a = accounts().find(x => x.id === id)
+  if (!a) return { error: 'нет такого аккаунта' }
+  const u = unit(id)
+
+  if (patch.delay && patch.delay >= 300) { u.delay = patch.delay; u.auto = false }
+  if (patch.auto !== undefined) u.auto = !!patch.auto
+  if (patch.target !== undefined) u.target = patch.target === null ? null : Math.max(1, Math.trunc(patch.target))
+
+  if (patch.on !== undefined) {
+    u.enabled = !!patch.on
+    if (!u.enabled) {
+      stopSender(id)
+      note(u, 'idle', 'выключен вручную')
+    } else {
+      u.failures = 0
+      u.fingerprint = ''
+      u.startedAt = Date.now()
+      u.startBurned = burnedCount(a.steamid)
+      note(u, 'idle', u.target ? 'заказано ' + u.target + ' отправок, собираю очередь' : 'включён, собираю очередь')
+    }
+  }
+  return unitState(a)
 }

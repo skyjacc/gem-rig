@@ -1,0 +1,12 @@
+{
+  "active": "main",
+  "list": [
+    {
+      "id": "main",
+      "label": "основной",
+      "steamid": "76561198362481819",
+      "token": "token.json",
+      "added": 1787162422453
+    }
+  ]
+}

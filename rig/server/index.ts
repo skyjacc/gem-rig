@@ -13,7 +13,9 @@ import { refreshEquipped, refreshInventory } from './steam.ts'
 import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
 import { isBurned } from './db.ts'
-import { listFiles, senderState, start, stop } from './sender.ts'
+import { listFiles, senderState, start, statusFile, stop } from './sender.ts'
+import { accountList, accountsApi, graph, queuePreview } from './api.ts'
+import { ACCOUNT, activeId as activeAccountId } from './accounts.ts'
 import { roadmap } from './roadmap.ts'
 import { autopilotState, setAutopilot, tick } from './autopilot.ts'
 
@@ -67,23 +69,73 @@ app.get('/api/roadmap', async () => {
 
 // ───────────────────────── управление отправщиком ─────────────────────────
 app.post('/api/sender/start', async (req: any) => {
-  const { file, delay } = req.body ?? {}
-  const r = start(String(file), Number(delay) || 30000, () => push())
+  const { file, delay, id } = req.body ?? {}
+  const acc = accountList().list.find(a => a.id === String(id ?? activeAccountId()))
+  if (!acc) return { error: 'нет такого аккаунта' }
+  const r = start(acc.id, acc.token, String(file), Number(delay) || 30000, () => push())
   push()
   return r
 })
 
 app.get('/api/autopilot', async () => autopilotState())
 
+// Настройки работника: выключатель, пауза, цель прогона, автоподбор темпа.
+// Аккаунт по умолчанию — активный, но можно указать любой: включённых
+// одновременно бывает несколько.
 app.post('/api/autopilot', async (req: any) => {
-  const { on, delay } = req.body ?? {}
-  const r = setAutopilot(!!on, Number(delay) || undefined)
+  const b = req.body ?? {}
+  const id = String(b.id ?? activeAccountId())
+  const patch: any = {}
+  if (b.on !== undefined) patch.on = !!b.on
+  if (b.delay !== undefined) patch.delay = Number(b.delay)
+  if (b.auto !== undefined) patch.auto = !!b.auto
+  if (b.target !== undefined) patch.target = b.target === null ? null : Number(b.target)
+  const r = setAutopilot(id, patch)
   push()
   return r
 })
 
-app.post('/api/sender/stop', async () => {
-  const r = stop()
+// ── аккаунты ──
+app.get('/api/accounts', async () => accountList())
+
+app.post('/api/accounts/active', async (req: any) => {
+  const r = accountsApi.setActive(String(req.body?.id ?? ''))
+  push()
+  return r
+})
+
+app.post('/api/accounts/link', async (req: any) => {
+  const r = accountsApi.linkStart(String(req.body?.label ?? ''), () => push())
+  push()
+  return r
+})
+
+app.post('/api/accounts/link/cancel', async () => {
+  const r = accountsApi.linkCancel()
+  push()
+  return r
+})
+
+app.post('/api/accounts/rename', async (req: any) => {
+  const r = accountsApi.rename(String(req.body?.id ?? ''), String(req.body?.label ?? ''))
+  push()
+  return r
+})
+
+// Отвязка удаляет сохранённую сессию: вернуть аккаунт можно только новым QR.
+// Журнал расхода остаётся — матчи на нём действительно израсходованы.
+app.post('/api/accounts/unlink', async (req: any) => {
+  const r = accountsApi.unlink(String(req.body?.id ?? ''))
+  push()
+  return r
+})
+
+// ── граф и очередь ──
+app.get('/api/graph', async (req: any) => graph(req.query?.scope === 'all' ? 'all' : 'owned'))
+app.get('/api/queue', async (req: any) => queuePreview(Number(req.query?.limit) || 200))
+
+app.post('/api/sender/stop', async (req: any) => {
+  const r = stop(String(req.body?.id ?? activeAccountId()))
   push()
   return r
 })
@@ -115,27 +167,33 @@ app.post('/api/build', async (req: any) => {
 })
 
 // ───────────────────── файлы отправщика: ловим изменения ─────────────────────
-let seenEventTs = 0
+// Каждый аккаунт пишет свой отчёт: два отправщика в один файл затирали бы
+// друг друга. Разбираем все и приписываем расход тому, кто его сделал —
+// иначе журнал снова станет общим и второй аккаунт получит пустую очередь.
+const seenBy = new Map<string, number>()
 
 function ingestStatus() {
-  const st = readJson<any>(path.join(GC, 'status.json'), null)
-  if (!st?.recent) return
-  for (const e of st.recent) {
-    if (!e?.ts || e.ts <= seenEventTs) continue
-    pushEvent(e)
-    // В ленту попадает всё, включая silent. В журнал — только то, что GC
-    // подтвердил: silent означает «не знаем», а не «сожжён».
-    if (e.match) ingestOne(db, e)
+  for (const a of accountList().list) {
+    const st = readJson<any>(path.join(GC, statusFile(a.id)), null)
+    if (!st?.recent) continue
+    const seen = seenBy.get(a.id) ?? 0
+    for (const e of st.recent) {
+      if (!e?.ts || e.ts <= seen) continue
+      pushEvent(e, a.steamid)
+      // В ленту попадает всё, включая silent. В журнал — только то, что GC
+      // подтвердил: silent означает «не знаем», а не «сожжён».
+      if (e.match) ingestOne(db, e, a.steamid)
+    }
+    const top = st.recent[0]?.ts
+    if (top) seenBy.set(a.id, Math.max(seen, top))
   }
-  const top = st.recent[0]?.ts
-  if (top) seenEventTs = Math.max(seenEventTs, top)
 }
 
 function watchSender() {
   if (!fs.existsSync(GC)) return
   let t: NodeJS.Timeout | null = null
   fs.watch(GC, (_ev, name) => {
-    if (!name || !/^(status\.json|delay\.txt|sent-.*\.json)$/.test(String(name))) return
+    if (!name || !/^(status.*\.json|delay\.txt|sent-.*\.json)$/.test(String(name))) return
     if (t) clearTimeout(t)
     t = setTimeout(() => { ingestStatus(); push() }, 120)
   })

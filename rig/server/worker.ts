@@ -20,6 +20,8 @@ export type Snapshot = {
   lastSendAt: number        // когда отправщик последний раз слал, 0 = ещё ни разу
   now: number
   failures: number          // сколько раз подряд отправщик падал
+  target: number | null     // сколько отправок заказано; null = до конца очереди
+  done: number              // сколько уже сделано в этом заходе
 }
 
 export type Action = 'idle' | 'start' | 'restart' | 'rebuild' | 'watch' | 'halt'
@@ -38,6 +40,12 @@ export function decide(s: Snapshot): Decision {
 
   if (s.failures >= MAX_FAILURES) {
     return { action: 'halt', why: s.failures + ' падений подряд — остановился, нужен разбор' }
+  }
+
+  // Цель проверяется раньше всего остального, включая пересборку: иначе
+  // гем, купленный в последнюю секунду, продлил бы заказанный прогон.
+  if (s.target !== null && s.done >= s.target) {
+    return { action: 'halt', why: 'цель достигнута: ' + s.done + ' из ' + s.target }
   }
 
   // Состав важнее всего: жечь по устаревшей очереди значит терять

@@ -10,6 +10,8 @@ const base: Snapshot = {
   lastSendAt: 0,
   now: 100_000,
   failures: 0,
+  target: null,
+  done: 0,
 }
 
 test('выключен — ничего не делаем', () => {
@@ -66,4 +68,33 @@ test('слишком много падений подряд — останавл
 test('пересборка важнее запуска: сначала актуальная очередь', () => {
   const d = decide({ ...base, inventoryChanged: true, senderAlive: false, queueLength: 100 })
   assert.equal(d.action, 'rebuild')
+})
+
+// ── цель прогона ──
+//
+// Тумблер «включить и жечь всё» — не единственный режим. Человек может
+// захотеть ровно N отправок: проверить темп, добить один гем до круглого
+// числа, потратить остаток вечера и не больше.
+
+test('цель достигнута — останавливаемся сами', () => {
+  const d = decide({ ...base, senderAlive: true, target: 100, done: 100 })
+  assert.equal(d.action, 'halt')
+  assert.match(d.why, /цель/i)
+})
+
+test('цель перевыполнена — тоже стоп, а не «почти»', () => {
+  assert.equal(decide({ ...base, senderAlive: true, target: 100, done: 137 }).action, 'halt')
+})
+
+test('до цели ещё далеко — работаем', () => {
+  assert.equal(decide({ ...base, senderAlive: true, target: 100, done: 99 }).action, 'watch')
+})
+
+test('без цели считаем до конца очереди', () => {
+  assert.equal(decide({ ...base, senderAlive: true, target: null, done: 9999 }).action, 'watch')
+})
+
+test('цель важнее пересборки: досчитали — встали', () => {
+  const d = decide({ ...base, inventoryChanged: true, target: 10, done: 10 })
+  assert.equal(d.action, 'halt', 'иначе купленный в последнюю секунду гем продлит прогон')
 })

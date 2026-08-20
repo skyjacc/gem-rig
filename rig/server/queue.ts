@@ -61,18 +61,22 @@ export function matchesOf(target: DatabaseSync, p: Pick): Match[] {
   return (rows as any[]).map(r => ({ match: String(r.match_id), league: String(r.league_id ?? '') }))
 }
 
-// Подтверждённо израсходованное. Спорное НЕ вычитается: отвергнутый матч
-// отвечает тем же, что и настоящий дубль, и вполне может быть живым.
-export function burnedSet(target: DatabaseSync): Set<string> {
+// Подтверждённо израсходованное ЭТИМ аккаунтом. Спорное НЕ вычитается:
+// отвергнутый матч отвечает тем же, что и настоящий дубль, и вполне может
+// быть живым.
+//
+// Пул матчей общий на все аккаунты, журнал расхода — у каждого свой.
+// Отсюда весь смысл второго аккаунта: он жжёт тот же пул с нуля.
+export function burnedSet(target: DatabaseSync, account: string): Set<string> {
   const rows = target.prepare(
-    `select match_id from burned where state = 'confirmed'`).all() as any[]
+    `select match_id from burned where account = ? and state = 'confirmed'`).all(String(account)) as any[]
   return new Set(rows.map(r => String(r.match_id)))
 }
 
-export function queueFor(target: DatabaseSync, picks: Pick[]): QueueRow[] {
+export function queueFor(target: DatabaseSync, picks: Pick[], account: string): QueueRow[] {
   const sets = new Map<string, Match[]>()
   for (const p of picks) sets.set(p.key, matchesOf(target, p))
-  return buildQueue(sets, burnedSet(target))
+  return buildQueue(sets, burnedSet(target, account))
 }
 
 // Потолок сущности — не оценка со стороны, а число матчей, которые реально
@@ -81,11 +85,11 @@ export function queueFor(target: DatabaseSync, picks: Pick[]): QueueRow[] {
 // Старая таблица supply врала в обе стороны: у Ohaiyo показывала 0 при 1672
 // пригодных, у DD — 1017 при 508. Считаем по той же выборке, из которой
 // строится очередь, иначе панель обещает то, чего отправщик не сделает.
-export function entityStat(target: DatabaseSync, p: Pick) {
+export function entityStat(target: DatabaseSync, p: Pick, account: string) {
   const rows = matchesOf(target, p).filter(m => usable(m.league))
   if (!rows.length) return { supply: 0, burned: 0, left: 0 }
 
-  const burnedIds = burnedSet(target)
+  const burnedIds = burnedSet(target, account)
   let burned = 0
   for (const m of rows) if (burnedIds.has(m.match)) burned++
   return { supply: rows.length, burned, left: rows.length - burned }

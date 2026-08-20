@@ -37,14 +37,21 @@ export function classify(result: string): BurnState | null {
 // Одно событие отправщика → запись в журнал. База передаётся аргументом,
 // чтобы функцию можно было проверить на базе в памяти: модуль db.ts открывает
 // рабочий rig.db прямо при импорте, и тесту его трогать нельзя.
+//
+// Аккаунт обязателен. Матч расходуется у каждого аккаунта отдельно: тот же
+// самый матч, засчитанный на первом, на втором остаётся свежим. Запись без
+// аккаунта означала бы общий журнал — а это ровно та ошибка, из-за которой
+// второй аккаунт получал бы пустую очередь.
 export function ingestOne(
   target: DatabaseSync,
   e: { match: string; league?: string | null; result: string; ts: number },
+  account: string,
 ): boolean {
+  if (!account) throw new Error('журнал расхода ведётся по аккаунту, аккаунт не указан')
   const state = classify(e.result)
   if (!state) return false
   target.prepare(
-    `insert or ignore into burned (match_id, league_id, ts, source, state) values (?,?,?,?,?)`,
-  ).run(String(e.match), e.league ? String(e.league) : null, Math.trunc(e.ts), 'live', state)
+    `insert or ignore into burned (account, match_id, league_id, ts, source, state) values (?,?,?,?,?,?)`,
+  ).run(String(account), String(e.match), e.league ? String(e.league) : null, Math.trunc(e.ts), 'live', state)
   return true
 }

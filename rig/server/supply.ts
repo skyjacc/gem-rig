@@ -64,7 +64,7 @@ export function entityMatchIds(target: DatabaseSync, e: Entity): string[] {
 //   и матч при этом остаётся целым — проверено 20 августа на 8003261364.
 //   Показываем отдельным числом, чтобы было видно, что там спорно.
 // reconstructed не вычитается: восстановлено арифметикой, ждёт проверки.
-export function leftFor(target: DatabaseSync, e: Entity) {
+export function leftFor(target: DatabaseSync, e: Entity, account: string) {
   const mine = entityMatchIds(target, e)
   if (!mine.length) return { supply: 0, burned: 0, dup: 0, left: 0 }
 
@@ -73,7 +73,7 @@ export function leftFor(target: DatabaseSync, e: Entity) {
     `select
        sum(case when state = 'confirmed' then 1 else 0 end) c,
        sum(case when state = 'dup'       then 1 else 0 end) d
-     from burned where match_id in (${holes})`).get(...mine) as any
+     from burned where account = ? and match_id in (${holes})`).get(String(account), ...mine) as any
 
   const burned = Number(row?.c) || 0
   const dup = Number(row?.d) || 0

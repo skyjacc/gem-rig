@@ -1,9 +1,11 @@
-// Управление отправщиком. Панель запускает и останавливает его сама —
-// отдельное окно с ботом больше не нужно.
+// Управление отправщиками. Панель запускает и останавливает их сама.
 //
-// Отправщик живёт в ../tools/gcwatch/index.js и логинится по сохранённой сессии
-// token.json, поэтому запускается без вопросов. Если сессии нет, он попросит QR
-// в своём stdout — панель этот вывод показывает.
+// Отправщик один на аккаунт. Ограничение «одна сессия» действует на аккаунт,
+// а не на машину, поэтому два и три работают рядом и в сумме дают втрое
+// больше товара за то же время.
+//
+// У каждого своё: файл сессии, файл очереди, файл отчёта. Общий файл отчёта
+// два процесса просто затирали бы друг другу.
 
 import { spawn, type ChildProcess } from 'node:child_process'
 import fs from 'node:fs'
@@ -14,32 +16,49 @@ type Sender = {
   child: ChildProcess | null
   file: string | null
   delay: number | null
+  limit: number | null
   startedAt: number | null
   lines: string[]
   exit: string | null
 }
 
-const S: Sender = { child: null, file: null, delay: null, startedAt: null, lines: [], exit: null }
+const S = new Map<string, Sender>()
 
-const remember = (line: string) => {
+const slot = (id: string): Sender => {
+  let s = S.get(id)
+  if (!s) {
+    s = { child: null, file: null, delay: null, limit: null, startedAt: null, lines: [], exit: null }
+    S.set(id, s)
+  }
+  return s
+}
+
+const remember = (s: Sender, line: string) => {
   for (const l of line.split(/\r?\n/)) {
     const t = l.trimEnd()
-    if (t) S.lines.push(t)
+    if (t) s.lines.push(t)
   }
-  while (S.lines.length > 200) S.lines.shift()
+  while (s.lines.length > 200) s.lines.shift()
 }
 
-export function senderState() {
+export const statusFile = (id: string) => (id === 'main' ? 'status.json' : `status-${id}.json`)
+export const queueFile = (id: string) => (id === 'main' ? 'autopilot.csv' : `autopilot-${id}.csv`)
+
+export function senderState(id = 'main') {
+  const s = slot(id)
   return {
-    running: !!S.child && S.child.exitCode === null,
-    pid: S.child?.pid ?? null,
-    file: S.file,
-    delay: S.delay,
-    startedAt: S.startedAt,
-    exit: S.exit,
-    lines: S.lines.slice(-60),
+    running: !!s.child && s.child.exitCode === null,
+    pid: s.child?.pid ?? null,
+    file: s.file,
+    delay: s.delay,
+    limit: s.limit,
+    startedAt: s.startedAt,
+    exit: s.exit,
+    lines: s.lines.slice(-60),
   }
 }
+
+export const runningIds = () => [...S.entries()].filter(([, s]) => s.child && s.child.exitCode === null).map(([id]) => id)
 
 // Списки матчей, которые можно скормить отправщику.
 export function listFiles() {
@@ -55,42 +74,68 @@ export function listFiles() {
     .sort((a, b) => b.mtime - a.mtime)
 }
 
-export function start(file: string, delay: number, onLine: () => void) {
-  if (S.child && S.child.exitCode === null) return { error: 'отправщик уже работает' }
+export function start(
+  id: string,
+  token: string,
+  file: string,
+  delay: number,
+  onLine: () => void,
+  limit?: number | null,
+) {
+  const s = slot(id)
+  if (s.child && s.child.exitCode === null) return { error: 'отправщик уже работает' }
+
   const full = path.join(GC, file)
   if (!fs.existsSync(full)) return { error: 'нет файла ' + file }
+  if (!fs.existsSync(path.join(GC, token))) return { error: 'нет сессии ' + token + ' — привяжите аккаунт' }
 
   fs.writeFileSync(path.join(GC, 'delay.txt'), String(delay))
 
-  const args = ['index.js', '--ids', file, '--send', '--delay', String(delay), '--keep-alive']
+  const args = [
+    'index.js',
+    '--ids', file,
+    '--send',
+    '--delay', String(delay),
+    '--keep-alive',
+    '--token', token,
+    '--status', statusFile(id),
+  ]
+  if (limit && limit > 0) args.push('--limit', String(limit))
+
   const child = spawn(process.execPath, args, { cwd: GC, windowsHide: true })
 
-  S.child = child
-  S.file = file
-  S.delay = delay
-  S.startedAt = Date.now()
-  S.exit = null
-  S.lines = []
-  remember(`запущен: node ${args.join(' ')}`)
+  s.child = child
+  s.file = file
+  s.delay = delay
+  s.limit = limit ?? null
+  s.startedAt = Date.now()
+  s.exit = null
+  s.lines = []
+  remember(s, `запущен: node ${args.join(' ')}`)
 
-  child.stdout?.on('data', b => { remember(String(b)); onLine() })
-  child.stderr?.on('data', b => { remember(String(b)); onLine() })
+  child.stdout?.on('data', b => { remember(s, String(b)); onLine() })
+  child.stderr?.on('data', b => { remember(s, String(b)); onLine() })
   child.on('exit', (code, signal) => {
-    S.exit = signal ? `остановлен (${signal})` : `завершился с кодом ${code}`
-    remember(S.exit)
+    s.exit = signal ? `остановлен (${signal})` : `завершился с кодом ${code}`
+    remember(s, s.exit)
     onLine()
   })
 
   return { ok: true, pid: child.pid }
 }
 
-export function stop() {
-  if (!S.child || S.child.exitCode !== null) return { error: 'отправщик не запущен' }
-  S.child.kill()
+export function stop(id = 'main') {
+  const s = S.get(id)
+  if (!s?.child || s.child.exitCode !== null) return { error: 'отправщик не запущен' }
+  s.child.kill()
   return { ok: true }
 }
 
-// Если панель падает — не оставляем осиротевший процесс.
+export function stopAll() {
+  for (const id of runningIds()) stop(id)
+}
+
+// Если панель падает — не оставляем осиротевших процессов.
 for (const sig of ['SIGINT', 'SIGTERM', 'exit'] as const) {
-  process.on(sig, () => { try { S.child?.kill() } catch { } })
+  process.on(sig, () => { try { stopAll() } catch { } })
 }

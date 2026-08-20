@@ -28,7 +28,23 @@ export type GemItem = {
   icon: string
   value: number
   equipped?: boolean
+  carrier: Carrier
 }
+
+// Чем несётся счётчик.
+//
+//   gem   голый самоцвет, ещё никуда не вставленный. Продаётся как самоцвет,
+//         и его можно вставить в любой подходящий предмет позже.
+//   item  предмет с уже вставленным самоцветом. Продаётся как предмет,
+//         счётчик неотделим от него.
+//
+// Различить просто: у голого самоцвета собственное имя — «Spectator: X»,
+// и героя у него нет, потому что вставлять ещё некуда.
+export type Carrier = 'gem' | 'item'
+
+const BARE = /^(Genuine\s+)?Spectator:\s*/i
+export const carrierOf = (name: string, hero: string): Carrier =>
+  BARE.test(String(name ?? '')) && !String(hero ?? '').trim() ? 'gem' : 'item'
 
 const TTL = 60_000
 const BACKOFF = 300_000
@@ -91,6 +107,7 @@ export async function refreshInventory(force = false): Promise<boolean> {
         hero: p.hero,
         icon: d.icon_url ?? '',
         value: p.value,
+        carrier: carrierOf(d.market_hash_name ?? d.name, p.hero),
       })
     }
 

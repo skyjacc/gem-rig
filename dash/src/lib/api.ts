@@ -21,7 +21,18 @@ export type Gem = {
   left: number | null
   spent: number | null
   supplyKind: SupplyKind
-  rows: { assetid: string; name: string; hero: string; value: number; equipped: boolean; icon: string }[]
+  bare: number
+  socketed: number
+  rows: {
+    assetid: string
+    name: string
+    hero: string
+    value: number
+    equipped: boolean
+    icon: string
+    // Чем несётся счётчик: голый самоцвет или предмет с вставленным.
+    carrier: 'gem' | 'item'
+  }[]
 }
 
 export type CatalogRow = {

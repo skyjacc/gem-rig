@@ -124,10 +124,9 @@ export const isBurned = (id: string) =>
 export const burnedCount = () =>
   (db.prepare(`select count(*) c from burned`).get() as { c: number }).c
 
-export function markBurned(id: string, league: string | null, source: string) {
-  db.prepare(`insert or ignore into burned (match_id, league_id, ts, source) values (?,?,?,?)`)
-    .run(id, league, Date.now(), source)
-}
+// markBurned удалён намеренно. Он писал в журнал без разбора результата,
+// и через него silent помечал матч сожжённым. Единственная точка записи —
+// ingestOne из ledger.ts, она принимает только update и dup.
 
 export function saveEntityMatches(kind: string, id: number, rows: { id: string; league: string }[]) {
   const ins = db.prepare(`insert or ignore into entity_matches (kind, entity_id, match_id, league_id) values (?,?,?,?)`)

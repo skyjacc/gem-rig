@@ -109,3 +109,112 @@ export function queueFiles() {
     size: fs.statSync(path.join(GC, f)).size,
   }))
 }
+
+// ── дерево ──
+//
+// Аккаунт → гем → турниры, откуда у этой сущности матчи. Даёт то, чего
+// не даёт сеть пересечений: видно, из чего вообще состоит потолок гема
+// и какой турнир кормит его больше всех.
+
+let leagueNames: Map<string, string> | null = null
+function leagueName(id: string): string {
+  if (!leagueNames) {
+    leagueNames = new Map()
+    for (const l of readJson<any[]>(path.join(TOOLS, 'leagues.json'), [])) {
+      if (l?.id) leagueNames.set(String(l.id), String(l.name ?? ''))
+    }
+  }
+  return leagueNames.get(String(id)) || 'турнир ' + id
+}
+
+export type TreeNode = {
+  id: string
+  label: string
+  kind: 'root' | 'gem' | 'league'
+  value: number
+  burned?: number
+  counter?: number
+  icon?: string
+  children?: TreeNode[]
+}
+
+let tCache: TreeNode | null = null
+let tKey = ''
+
+export function tree(top = 12): TreeNode {
+  const acc = active()
+  const list = picks()
+  const key = acc?.id + '|' + list.map(p => p.key).join(',') + '|' + top
+  if (tCache && tKey === key) return tCache
+
+  const owned = new Map<string, { items: number; max: number; icon: string }>()
+  for (const r of inv.rows) {
+    if (!r.gem || r.gem === '—') continue
+    const e = owned.get(r.gem) ?? { items: 0, max: 0, icon: r.icon }
+    e.items++
+    e.max = Math.max(e.max, r.value)
+    owned.set(r.gem, e)
+  }
+
+  const spent = new Set<string>(
+    (db.prepare(`select match_id from burned where account = ? and state = 'confirmed'`)
+      .all(acc?.steamid ?? '') as any[]).map(r => String(r.match_id)),
+  )
+
+  const gems: TreeNode[] = []
+  for (const p of list) {
+    const rows = p.kind === 'team'
+      ? db.prepare(`select match_id, league_id from vmatch where radiant = ? or dire = ?`).all(p.id, p.id)
+      : db.prepare(`select v.match_id, v.league_id from vmatch v join vplayer pl on pl.match_id = v.match_id where pl.account_id = ?`).all(p.id)
+
+    const byLeague = new Map<string, { n: number; burned: number }>()
+    let burned = 0
+    for (const r of rows as any[]) {
+      const lg = String(r.league_id ?? '')
+      if (!/^[0-9]{1,10}$/.test(lg) || Number(lg) <= 0) continue
+      const e = byLeague.get(lg) ?? { n: 0, burned: 0 }
+      e.n++
+      if (spent.has(String(r.match_id))) { e.burned++; burned++ }
+      byLeague.set(lg, e)
+    }
+
+    const own = owned.get(p.key)
+    const children = [...byLeague.entries()]
+      .sort((a, b) => b[1].n - a[1].n)
+      .slice(0, top)
+      .map(([lg, v]) => ({
+        id: p.key + ':' + lg,
+        label: leagueName(lg),
+        kind: 'league' as const,
+        value: v.n,
+        burned: v.burned,
+      }))
+
+    const rest = [...byLeague.values()].reduce((n, v) => n + v.n, 0) - children.reduce((n, c) => n + c.value, 0)
+    if (rest > 0) {
+      children.push({ id: p.key + ':rest', label: 'ещё ' + (byLeague.size - children.length) + ' турниров', kind: 'league', value: rest, burned: 0 })
+    }
+
+    gems.push({
+      id: p.key,
+      label: p.key,
+      kind: 'gem',
+      value: [...byLeague.values()].reduce((n, v) => n + v.n, 0),
+      burned,
+      counter: own?.max ?? 0,
+      icon: own?.icon ?? '',
+      children,
+    })
+  }
+
+  gems.sort((a, b) => b.value - a.value)
+  tCache = {
+    id: 'root',
+    label: acc?.label ?? 'аккаунт',
+    kind: 'root',
+    value: gems.reduce((n, g) => n + g.value, 0),
+    children: gems,
+  }
+  tKey = key
+  return tCache
+}

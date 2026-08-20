@@ -21,6 +21,7 @@ export type Gem = {
   left: number | null
   spent: number | null
   supplyKind: SupplyKind
+  rows: { assetid: string; name: string; hero: string; value: number; equipped: boolean; icon: string }[]
 }
 
 export type CatalogRow = {
@@ -72,9 +73,15 @@ export type Unit = {
   burned: number
   etaMinutes: number
   log: { ts: number; action: string; why: string }[]
+  ordered?: number | null
+  waves?: number
+  plan?: Wave[]
+  nextWave?: Wave | null
 }
 
 export type Pace = { suggest: number; why: string; measured: number; silent: number; atDelay: number }
+
+export type Wave = { index: number; addAt: number; value: number }
 
 export type Autopilot = Unit & {
   goal: number

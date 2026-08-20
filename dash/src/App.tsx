@@ -14,7 +14,8 @@ import { Sidebar, type ViewId } from './parts/Sidebar.tsx'
 import { Overview } from './views/Overview.tsx'
 import { Graph } from './views/Graph.tsx'
 import { Accounts } from './views/Accounts.tsx'
-import { Buy, Feed, Gems, Queue } from './views/Tables.tsx'
+import { Buy, Feed, Queue } from './views/Tables.tsx'
+import { Gems } from './views/Gems.tsx'
 
 export default function App() {
   const { state, online } = useLive()
@@ -73,7 +74,10 @@ export default function App() {
             </div>
           </header>
 
-          <main className="scroll-thin min-w-0 flex-1 overflow-auto p-6">
+          <main
+            key={view}
+            className={'scroll-thin min-w-0 flex-1 ' + (view === 'graph' ? 'overflow-hidden p-0' : 'view-in overflow-auto p-6')}
+          >
             {view === 'work' && <Overview state={state} now={now} />}
             {view === 'gems' && <Gems state={state} />}
             {view === 'graph' && <Graph state={state} />}

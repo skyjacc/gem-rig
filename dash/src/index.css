@@ -154,3 +154,48 @@ html::-webkit-scrollbar {
   outline: none;
   box-shadow: 0 0 0 1px #ffffff38;
 }
+
+/* ─────────────────────────── движение ───────────────────────────
+   Референс почти статичен: у него каталог, который читают. У панели
+   другое дело — она показывает то, что происходит прямо сейчас, и
+   движение здесь несёт смысл, а не украшает.
+
+   Три правила, чтобы это не превратилось в ярмарку:
+     появление        короткое, один раз, снизу вверх
+     изменение числа  катится, а не прыгает
+     событие          вспышка на строке, которая только что пришла
+   Всё выключается при prefers-reduced-motion. */
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.rise { animation: rise .34s cubic-bezier(.2,.8,.2,1) both; }
+
+@keyframes flash {
+  0%   { background: rgb(255 255 255 / 0.10); }
+  100% { background: transparent; }
+}
+.flash { animation: flash 1.1s ease-out both; }
+
+@keyframes draw {
+  from { stroke-dashoffset: var(--len, 600); }
+  to   { stroke-dashoffset: 0; }
+}
+.tree-edge {
+  stroke-dasharray: var(--len, 600);
+  animation: draw .5s cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes halo {
+  0%   { opacity: .55; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(2.4); }
+}
+.halo { animation: halo 1.4s ease-out infinite; transform-origin: center; }
+
+/* Переход между экранами: короткий, без сдвига раскладки. */
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+.view-in { animation: viewIn .22s ease-out both; }

@@ -56,9 +56,10 @@ export function buildState() {
   const groups = new Map<string, any>()
   for (const r of inv.rows) {
     const g = r.gem || '—'
-    if (!groups.has(g)) groups.set(g, { gem: g, items: 0, equipped: 0, min: null as number | null, max: 0, icon: r.icon, heroes: new Set<string>() })
+    if (!groups.has(g)) groups.set(g, { gem: g, items: 0, equipped: 0, min: null as number | null, max: 0, icon: r.icon, heroes: new Set<string>(), rows: [] as any[] })
     const e = groups.get(g)
     e.items++
+    e.rows.push({ assetid: r.assetid, name: r.name, hero: r.hero, value: r.value, equipped: !!r.equipped, icon: r.icon })
     e.max = Math.max(e.max, r.value)
     e.min = e.min === null ? r.value : Math.min(e.min, r.value)
     if (r.equipped) e.equipped++
@@ -72,6 +73,9 @@ export function buildState() {
     return {
       gem: e.gem, items: e.items, equipped: e.equipped, min: e.min, max: e.max, icon: e.icon,
       heroes: [...e.heroes].join(', '),
+      // Каждая вещь отдельно: группа скрывает, что у 29 предметов BZZ
+      // счётчики от нуля до двенадцати, а продаётся именно предмет.
+      rows: (e.rows as any[]).sort((x, y) => y.value - x.value),
       kind: s?.kind ?? null, entityId: s?.entity_id ?? null, entityName: s?.entity_name ?? null,
       supply: st && st.supply > 0 ? st.supply : estimate,
       left: st ? st.left : null,

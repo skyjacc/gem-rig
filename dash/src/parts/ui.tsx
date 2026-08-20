@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { icon as steamIcon } from '../lib/api.ts'
 
 // Кирпичи, снятые с osint-catalog.xyz один в один.
@@ -11,8 +11,10 @@ import { icon as steamIcon } from '../lib/api.ts'
 //
 // Ничего не додумываем: если у них нет тени — её нет и здесь.
 
-export function Card({ hover, className = '', children }: { hover?: boolean; className?: string; children: ReactNode }) {
-  return <div className={`card ${hover ? 'card-hover' : ''} ${className}`}>{children}</div>
+export function Card({ hover, className = '', style, children }: {
+  hover?: boolean; className?: string; style?: React.CSSProperties; children: ReactNode
+}) {
+  return <div className={`card ${hover ? 'card-hover' : ''} ${className}`} style={style}>{children}</div>
 }
 
 export function Label({ className = '', children }: { className?: string; children: ReactNode }) {
@@ -144,3 +146,39 @@ export function Head({ title, note, right }: { title: string; note?: ReactNode; 
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="px-4 py-10 text-center text-[13px] text-muted-foreground">{children}</div>
 }
+
+// Число, которое катится к новому значению, а не прыгает. На панели,
+// где счётчик меняется раз в секунду, прыжок читается как помеха,
+// а качение — как работа.
+export function Num({ value, className = '', style }: { value: number; className?: string; style?: React.CSSProperties }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const from = useRef(value)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const a = from.current
+    const b = value
+    from.current = value
+    if (a === b) return
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = fmt(b)
+      return
+    }
+    const dur = Math.min(900, 220 + Math.abs(b - a) * 1.6)
+    const t0 = performance.now()
+    let raf = 0
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / dur)
+      const e = 1 - Math.pow(1 - p, 3)
+      el.textContent = fmt(Math.round(a + (b - a) * e))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+
+  return <span ref={ref} className={`tnum ${className}`} style={style}>{fmt(value)}</span>
+}
+
+const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')

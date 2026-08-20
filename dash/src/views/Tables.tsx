@@ -1,71 +1,7 @@
 import { useMemo, useState } from 'react'
-import { ExternalLink, Search } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { clock, nf, useJson, type QueueData, type State } from '../lib/api.ts'
-import { Bar, Card, Dot, Empty, Field, Head, ItemIcon, Segmented } from '../parts/ui.tsx'
-
-// ── мои гемы ──
-
-export function Gems({ state }: { state: State }) {
-  const [q, setQ] = useState('')
-  const goal = state.autopilot.goal || 2000
-  const rows = state.mine.filter(m => m.gem !== '—' && m.gem.toLowerCase().includes(q.toLowerCase()))
-
-  return (
-    <div>
-      <Head
-        title="Мои гемы"
-        note={`${nf(rows.length)} видов · ${nf(state.inv.items)} вещей`}
-        right={<Field value={q} onChange={setQ} placeholder="поиск" width="w-64" />}
-      />
-      <Card>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="ui-label border-b border-white/[0.06] text-left text-muted-foreground/75">
-              <th className="px-4 py-2 font-medium">гем</th>
-              <th className="px-4 py-2 font-medium">вещей</th>
-              <th className="px-4 py-2 font-medium">надето</th>
-              <th className="px-4 py-2 font-medium">счётчик</th>
-              <th className="px-4 py-2 font-medium">разброс</th>
-              <th className="px-4 py-2 font-medium">потолок</th>
-              <th className="px-4 py-2 font-medium">осталось</th>
-              <th className="w-[160px] px-4 py-2 font-medium">до {nf(goal)}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(m => {
-              const done = m.max >= goal
-              const capped = m.supply != null && m.supply < goal
-              return (
-                <tr key={m.gem} className="border-b border-white/[0.06] transition-colors last:border-0 hover:bg-white/[0.03]">
-                  <td className="px-4 py-2.5">
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <ItemIcon hash={m.icon} size={24} />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{m.gem}</span>
-                        {m.heroes ? <span className="block truncate text-[11px] text-muted-foreground/60">{m.heroes}</span> : null}
-                      </span>
-                    </span>
-                  </td>
-                  <td className="tnum px-4 py-2.5 font-mono">{m.items}</td>
-                  <td className="tnum px-4 py-2.5 font-mono text-muted-foreground">{m.equipped || '—'}</td>
-                  <td className="tnum px-4 py-2.5 font-mono" style={{ color: done ? 'var(--ok)' : undefined }}>{nf(m.max)}</td>
-                  <td className="tnum px-4 py-2.5 font-mono text-muted-foreground">{m.min === m.max ? '—' : `${nf(m.min ?? 0)}…${nf(m.max)}`}</td>
-                  <td className="tnum px-4 py-2.5 font-mono" style={{ color: capped ? 'var(--warn)' : undefined }}>
-                    {m.supply != null ? nf(m.supply) : '—'}
-                    {m.supplyKind === 'estimated' ? <span className="text-muted-foreground/60"> оц.</span> : null}
-                  </td>
-                  <td className="tnum px-4 py-2.5 font-mono text-muted-foreground">{m.left != null ? nf(m.left) : '—'}</td>
-                  <td className="px-4 py-2.5"><Bar pct={(m.max / goal) * 100} tone={done ? 'ok' : capped ? 'warn' : 'run'} /></td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-        {rows.length === 0 ? <Empty>ничего не нашлось</Empty> : null}
-      </Card>
-    </div>
-  )
-}
+import { Card, Dot, Empty, Field, Head, ItemIcon, Segmented } from '../parts/ui.tsx'
 
 // ── очередь ──
 

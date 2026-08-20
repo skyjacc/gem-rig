@@ -1,169 +1,561 @@
-import { useMemo, useState } from 'react'
-import { nf, useJson, type GraphData, type State } from '../lib/api.ts'
-import { Card, Empty, Head, ItemIcon, Segmented } from '../parts/ui.tsx'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Crosshair, GitBranch, Minus, Network, Plus, Search } from 'lucide-react'
+import { icon as steamIcon, nf, useJson, type GraphData, type State } from '../lib/api.ts'
+import { seed, step, type Link, type Sim } from '../lib/force.ts'
 
-// Граф пересечений.
+// Граф.
 //
-// Он показывает не «кто с кем играл», а что выгодно держать вместе.
-// Одно сообщение поднимает ВСЕ подходящие вещи разом, поэтому матч,
-// входящий в наборы двух сущностей, стоит одну отправку, а счётчик даёт
-// обеим. Толстое ребро — дешёвые счётчики.
+// Оформление узла и связи снято с osint-catalog.xyz/graph: точка радиусом
+// 1,35, подпись с обводкой цветом фона (paint-order: stroke), связь —
+// кубическая кривая волосяной толщины, всё на прозрачном полотне с панорамой
+// и зумом. Никаких карточек и рамок: читается типографика, а не коробки.
 //
-// Раскладка по кругу, а не физикой: на полусотне узлов физика даёт кашу
-// и прыгает при каждом обновлении, а круг стоит на месте и читается.
+// Два режима, потому что данные разной природы.
+//
+//   Дерево   аккаунт → гем → турниры. Из чего состоит потолок гема.
+//   Сеть     сущности и общие матчи. Что выгодно держать вместе:
+//            общий матч — одна отправка, счётчик обеим сущностям.
+//
+// Их граф — дерево. Наше дерево сделано так же. Сеть — то, чего у них нет,
+// потому что у них нет пересечений.
 
-const SIZE = 860
-const R = 320
-const CX = SIZE / 2
-const CY = SIZE / 2
+const FG = '#f4f4f5'
+const DIM = '#d4d4d8'
+const BG = '#0a0a0a'
+
+type TreeNode = {
+  id: string
+  label: string
+  kind: 'root' | 'gem' | 'league'
+  value: number
+  burned?: number
+  counter?: number
+  icon?: string
+  children?: TreeNode[]
+}
+
+type View = { x: number; y: number; k: number }
 
 export function Graph({ state }: { state: State }) {
-  const [scope, setScope] = useState<'owned' | 'all'>('owned')
-  const [hot, setHot] = useState<string | null>(null)
-  const { data } = useJson<GraphData>('/api/graph?scope=' + scope, state.ts)
+  const [mode, setMode] = useState<'tree' | 'net'>('tree')
+  const wrap = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ w: 1200, h: 800 })
 
-  const laid = useMemo(() => {
-    if (!data?.nodes?.length) return null
-    // Порядок — по пулу: соседи на круге получаются сопоставимого размера.
-    const nodes = [...data.nodes].sort((a, b) => b.pool - a.pool)
-    const step = (Math.PI * 2) / nodes.length
-    const pos = new Map<string, { x: number; y: number; a: number }>()
-    nodes.forEach((n, i) => {
-      const a = -Math.PI / 2 + i * step
-      pos.set(n.key, { x: CX + Math.cos(a) * R, y: CY + Math.sin(a) * R, a })
+  useEffect(() => {
+    if (!wrap.current) return
+    const ro = new ResizeObserver(([e]) => {
+      const r = e.contentRect
+      setSize({ w: Math.max(400, r.width), h: Math.max(320, r.height) })
     })
-    const max = Math.max(...data.edges.map(e => e.shared), 1)
-    return { nodes, pos, max }
-  }, [data])
-
-  if (!data) return <Card><Empty>считаю пересечения…</Empty></Card>
-  if (!laid) return <Card><Empty>нет сущностей с известным набором матчей</Empty></Card>
-
-  const { nodes, pos, max } = laid
-  const goal = state.autopilot.goal || 2000
-  const shown = hot ? data.edges.filter(e => e.a === hot || e.b === hot) : data.edges
-  const pairs = data.edges.slice(0, 14)
+    ro.observe(wrap.current)
+    return () => ro.disconnect()
+  }, [])
 
   return (
-    <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[1fr_380px]">
-      <div>
-        <Head
-          title="Пересечения"
-          note={`${nf(nodes.length)} сущностей · ${nf(data.edges.length)} связей`}
-          right={
-            <Segmented
-              value={scope}
-              items={[{ id: 'owned' as const, label: 'мои' }, { id: 'all' as const, label: 'весь каталог' }]}
-              onPick={setScope}
-            />
-          }
-        />
-        <Card className="overflow-hidden">
-          <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="block h-auto w-full" onMouseLeave={() => setHot(null)}>
-            {/* рёбра: толщина — число общих матчей */}
-            {shown.map(e => {
-              const a = pos.get(e.a)!
-              const b = pos.get(e.b)!
-              if (!a || !b) return null
-              const w = 0.6 + (e.shared / max) * 5
-              const dim = hot && e.a !== hot && e.b !== hot
-              return (
-                <path
-                  key={e.a + e.b}
-                  d={`M ${a.x} ${a.y} Q ${CX} ${CY} ${b.x} ${b.y}`}
-                  fill="none"
-                  stroke="white"
-                  strokeWidth={w}
-                  strokeOpacity={dim ? 0.03 : 0.10 + (e.shared / max) * 0.28}
+    <div ref={wrap} className="relative h-full w-full overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center p-3">
+        <div className="pointer-events-auto inline-flex items-stretch">
+          <Ctl active={mode === 'tree'} onClick={() => setMode('tree')}>
+            <GitBranch className="h-3.5 w-3.5" />
+            <span>дерево</span>
+          </Ctl>
+          <Ctl active={mode === 'net'} onClick={() => setMode('net')} join>
+            <Network className="h-3.5 w-3.5" />
+            <span>сеть</span>
+          </Ctl>
+        </div>
+      </div>
+
+      {mode === 'tree'
+        ? <Tree state={state} size={size} />
+        : <Net state={state} size={size} />}
+    </div>
+  )
+}
+
+function Ctl({
+  active, join, onClick, children,
+}: { active?: boolean; join?: boolean; onClick?: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        'floating ui-label inline-flex h-9 items-center gap-1.5 px-3 transition-colors ' +
+        (join ? 'border-l border-white/[0.08] ' : '') +
+        (active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
+      }
+      style={active ? { background: 'rgba(255,255,255,0.08)' } : undefined}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ── общая механика полотна: панорама, зум, вписать ──
+
+function useCanvas(size: { w: number; h: number }, extent: () => { x1: number; y1: number; x2: number; y2: number } | null) {
+  const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 })
+  const drag = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null)
+
+  const fit = useCallback(() => {
+    const e = extent()
+    if (!e) return
+    const pad = 90
+    const w = Math.max(1, e.x2 - e.x1)
+    const h = Math.max(1, e.y2 - e.y1)
+    const k = Math.min((size.w - pad * 2) / w, (size.h - pad * 2) / h, 1.6)
+    setView({
+      k,
+      x: size.w / 2 - ((e.x1 + e.x2) / 2) * k,
+      y: size.h / 2 - ((e.y1 + e.y2) / 2) * k,
+    })
+  }, [extent, size.w, size.h])
+
+  const onDown = (e: React.PointerEvent) => {
+    if ((e.target as Element).closest('[data-node]')) return
+    drag.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+  }
+  const onMove = (e: React.PointerEvent) => {
+    if (!drag.current) return
+    setView(v => ({ ...v, x: drag.current!.vx + (e.clientX - drag.current!.x), y: drag.current!.vy + (e.clientY - drag.current!.y) }))
+  }
+  const onUp = () => { drag.current = null }
+
+  const zoom = (factor: number, at?: { x: number; y: number }) => {
+    setView(v => {
+      const k = Math.max(0.15, Math.min(4, v.k * factor))
+      const px = at?.x ?? size.w / 2
+      const py = at?.y ?? size.h / 2
+      return { k, x: px - ((px - v.x) / v.k) * k, y: py - ((py - v.y) / v.k) * k }
+    })
+  }
+
+  const onWheel = (e: React.WheelEvent) => {
+    const box = (e.currentTarget as Element).getBoundingClientRect()
+    zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, { x: e.clientX - box.left, y: e.clientY - box.top })
+  }
+
+  return { view, setView, fit, zoom, handlers: { onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp, onPointerCancel: onUp, onWheel } }
+}
+
+function Zoomer({ onZoom, onFit }: { onZoom: (f: number) => void; onFit: () => void }) {
+  return (
+    <div className="pointer-events-auto absolute bottom-3 right-3 z-20 flex flex-col">
+      <Ctl onClick={() => onZoom(1.25)}><Plus className="h-3.5 w-3.5" /></Ctl>
+      <Ctl onClick={() => onZoom(1 / 1.25)}><Minus className="h-3.5 w-3.5" /></Ctl>
+      <Ctl onClick={onFit}><Crosshair className="h-3.5 w-3.5" /></Ctl>
+    </div>
+  )
+}
+
+// Подпись как у них: обводка цветом фона, чтобы читалась поверх связей.
+function Label({
+  x, y, anchor, text, size = 12.5, weight = 400, fill = DIM, opacity = 1,
+}: {
+  x: number; y: number; anchor: 'start' | 'end'; text: string
+  size?: number; weight?: number; fill?: string; opacity?: number
+}) {
+  return (
+    <text
+      x={x} y={y}
+      dominantBaseline="middle"
+      textAnchor={anchor}
+      fill={fill}
+      stroke={BG}
+      strokeWidth={3}
+      paintOrder="stroke"
+      strokeLinejoin="round"
+      fontSize={size}
+      fontWeight={weight}
+      letterSpacing="-0.015em"
+      opacity={opacity}
+      style={{ pointerEvents: 'none' }}
+    >
+      {text}
+    </text>
+  )
+}
+
+// ── дерево ──
+
+const LEVEL = 340
+const ROW = 26
+
+type Placed = { node: TreeNode; x: number; y: number; depth: number; parent: Placed | null }
+
+function Tree({ state, size }: { state: State; size: { w: number; h: number } }) {
+  const { data } = useJson<TreeNode>('/api/tree?top=12', state.ts)
+  const [open, setOpen] = useState<Set<string>>(new Set(['root']))
+  const [hot, setHot] = useState<string | null>(null)
+
+  const placed = useMemo(() => {
+    if (!data) return []
+    const out: Placed[] = []
+    let y = 0
+    const walk = (n: TreeNode, depth: number, parent: Placed | null) => {
+      const kids = open.has(n.id) ? (n.children ?? []) : []
+      const first = y
+      if (!kids.length) {
+        const p: Placed = { node: n, x: depth * LEVEL, y: y * ROW, depth, parent }
+        out.push(p)
+        y++
+        return p
+      }
+      const self: Placed = { node: n, x: depth * LEVEL, y: 0, depth, parent }
+      out.push(self)
+      const children = kids.map(k => walk(k, depth + 1, self))
+      self.y = (children[0].y + children[children.length - 1].y) / 2
+      void first
+      return self
+    }
+    walk(data, 0, null)
+    return out
+  }, [data, open])
+
+  const extent = useCallback(() => {
+    if (!placed.length) return null
+    const xs = placed.map(p => p.x)
+    const ys = placed.map(p => p.y)
+    return { x1: Math.min(...xs) - 160, y1: Math.min(...ys), x2: Math.max(...xs) + 220, y2: Math.max(...ys) }
+  }, [placed])
+
+  const { view, fit, zoom, handlers } = useCanvas(size, extent)
+  const fitted = useRef(false)
+  useEffect(() => {
+    if (!fitted.current && placed.length) { fitted.current = true; fit() }
+  }, [placed.length, fit])
+
+  const toggle = (id: string) => setOpen(s => {
+    const n = new Set(s)
+    n.has(id) ? n.delete(id) : n.add(id)
+    return n
+  })
+
+  const goal = state.autopilot.goal || 2000
+
+  return (
+    <>
+      <svg
+        className="h-full w-full touch-none select-none"
+        {...handlers}
+        style={{ cursor: 'grab' }}
+      >
+        <defs>
+          <filter id="logo-shadow" x="-60%" y="-60%" width="220%" height="220%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000" floodOpacity="0.72" />
+          </filter>
+        </defs>
+
+        <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
+          {placed.filter(p => p.parent).map(p => {
+            const a = p.parent!
+            const mx = a.x + (p.x - a.x) * 0.48
+            const dim = hot ? hot !== p.node.id && hot !== a.node.id : false
+            return (
+              <path
+                key={'e' + p.node.id}
+                d={`M ${a.x} ${a.y} C ${mx} ${a.y}, ${p.x - (p.x - mx)} ${p.y}, ${p.x} ${p.y}`}
+                fill="none"
+                stroke={DIM}
+                strokeWidth={0.75}
+                strokeLinecap="round"
+                opacity={dim ? 0.14 : 0.52}
+                className="tree-edge"
+              />
+            )
+          })}
+
+          {placed.map(p => {
+            const n = p.node
+            const kids = n.children?.length ?? 0
+            const isOpen = open.has(n.id)
+            const root = n.kind === 'root'
+            const gem = n.kind === 'gem'
+            const dim = hot ? hot !== n.id && p.parent?.node.id !== hot && !(n.children ?? []).some(c => c.id === hot) : false
+            const label = n.label + (n.kind === 'league' ? '  ' + nf(n.value) : gem ? '  ' + nf(n.counter ?? 0) + ' / ' + nf(goal) : '')
+            return (
+              <g
+                key={n.id}
+                data-node
+                transform={`translate(${p.x} ${p.y})`}
+                opacity={dim ? 0.32 : 1}
+                style={{ cursor: kids ? 'pointer' : 'default' }}
+                onMouseEnter={() => setHot(n.id)}
+                onMouseLeave={() => setHot(null)}
+                onClick={() => kids && toggle(n.id)}
+              >
+                <rect x={root ? -140 : -10} y={-13} width={root ? 150 : 260} height={26} fill="transparent" />
+                {gem && n.icon ? (
+                  <image
+                    href={steamIcon(n.icon, 64)}
+                    x={-13} y={-13} width={26} height={26}
+                    preserveAspectRatio="xMidYMid slice"
+                    filter="url(#logo-shadow)"
+                    opacity={0.95}
+                  />
+                ) : (
+                  <circle r={1.35} fill={root ? FG : DIM} />
+                )}
+                {kids ? (
+                  <circle cx={gem ? 236 : 244} r={1.35} fill={FG} opacity={isOpen ? 0.9 : 0.25} className="out-dot" />
+                ) : null}
+                <Label
+                  x={root ? -22 : gem ? 20 : 14}
+                  y={0}
+                  anchor={root ? 'end' : 'start'}
+                  text={label}
+                  size={root ? 13 : gem ? 13 : 12.5}
+                  weight={root || gem ? 500 : 400}
+                  fill={root || gem ? FG : DIM}
                 />
-              )
-            })}
+                {gem && n.burned ? (
+                  <rect x={20} y={9} width={Math.min(210, (n.burned / Math.max(1, n.value)) * 210)} height={1.5} fill={FG} opacity={0.35} />
+                ) : null}
+              </g>
+            )
+          })}
+        </g>
+      </svg>
+      <Zoomer onZoom={zoom} onFit={fit} />
+      <Hint text="клик по узлу — раскрыть · тянуть — панорама · колесо — зум" />
+    </>
+  )
+}
 
-            {/* узлы */}
-            {nodes.map(n => {
-              const p = pos.get(n.key)!
-              const r = 10 + Math.sqrt(n.owned) * 5
-              const dim = hot && hot !== n.key && !data.edges.some(e =>
-                (e.a === hot && e.b === n.key) || (e.b === hot && e.a === n.key))
-              const done = n.counter >= goal
-              const spent = n.pool ? n.burned / n.pool : 0
-              const right = Math.cos(p.a) > -0.1
-              return (
-                <g
-                  key={n.key}
-                  opacity={dim ? 0.25 : 1}
-                  onMouseEnter={() => setHot(n.key)}
-                  style={{ cursor: 'default' }}
-                >
-                  {/* доля израсходованного — дуга вокруг узла */}
-                  <circle cx={p.x} cy={p.y} r={r + 4} fill="none" stroke="white" strokeOpacity={0.08} strokeWidth={2} />
-                  <circle
-                    cx={p.x} cy={p.y} r={r + 4}
-                    fill="none"
-                    stroke={done ? 'var(--ok)' : 'oklch(70.8% 0 0)'}
-                    strokeWidth={2}
-                    strokeDasharray={`${2 * Math.PI * (r + 4) * spent} ${2 * Math.PI * (r + 4)}`}
-                    transform={`rotate(-90 ${p.x} ${p.y})`}
-                  />
-                  <circle
-                    cx={p.x} cy={p.y} r={r}
-                    fill={n.owned ? 'oklch(26.9% 0 0)' : 'oklch(17% 0 0)'}
-                    stroke="white"
-                    strokeOpacity={n.owned ? 0.22 : 0.08}
-                  />
-                  {n.owned ? (
-                    <text x={p.x} y={p.y + 4} textAnchor="middle" className="fill-white/80 font-mono" fontSize={11}>
-                      {n.owned}
-                    </text>
-                  ) : null}
-                  <text
-                    x={p.x + (right ? r + 10 : -(r + 10))}
-                    y={p.y + 4}
-                    textAnchor={right ? 'start' : 'end'}
-                    fontSize={13}
-                    className={n.owned ? 'fill-white/85' : 'fill-white/40'}
-                  >
-                    {n.key}
-                  </text>
-                </g>
-              )
-            })}
-          </svg>
-        </Card>
-        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-          Размер — сколько вещей с этим гемом лежит в инвентаре. Кольцо — доля пула,
-          израсходованная этим аккаунтом. Толщина связи — общие матчи: они уходят одной
-          отправкой и поднимают счётчик обеим сущностям.
-        </p>
+// ── сеть ──
+
+function Net({ state, size }: { state: State; size: { w: number; h: number } }) {
+  const [scope, setScope] = useState<'owned' | 'all'>('owned')
+  const [q, setQ] = useState('')
+  const { data } = useJson<GraphData>('/api/graph?scope=' + scope, state.ts)
+  const [, force] = useState(0)
+  const sims = useRef<Sim[]>([])
+  const [hot, setHot] = useState<string | null>(null)
+  const [pick, setPick] = useState<string | null>(null)
+  const alpha = useRef(1)
+  const grab = useRef<{ key: string; dx: number; dy: number } | null>(null)
+
+  const links: Link[] = useMemo(() => {
+    if (!data?.edges?.length) return []
+    const max = Math.max(...data.edges.map(e => e.shared), 1)
+    return data.edges.map(e => ({ a: e.a, b: e.b, w: e.shared / max }))
+  }, [data])
+
+  useEffect(() => {
+    if (!data?.nodes?.length) return
+    sims.current = seed(data.nodes.map(n => n.key), size.w, size.h)
+    alpha.current = 1
+  }, [data, size.w, size.h])
+
+  // Считаем, пока раскладка не устоялась. Устоялась — засыпаем: держать
+  // шестьдесят кадров в секунду ради неподвижной картинки незачем.
+  useEffect(() => {
+    let raf = 0
+    const loop = () => {
+      const busy = alpha.current > 0.03 || grab.current
+      if (sims.current.length && busy) {
+        step(sims.current, links, alpha.current, size.w, size.h)
+        if (!grab.current) alpha.current *= 0.992
+        force(n => n + 1)
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [links, size.w, size.h])
+
+  const extent = useCallback(() => {
+    if (!sims.current.length) return null
+    const xs = sims.current.map(s => s.x)
+    const ys = sims.current.map(s => s.y)
+    return { x1: Math.min(...xs), y1: Math.min(...ys), x2: Math.max(...xs), y2: Math.max(...ys) }
+  }, [])
+
+  const { view, fit, zoom, handlers } = useCanvas(size, extent)
+
+  const toWorld = (e: React.PointerEvent) => {
+    const box = (e.currentTarget as Element).getBoundingClientRect()
+    return { x: (e.clientX - box.left - view.x) / view.k, y: (e.clientY - box.top - view.y) / view.k }
+  }
+
+  const onNodeDown = (key: string) => (e: React.PointerEvent) => {
+    e.stopPropagation()
+    const s = sims.current.find(n => n.key === key)
+    if (!s) return
+    const p = toWorld(e)
+    grab.current = { key, dx: s.x - p.x, dy: s.y - p.y }
+    s.fixed = true
+    alpha.current = Math.max(alpha.current, 0.35)
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+  }
+  const onNodeMove = (e: React.PointerEvent) => {
+    if (!grab.current) return
+    const s = sims.current.find(n => n.key === grab.current!.key)
+    if (!s) return
+    const p = toWorld(e)
+    s.x = p.x + grab.current.dx
+    s.y = p.y + grab.current.dy
+  }
+  const onNodeUp = () => { grab.current = null }
+
+  if (!data) return <Hint text="считаю пересечения…" />
+
+  const goal = state.autopilot.goal || 2000
+  const byKey = new Map(data.nodes.map(n => [n.key, n]))
+  const pos = new Map(sims.current.map(s => [s.key, s]))
+  const near = (k: string) => hot === k || data.edges.some(e =>
+    (e.a === hot && e.b === k) || (e.b === hot && e.a === k))
+  const chosen = pick ? byKey.get(pick) : null
+  const match = (k: string) => !q || k.toLowerCase().includes(q.toLowerCase())
+
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center px-3">
+        <div className="pointer-events-auto inline-flex items-stretch">
+          <Ctl active={scope === 'owned'} onClick={() => setScope('owned')}>мои</Ctl>
+          <Ctl active={scope === 'all'} onClick={() => setScope('all')} join>весь каталог</Ctl>
+          <span className="floating inline-flex h-9 items-center gap-2 border-l border-white/[0.08] px-3">
+            <Search className="h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="найти"
+              className="ui-label w-28 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/50"
+            />
+          </span>
+        </div>
       </div>
 
-      <div>
-        <Head title="Выгодные пары" note="общих матчей" />
-        <Card>
-          {pairs.length === 0 ? <Empty>пересечений нет</Empty> : (
-            <ul className="divide-y divide-white/[0.06]">
-              {pairs.map(e => {
-                const a = nodes.find(n => n.key === e.a)
-                const b = nodes.find(n => n.key === e.b)
-                return (
-                  <li
-                    key={e.a + e.b}
-                    className="flex items-center gap-2 px-4 py-2.5 text-[13px] transition-colors hover:bg-white/[0.03]"
-                    onMouseEnter={() => setHot(e.a)}
-                    onMouseLeave={() => setHot(null)}
-                  >
-                    <ItemIcon hash={a?.icon ?? ''} size={20} />
-                    <span className="min-w-0 flex-1 truncate">{e.a}</span>
-                    <ItemIcon hash={b?.icon ?? ''} size={20} />
-                    <span className="min-w-0 flex-1 truncate">{e.b}</span>
-                    <span className="tnum shrink-0 font-mono">{nf(e.shared)}</span>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </Card>
-      </div>
+      <svg
+        className="h-full w-full touch-none select-none"
+        {...handlers}
+        onPointerMove={e => { handlers.onPointerMove(e); onNodeMove(e) }}
+        onPointerUp={e => { handlers.onPointerUp(); onNodeUp(); void e }}
+        style={{ cursor: 'grab' }}
+      >
+        <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
+          {data.edges.map(e => {
+            const a = pos.get(e.a)
+            const b = pos.get(e.b)
+            if (!a || !b) return null
+            const w = 0.75 + (e.shared / Math.max(...data.edges.map(x => x.shared), 1)) * 2.6
+            const dim = hot ? !(e.a === hot || e.b === hot) : false
+            const mx = (a.x + b.x) / 2
+            const my = (a.y + b.y) / 2
+            const off = Math.hypot(b.x - a.x, b.y - a.y) * 0.12
+            return (
+              <path
+                key={e.a + e.b}
+                d={`M ${a.x} ${a.y} Q ${mx + off * 0.2} ${my - off} ${b.x} ${b.y}`}
+                fill="none"
+                stroke={DIM}
+                strokeWidth={w}
+                strokeLinecap="round"
+                opacity={dim ? 0.08 : 0.34}
+              />
+            )
+          })}
+
+          {data.nodes.map(n => {
+            const p = pos.get(n.key)
+            if (!p) return null
+            const dim = (hot && !near(n.key)) || !match(n.key)
+            const done = n.counter >= goal
+            const spent = n.pool ? n.burned / n.pool : 0
+            const R = n.owned ? 13 + Math.min(9, Math.sqrt(n.owned) * 2.2) : 8
+            return (
+              <g
+                key={n.key}
+                data-node
+                transform={`translate(${p.x} ${p.y})`}
+                opacity={dim ? 0.22 : 1}
+                style={{ cursor: 'pointer', transition: 'opacity .18s' }}
+                onMouseEnter={() => setHot(n.key)}
+                onMouseLeave={() => setHot(null)}
+                onPointerDown={onNodeDown(n.key)}
+                onClick={() => setPick(pick === n.key ? null : n.key)}
+              >
+                {n.owned && n.icon ? (
+                  <>
+                    <circle r={R + 3.5} fill="none" stroke={FG} strokeOpacity={0.1} strokeWidth={2} />
+                    <circle
+                      r={R + 3.5}
+                      fill="none"
+                      stroke={done ? 'oklch(69.6% 0.17 162.48)' : FG}
+                      strokeOpacity={done ? 0.9 : 0.5}
+                      strokeWidth={2}
+                      strokeDasharray={`${2 * Math.PI * (R + 3.5) * spent} ${2 * Math.PI * (R + 3.5)}`}
+                      transform="rotate(-90)"
+                    />
+                    <clipPath id={'clip-' + n.key.replace(/\W/g, '')}>
+                      <circle r={R} />
+                    </clipPath>
+                    <image
+                      href={steamIcon(n.icon, 128)}
+                      x={-R} y={-R} width={R * 2} height={R * 2}
+                      preserveAspectRatio="xMidYMid slice"
+                      clipPath={`url(#clip-${n.key.replace(/\W/g, '')})`}
+                    />
+                  </>
+                ) : (
+                  <circle r={2.4} fill={DIM} opacity={0.75} />
+                )}
+                <Label
+                  x={0}
+                  y={n.owned ? R + 14 : 12}
+                  anchor="start"
+                  text={n.key}
+                  size={n.owned ? 13 : 12}
+                  weight={n.owned ? 500 : 400}
+                  fill={n.owned ? FG : DIM}
+                />
+              </g>
+            )
+          })}
+        </g>
+      </svg>
+
+      {chosen ? (
+        <div className="floating absolute bottom-3 left-3 z-20 w-[280px] p-4">
+          <div className="flex items-center gap-2.5">
+            {chosen.icon ? <img src={steamIcon(chosen.icon, 64)} alt="" className="h-8 w-8 border border-white/[0.06]" /> : null}
+            <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{chosen.key}</span>
+          </div>
+          <dl className="mt-3 space-y-1.5 text-[12px]">
+            <Row k="счётчик" v={nf(chosen.counter) + ' / ' + nf(goal)} />
+            <Row k="потолок" v={nf(chosen.pool)} />
+            <Row k="сожжено" v={nf(chosen.burned)} />
+            <Row k="вещей" v={chosen.owned ? String(chosen.owned) : 'нет'} />
+            {chosen.price != null ? <Row k="цена" v={'$' + chosen.price.toFixed(2)} /> : null}
+          </dl>
+          <div className="mt-3 text-[12px] text-muted-foreground">
+            общих матчей с соседями:{' '}
+            {nf(data.edges.filter(e => e.a === chosen.key || e.b === chosen.key).reduce((n, e) => n + e.shared, 0))}
+          </div>
+        </div>
+      ) : null}
+
+      <Zoomer onZoom={zoom} onFit={fit} />
+      <Hint text="тянуть узел — закрепить · фон — панорама · колесо — зум" />
+    </>
+  )
+}
+
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-muted-foreground">{k}</dt>
+      <dd className="tnum font-mono">{v}</dd>
+    </div>
+  )
+}
+
+function Hint({ text }: { text: string }) {
+  return (
+    <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 text-[11px] text-muted-foreground/45">
+      {text}
     </div>
   )
 }

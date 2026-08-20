@@ -14,7 +14,7 @@ import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
 import { isBurned } from './db.ts'
 import { listFiles, senderState, start, statusFile, stop } from './sender.ts'
-import { accountList, accountsApi, graph, queuePreview } from './api.ts'
+import { accountList, accountsApi, graph, queuePreview, tree } from './api.ts'
 import { ACCOUNT, activeId as activeAccountId } from './accounts.ts'
 import { roadmap } from './roadmap.ts'
 import { autopilotState, setAutopilot, tick } from './autopilot.ts'
@@ -90,6 +90,7 @@ app.post('/api/autopilot', async (req: any) => {
   if (b.delay !== undefined) patch.delay = Number(b.delay)
   if (b.auto !== undefined) patch.auto = !!b.auto
   if (b.target !== undefined) patch.target = b.target === null ? null : Number(b.target)
+  if (b.waves !== undefined) patch.waves = Number(b.waves)
   const r = setAutopilot(id, patch)
   push()
   return r
@@ -133,6 +134,7 @@ app.post('/api/accounts/unlink', async (req: any) => {
 // ── граф и очередь ──
 app.get('/api/graph', async (req: any) => graph(req.query?.scope === 'all' ? 'all' : 'owned'))
 app.get('/api/queue', async (req: any) => queuePreview(Number(req.query?.limit) || 200))
+app.get('/api/tree', async (req: any) => tree(Number(req.query?.top) || 12))
 
 app.post('/api/sender/stop', async (req: any) => {
   const r = stop(String(req.body?.id ?? activeAccountId()))

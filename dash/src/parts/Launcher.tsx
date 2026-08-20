@@ -1,25 +1,36 @@
 import { useState } from 'react'
-import { Play, Square, Wand2 } from 'lucide-react'
+import { Play, Shuffle, Square, Wand2 } from 'lucide-react'
 import { nf, post, span, type State, type Unit } from '../lib/api.ts'
-import { Bar, Button, Card, Dot, Field, Label, Segmented } from './ui.tsx'
+import { Bar, Button, Card, Dot, Field, Label, Num, Segmented } from './ui.tsx'
 
 // Запуск.
 //
-// Тумблер «включить и жечь всё» — не единственный режим. Заказ на ровно
-// N отправок нужен так же часто: проверить темп, добить один гем до круглого
-// числа, потратить полчаса и не больше. Работник сам встанет на цифре.
+// Три вещи, которых не было в тумблере.
 //
-// Пауза по умолчанию подбирается: пока GC отвечает на каждую отправку,
-// темп поднимается; появились молчания — это потолок, отходим.
+// Цель. Заказ на ровно N отправок нужен так же часто, как «жечь всё»:
+// проверить темп, добить гем до нужного числа, потратить полчаса.
+//
+// Живое число. Круглые 1000 и 2000 естественная игра почти не даёт, и на
+// витрине они читаются ровно как то, чем являются. Заказ превращается
+// в 1147: не ниже заказанного, но и не круглое.
+//
+// Разброс. Одно сообщение поднимает ВСЕ подходящие вещи разом, поэтому
+// двадцать девять предметов идут в ногу и приходят к одному числу.
+// Разные числа получаются только партиями: счётчик вещи равен числу
+// отправок ПОСЛЕ её появления. Работник считает моменты и говорит,
+// когда добавлять следующую партию.
 
 const PRESET: (number | null)[] = [100, 500, 2000, null]
 const MANUAL: [number, string][] = [[500, '0,5 с'], [1000, '1 с'], [2000, '2 с'], [5000, '5 с']]
+const WAVES = [1, 2, 3, 4, 5]
 
 export function Launcher({ state, unit }: { state: State; unit: Unit }) {
-  const [target, setTarget] = useState<number | null>(unit.target)
+  const [target, setTarget] = useState<number | null>(unit.ordered ?? unit.target)
   const [own, setOwn] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const pace = state.autopilot.pace
+  const plan = unit.plan ?? []
+  const waves = unit.waves ?? 1
 
   const run = async (on: boolean) => {
     setErr(null)
@@ -28,10 +39,8 @@ export function Launcher({ state, unit }: { state: State; unit: Unit }) {
     if (r?.error) setErr(String(r.error))
   }
 
-  const pct = unit.target ? (unit.done / unit.target) * 100 : 0
-
   return (
-    <Card className="p-4">
+    <Card className="rise p-4">
       <div className="flex flex-wrap items-center gap-2">
         {unit.enabled ? (
           <Button tone="danger" onClick={() => run(false)} className="min-w-[132px]">
@@ -66,6 +75,15 @@ export function Launcher({ state, unit }: { state: State; unit: Unit }) {
 
         <span className="mx-1 h-6 w-px bg-white/[0.08]" />
 
+        <Label>разброс</Label>
+        <Segmented
+          value={String(waves)}
+          items={WAVES.map(w => ({ id: String(w), label: w === 1 ? 'нет' : w + ' партии' }))}
+          onPick={id => post('/api/autopilot', { id: unit.id, waves: Number(id), target: own.trim() ? Number(own) : target })}
+        />
+
+        <span className="mx-1 h-6 w-px bg-white/[0.08]" />
+
         <Label>пауза</Label>
         <Segmented
           value={unit.auto ? 'auto' : String(unit.delay)}
@@ -92,12 +110,51 @@ export function Launcher({ state, unit }: { state: State; unit: Unit }) {
       {unit.target ? (
         <div className="mt-3">
           <div className="mb-1 flex items-baseline justify-between text-[12px]">
-            <span className="text-muted-foreground">заказано {nf(unit.target)}</span>
+            <span className="text-muted-foreground">
+              остановлюсь на <span className="tnum font-mono text-foreground">{nf(unit.target)}</span>
+              {unit.ordered && unit.ordered !== unit.target ? ` — заказ ${nf(unit.ordered)}, круглое не берём` : ''}
+            </span>
             <span className="tnum font-mono">
-              {nf(unit.done)} · осталось {nf(Math.max(0, unit.target - unit.done))} · {span(Math.round((unit.target - unit.done) * unit.delay / 60000))}
+              <Num value={unit.done} /> · осталось {nf(Math.max(0, unit.target - unit.done))} ·{' '}
+              {span(Math.round((unit.target - unit.done) * unit.delay / 60000))}
             </span>
           </div>
-          <Bar pct={pct} tone={unit.done >= unit.target ? 'ok' : 'run'} />
+          <Bar pct={(unit.done / unit.target) * 100} tone={unit.done >= unit.target ? 'ok' : 'run'} />
+        </div>
+      ) : null}
+
+      {plan.length > 1 ? (
+        <div className="mt-3 border-t border-white/[0.06] pt-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Shuffle className="h-3.5 w-3.5 text-muted-foreground" />
+            <Label>партии — чтобы счётчики вышли разными</Label>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {plan.map(w => {
+              const passed = unit.done >= w.addAt
+              const nextUp = unit.nextWave?.index === w.index
+              return (
+                <span
+                  key={w.index}
+                  className={'flex items-center gap-2 border px-3 py-2 text-[12px] ' +
+                    (nextUp ? 'border-white/25 bg-white/[0.06]' : 'border-white/[0.08]')}
+                >
+                  <Dot tone={passed ? 'ok' : nextUp ? 'warn' : 'idle'} pulse={nextUp && unit.running} />
+                  <span className="tnum font-mono">{nf(w.value)}</span>
+                  <span className="text-muted-foreground">
+                    {w.addAt === 0 ? 'уже в инвентаре' : passed ? 'добавлена' : 'добавить на ' + nf(w.addAt)}
+                  </span>
+                </span>
+              )
+            })}
+          </div>
+          {unit.nextWave ? (
+            <div className="mt-2 text-[12px]" style={{ color: unit.done >= unit.nextWave.addAt ? 'var(--warn)' : undefined }}>
+              {unit.done >= unit.nextWave.addAt
+                ? 'пора добавить следующую партию — она догонит до ' + nf(unit.nextWave.value)
+                : 'следующая партия через ' + nf(unit.nextWave.addAt - unit.done) + ' отправок'}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </Card>

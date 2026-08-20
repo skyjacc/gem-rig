@@ -23,6 +23,7 @@ import { queueFor, type Pick } from './queue.ts'
 import { inv, refreshInventory } from './steam.ts'
 import { queueFile, senderState, start as startSender, statusFile, stop as stopSender } from './sender.ts'
 import { advise, type Sample } from './pace.ts'
+import { spreadPlan, type Wave } from './spread.ts'
 import { active, list as accounts, type Account } from './accounts.ts'
 
 export const TICK = 20_000
@@ -35,6 +36,9 @@ type Unit = {
   delay: number
   auto: boolean            // подбирать паузу самому
   target: number | null    // сколько отправок заказано; null = до конца очереди
+  ordered: number | null   // что человек попросил до превращения в живое число
+  waves: number            // на сколько партий разложить разброс
+  plan: Wave[]
   startedAt: number
   startBurned: number      // журнал на момент старта — от него считаем сделанное
   queueLength: number
@@ -53,7 +57,7 @@ function unit(id: string): Unit {
   let u = U.get(id)
   if (!u) {
     u = {
-      enabled: false, delay: 1000, auto: true, target: null,
+      enabled: false, delay: 1000, auto: true, target: null, ordered: null, waves: 1, plan: [],
       startedAt: 0, startBurned: 0, queueLength: 0, fingerprint: '',
       failures: 0, lastAction: 'idle', lastWhy: 'не запускался',
       lastTick: 0, rebuiltAt: 0, log: [],
@@ -238,6 +242,11 @@ export function unitState(a: Account) {
     delay: u.delay,
     auto: u.auto,
     target: u.target,
+    ordered: u.ordered,
+    waves: u.waves,
+    plan: u.plan,
+    // Следующая партия: работник сам скажет, когда её добавлять.
+    nextWave: u.plan.find(w => w.addAt > made(a, u)) ?? null,
     done: made(a, u),
     queueLength: u.queueLength,
     action: u.lastAction,
@@ -272,7 +281,7 @@ export function autopilotState() {
 // on не передан — трогаем только настройки, выключатель остаётся как был.
 export function setAutopilot(
   id: string,
-  patch: { on?: boolean; delay?: number; target?: number | null; auto?: boolean },
+  patch: { on?: boolean; delay?: number; target?: number | null; auto?: boolean; waves?: number },
 ) {
   const a = accounts().find(x => x.id === id)
   if (!a) return { error: 'нет такого аккаунта' }
@@ -280,7 +289,20 @@ export function setAutopilot(
 
   if (patch.delay && patch.delay >= 300) { u.delay = patch.delay; u.auto = false }
   if (patch.auto !== undefined) u.auto = !!patch.auto
-  if (patch.target !== undefined) u.target = patch.target === null ? null : Math.max(1, Math.trunc(patch.target))
+  if (patch.waves !== undefined) u.waves = Math.max(1, Math.min(8, Math.trunc(patch.waves)))
+  if (patch.target !== undefined) {
+    if (patch.target === null) {
+      u.ordered = null
+      u.target = null
+      u.plan = []
+    } else {
+      // Круглое число на витрине выдаёт накрутку, поэтому заказ превращается
+      // в живое: 1000 → 1147. Ниже заказанного не опускаемся.
+      u.ordered = Math.max(1, Math.trunc(patch.target))
+      u.plan = spreadPlan(u.ordered, u.waves, id + ':' + u.ordered)
+      u.target = u.plan[0].value
+    }
+  }
 
   if (patch.on !== undefined) {
     u.enabled = !!patch.on
@@ -292,7 +314,9 @@ export function setAutopilot(
       u.fingerprint = ''
       u.startedAt = Date.now()
       u.startBurned = burnedCount(a.steamid)
-      note(u, 'idle', u.target ? 'заказано ' + u.target + ' отправок, собираю очередь' : 'включён, собираю очередь')
+      note(u, 'idle', u.target
+        ? 'остановлюсь на ' + u.target + (u.ordered && u.target !== u.ordered ? ' (заказ ' + u.ordered + ', круглое не берём)' : '') + ', собираю очередь'
+        : 'включён, собираю очередь')
     }
   }
   return unitState(a)

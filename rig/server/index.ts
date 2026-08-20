@@ -7,7 +7,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { GC, TOOLS, readJson } from './paths.ts'
-import { importLegacy, markBurned, pushEvent, supplyRows } from './db.ts'
+import { db, importLegacy, pushEvent, supplyRows } from './db.ts'
+import { ingestOne } from './ledger.ts'
 import { refreshEquipped, refreshInventory } from './steam.ts'
 import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
@@ -100,7 +101,9 @@ function ingestStatus() {
   for (const e of st.recent) {
     if (!e?.ts || e.ts <= seenEventTs) continue
     pushEvent(e)
-    if (e.match) markBurned(String(e.match), e.league ? String(e.league) : null, 'live')
+    // В ленту попадает всё, включая silent. В журнал — только то, что GC
+    // подтвердил: silent означает «не знаем», а не «сожжён».
+    if (e.match) ingestOne(db, e)
   }
   const top = st.recent[0]?.ts
   if (top) seenEventTs = Math.max(seenEventTs, top)

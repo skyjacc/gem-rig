@@ -1,0 +1,60 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const { mergeLedger, effectiveDelay } = require('./lib.js');
+
+test('журнал сливается, а не затирается', () => {
+  assert.deepEqual(mergeLedger(['1', '2', '3'], ['4']).sort(), ['1', '2', '3', '4']);
+});
+
+test('повторы не дублируются', () => {
+  assert.deepEqual(mergeLedger(['1', '2'], ['2', '3']).sort(), ['1', '2', '3']);
+});
+
+test('пустая предыстория не мешает', () => {
+  assert.deepEqual(mergeLedger([], ['1']), ['1']);
+});
+
+test('пустая добавка ничего не теряет', () => {
+  assert.deepEqual(mergeLedger(['1', '2'], []).sort(), ['1', '2']);
+});
+
+test('порядок предыдущих записей сохраняется', () => {
+  assert.deepEqual(mergeLedger(['b', 'a'], ['c']), ['b', 'a', 'c']);
+});
+
+test('явный --delay побеждает delay.txt', () => {
+  assert.equal(effectiveDelay(true, 3000, 300000), 3000);
+});
+
+test('без флага работает delay.txt', () => {
+  assert.equal(effectiveDelay(false, 2000, 300000), 300000);
+});
+
+test('без флага и без файла — значение по умолчанию', () => {
+  assert.equal(effectiveDelay(false, 2000, null), 2000);
+});
+
+test('мусор в delay.txt игнорируется', () => {
+  assert.equal(effectiveDelay(false, 2000, 10), 2000, 'меньше 500 мс не принимаем');
+  assert.equal(effectiveDelay(false, 2000, NaN), 2000);
+});
+
+test('слишком малый --delay не проходит, откатываемся к файлу', () => {
+  assert.equal(effectiveDelay(true, 100, 300000), 300000);
+});
+
+const { validateRow } = require('./lib.js');
+
+test('строка без league_id не проходит проверку', () => {
+  assert.match(validateRow({ match: '8003261364', league: '' }), /league_id/);
+  assert.match(validateRow({ match: '8003261364' }), /league_id/);
+});
+
+test('полная строка проходит', () => {
+  assert.equal(validateRow({ match: '8003261364', league: '16710' }), null);
+});
+
+test('строка без match_id не проходит', () => {
+  assert.match(validateRow({ match: '', league: '16710' }), /match_id/);
+  assert.match(validateRow({ match: 'abc', league: '16710' }), /match_id/);
+});

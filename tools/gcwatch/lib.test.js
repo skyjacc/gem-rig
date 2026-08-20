@@ -58,3 +58,83 @@ test('строка без match_id не проходит', () => {
   assert.match(validateRow({ match: '', league: '16710' }), /match_id/);
   assert.match(validateRow({ match: 'abc', league: '16710' }), /match_id/);
 });
+
+const { createTracker } = require('./lib.js');
+
+test('одна отправка, пришло обновление и ответ — update с задержками', () => {
+  const t = createTracker();
+  t.send('111', '9', 1000);
+  t.onUpdate(1300, 507);
+  const r = t.onResponse(1400);
+  assert.equal(r.match, '111');
+  assert.equal(r.result, 'update');
+  assert.equal(r.bytes, 507);
+  assert.equal(r.latency, 400, 'от отправки до 7204');
+  assert.equal(r.creditLatency, 300, 'от отправки до msg 26');
+});
+
+test('ответ без обновления — dup', () => {
+  const t = createTracker();
+  t.send('222', '9', 1000);
+  const r = t.onResponse(1100);
+  assert.equal(r.result, 'dup');
+  assert.equal(r.creditLatency, null);
+});
+
+test('опоздавший msg 26 достаётся своей отправке, а не следующей', () => {
+  const t = createTracker();
+  t.send('A', '9', 1000);
+  t.send('B', '9', 2000);
+  // обновление по A приходит уже ПОСЛЕ отправки B — раньше оно засчиталось бы B
+  t.onUpdate(2100, 507);
+  const a = t.onResponse(2200);
+  const b = t.onResponse(3000);
+  assert.equal(a.match, 'A');
+  assert.equal(a.result, 'update', 'A получил своё обновление');
+  assert.equal(b.match, 'B');
+  assert.equal(b.result, 'dup', 'B не украл чужое');
+});
+
+test('порядок ответов соблюдается: первым разрешается первый отправленный', () => {
+  const t = createTracker();
+  t.send('A', '9', 1000);
+  t.send('B', '9', 1010);
+  t.send('C', '9', 1020);
+  assert.equal(t.onResponse(1100).match, 'A');
+  assert.equal(t.onResponse(1200).match, 'B');
+  assert.equal(t.onResponse(1300).match, 'C');
+});
+
+test('ответ без единой отправки не роняет трекер', () => {
+  const t = createTracker();
+  assert.equal(t.onResponse(1000), null);
+  t.onUpdate(1000, 100);
+});
+
+test('неотвеченные по истечении срока становятся silent', () => {
+  const t = createTracker();
+  t.send('X', '9', 1000);
+  t.send('Y', '9', 5000);
+  const dead = t.expire(12000, 10000);
+  assert.equal(dead.length, 1, 'Y ещё в пределах срока');
+  assert.equal(dead[0].match, 'X');
+  assert.equal(dead[0].result, 'silent');
+  assert.equal(dead[0].latency, null);
+});
+
+test('silent не выдаётся дважды', () => {
+  const t = createTracker();
+  t.send('X', '9', 1000);
+  assert.equal(t.expire(12000, 10000).length, 1);
+  assert.equal(t.expire(13000, 10000).length, 0);
+});
+
+test('счётчик неразрешённых показывает, сколько висит', () => {
+  const t = createTracker();
+  assert.equal(t.outstanding(), 0);
+  t.send('A', '9', 1000);
+  t.send('B', '9', 1010);
+  assert.equal(t.outstanding(), 2);
+  t.onResponse(1100);
+  assert.equal(t.outstanding(), 1);
+});

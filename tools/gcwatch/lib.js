@@ -39,4 +39,75 @@ function validateRow(row) {
   return null;
 }
 
-module.exports = { mergeLedger, effectiveDelay, validateRow };
+// Сопоставление ответов GC с конкретными отправками.
+//
+// Раньше успех определялся так: запомнить глобальный счётчик msg 26, поспать
+// ровно delay, посмотреть, вырос ли он. Два изъяна.
+//
+// Первый: окно равно паузе. Ответ, пришедший на миллисекунду позже, читался
+// как «тишина», хотя начисление произошло.
+//
+// Второй, хуже: счётчик перечитывался на каждой итерации, поэтому опоздавший
+// msg 26 доставался СЛЕДУЮЩЕМУ матчу. Атрибуция не просто теряла события,
+// она их переставляла.
+//
+// Здесь по-другому. Наблюдаемый порядок в GC: 7203 → msg 26 → 7204, причём
+// 7204 приходит ровно один на отправку, а msg 26 — ноль или один. Значит
+// очередь FIFO сопоставляет их надёжно и без всяких окон.
+//
+// Пауза после этого становится тем, чем и должна быть: темпом, а не измерителем.
+function createTracker() {
+  const pending = [];
+
+  const oldestOpen = () => pending.find(p => !p.done);
+
+  return {
+    send(match, league, at) {
+      pending.push({ match, league, sentAt: at, credited: false, bytes: 0, updateAt: null, done: false });
+    },
+
+    // msg 26 — начисление произошло. Достаётся самой старой отправке,
+    // которая ещё не получила своего обновления.
+    onUpdate(at, bytes) {
+      const p = pending.find(x => !x.done && !x.credited);
+      if (!p) return;
+      p.credited = true;
+      p.bytes = bytes;
+      p.updateAt = at;
+    },
+
+    // 7204 — GC отработал сообщение. Закрывает самую старую открытую отправку.
+    onResponse(at) {
+      const p = oldestOpen();
+      if (!p) return null;
+      p.done = true;
+      return {
+        match: p.match,
+        league: p.league,
+        result: p.credited ? 'update' : 'dup',
+        bytes: p.bytes,
+        latency: at - p.sentAt,
+        creditLatency: p.credited ? p.updateAt - p.sentAt : null,
+      };
+    },
+
+    // Отправки, на которые GC не ответил вовсе. Это «не знаем», а не «сожжён»,
+    // поэтому в журнал они не идут.
+    expire(now, graceMs) {
+      const out = [];
+      for (const p of pending) {
+        if (p.done) continue;
+        if (now - p.sentAt <= graceMs) continue;
+        p.done = true;
+        out.push({ match: p.match, league: p.league, result: 'silent', bytes: 0, latency: null, creditLatency: null });
+      }
+      return out;
+    },
+
+    outstanding() {
+      return pending.filter(p => !p.done).length;
+    },
+  };
+}
+
+module.exports = { mergeLedger, effectiveDelay, validateRow, createTracker };

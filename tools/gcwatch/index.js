@@ -24,7 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { mergeLedger, effectiveDelay } = require('./lib.js');
+const { mergeLedger, effectiveDelay, validateRow, createTracker } = require('./lib.js');
 
 const EMsg = { CacheSubscribed: 24, UpdateMultiple: 26, ClientWelcome: 4004, ClientHello: 4006, UpgradeLeagueItem: 7203, UpgradeResponse: 7204, WatchDownloadedReplay: 7206 };
 const APPID = 570;
@@ -172,15 +172,9 @@ function currentDelay() {
   return effectiveDelay(DELAY_GIVEN, DELAY, fromFile);
 }
 
-// Живое состояние для панели: последние события и общий счёт.
+// Живое состояние для панели. Пишется из report(), когда GC действительно
+// ответил, а не по таймеру — см. createTracker в lib.js.
 const STATUS_FILE = path.join(__dirname, 'status.json');
-const recent = [];
-function writeStatus(ev) {
-  recent.unshift(ev);
-  if (recent.length > 40) recent.pop();
-  try { fs.writeFileSync(STATUS_FILE, JSON.stringify({ current: ev, recent }, null, 2)); }
-  catch (e) { /* панель переживёт */ }
-}
 
 function hhmm(ms) {
   const m = Math.round(ms / 60000);
@@ -209,6 +203,41 @@ async function main() {
   let gcReady = false;
   let updates = 0, responses = 0, lastBytes = 0;
   const other = new Map();   // прочие сообщения GC — чтобы видеть, если появится что-то новое
+
+  // Сопоставление ответов с отправками вместо «вырос ли счётчик за паузу».
+  // Пауза теперь только темп, к учёту отношения не имеет.
+  const tracker = createTracker();
+  const tally = { update: 0, dup: 0, silent: 0 };
+  const lat = [];          // задержки 7204, для замера безопасного темпа
+  const credLat = [];      // задержки msg 26 — они и определяют минимальную паузу
+  let resolved = 0, total = 0, startedAt = 0;
+  const recent = [];
+
+  function report(r) {
+    tally[r.result]++;
+    resolved++;
+    if (r.latency !== null) lat.push(r.latency);
+    if (r.creditLatency !== null) credLat.push(r.creditLatency);
+
+    const mark = r.result === 'update' ? 'ОБНОВЛЕНО, ' + r.bytes + ' байт'
+      : r.result === 'dup' ? 'ответ есть, обновления нет'
+      : 'ТИШИНА — GC не ответил';
+    const num = String(resolved).padStart(String(total).length, ' ');
+    console.log('  [' + num + '/' + total + '] match ' + r.match +
+      '  лига ' + (r.league || '—') + '  -> ' + mark +
+      (r.creditLatency !== null ? '   +' + r.creditLatency + ' мс' : '') +
+      '   | ' + tally.update + ' обн, ' + tally.dup + ' дубл, ' + tally.silent + ' тишина');
+
+    recent.unshift({
+      n: resolved, total, match: r.match, league: r.league, result: r.result, bytes: r.bytes,
+      latency: r.latency, creditLatency: r.creditLatency,
+      updates, responses, delay: currentDelay(), startedAt, ts: Date.now(),
+      other: [...other].map(x => ({ type: x[0], count: x[1] })),
+    });
+    if (recent.length > 40) recent.pop();
+    try { fs.writeFileSync(STATUS_FILE, JSON.stringify({ current: recent[0], recent, tally, lat, credLat }, null, 2)); }
+    catch (e) { /* панель переживёт */ }
+  }
 
   if (USE_PASSWORD) {
     const accountName = await ask('Steam логин: ', false);
@@ -264,8 +293,17 @@ async function main() {
       gcReady = true;
       return;
     }
-    if (type === EMsg.UpdateMultiple) { updates++; lastBytes = payload.length; return; }
-    if (type === EMsg.UpgradeResponse) { responses++; return; }
+    if (type === EMsg.UpdateMultiple) {
+      updates++; lastBytes = payload.length;
+      tracker.onUpdate(Date.now(), payload.length);
+      return;
+    }
+    if (type === EMsg.UpgradeResponse) {
+      responses++;
+      const r = tracker.onResponse(Date.now());
+      if (r) report(r);
+      return;
+    }
     other.set(type, (other.get(type) || 0) + 1);
   });
 
@@ -294,49 +332,61 @@ async function main() {
   }
 
   const started = Date.now();
+  startedAt = started;
+  total = ids.length;
+  // Сколько ждать ответа, прежде чем признать отправку безответной.
+  const GRACE = 15_000;
+
   for (let i = 0; i < ids.length; i++) {
     await waitGC();
     const row = ids[i];
-    const before = updates;
+    const bad = validateRow(row);
+    if (bad) { console.log('  пропуск ' + row.match + ': ' + bad); total--; continue; }
 
     if (MSG === 'watch') user.sendToGC(APPID, EMsg.WatchDownloadedReplay, {}, encodeWatch(row.match));
     else user.sendToGC(APPID, EMsg.UpgradeLeagueItem, {}, encodeUpgrade(row.match, row.league));
 
     ledger.add(row.match);
     saveLedger(ledger);   // каждый матч, иначе перезапуск теряет отправленное
+    tracker.send(row.match, row.league, Date.now());
 
-    const n = i + 1;
-    const num = String(n).padStart(String(ids.length).length, ' ');
-    process.stdout.write('  [' + num + '/' + ids.length + '] match ' + row.match + '  лига ' + (row.league || '—') + '  -> отправлено, жду ответ');
-
-    const beforeResp = responses;
+    // Пауза — это ТЕМП, а не измеритель. Отчёт придёт из обработчика 7204,
+    // когда GC действительно ответит, сколько бы это ни заняло.
     await new Promise(r => setTimeout(r, currentDelay()));
 
-    const gotUpdate = updates > before;
-    const mark = gotUpdate ? 'ОБНОВЛЕНО, ' + lastBytes + ' байт'
-      : (responses > beforeResp ? 'ответ есть, обновления нет — матч уже засчитан аккаунту'
-        : 'ТИШИНА — GC не ответил');
-    const left = (ids.length - n) * currentDelay();
-
-    process.stdout.write('\r  [' + num + '/' + ids.length + '] match ' + row.match + '  лига ' + (row.league || '—') + '  -> ' + mark
-      + '   | прошло ' + hhmm(Date.now() - started) + ', осталось ' + hhmm(left) + '          \n');
-
-    writeStatus({
-      n, total: ids.length, match: row.match, league: row.league,
-      result: gotUpdate ? 'update' : (responses > beforeResp ? 'dup' : 'silent'),
-      bytes: gotUpdate ? lastBytes : 0,
-      updates, responses, delay: currentDelay(),
-      startedAt: started, ts: Date.now(),
-      other: [...other].map(x => ({ type: x[0], count: x[1] })),
-    });
-
-    if (n % 25 === 0 || n === ids.length) {
-      console.log('  --- итого: обновлений ' + updates + ' из ' + n + ', ответов ' + responses
-        + (other.size ? ', прочие сообщения GC: ' + [...other].map(x => x[0] + '×' + x[1]).join(' ') : ''));
-    }
+    // Подчищаем то, на что GC не ответил вовсе. Это «не знаем», а не «сожжён».
+    for (const dead of tracker.expire(Date.now(), GRACE)) report(dead);
   }
 
-  console.log('готово. Матчей отправлено ' + ids.length + ', обновлений предметов ' + updates + ', ответов GC ' + responses);
+  // Ждём хвост: последние отправки могли ещё не получить ответа.
+  const tailStart = Date.now();
+  while (tracker.outstanding() > 0 && Date.now() - tailStart < GRACE + 5000) {
+    await new Promise(r => setTimeout(r, 500));
+    for (const dead of tracker.expire(Date.now(), GRACE)) report(dead);
+  }
+
+
+  const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null;
+  const pct = (a, p) => {
+    if (!a.length) return null;
+    const s = [...a].sort((x, y) => x - y);
+    return s[Math.min(s.length - 1, Math.floor(s.length * p))];
+  };
+
+  console.log();
+  console.log('готово за ' + hhmm(Date.now() - started));
+  console.log('  отправлено ' + ids.length + ':  обновлений ' + tally.update +
+    ', дублей ' + tally.dup + ', тишины ' + tally.silent);
+  if (credLat.length) {
+    console.log('  задержка начисления (msg 26): среднее ' + avg(credLat) +
+      ' мс, медиана ' + pct(credLat, 0.5) +
+      ', 95-й процентиль ' + pct(credLat, 0.95) +
+      ', максимум ' + Math.max(...credLat));
+    console.log('  ↑ безопасная пауза должна быть больше 95-го процентиля');
+  }
+  if (lat.length) {
+    console.log('  задержка ответа (7204): среднее ' + avg(lat) + ' мс, максимум ' + Math.max(...lat));
+  }
   saveLedger(ledger);
 
   if (!KEEP_ALIVE) {
@@ -359,27 +409,24 @@ async function main() {
       .map(l => { const [m, lg] = l.split(','); return { match: m.trim(), league: (lg || '').trim() }; })
       .filter(r => !done.has(r.match));
 
-    let n = 0;
     for (const row of rows) {
       await waitGC();
-      const before = updates;
+      const bad = validateRow(row);
+      if (bad) { console.log('  очередь: пропуск ' + row.match + ' — ' + bad); done.add(row.match); continue; }
+
       if (MSG === 'watch') user.sendToGC(APPID, EMsg.WatchDownloadedReplay, {}, encodeWatch(row.match));
       else user.sendToGC(APPID, EMsg.UpgradeLeagueItem, {}, encodeUpgrade(row.match, row.league));
+
       done.add(row.match);
       ledger.add(row.match);
-      n++;
+      total++;
+      // Отчёт придёт из обработчика 7204 — здесь только темп.
+      tracker.send(row.match, row.league, Date.now());
 
       // Темп меняется на лету: положи число миллисекунд в delay.txt рядом со скриптом.
       await new Promise(r => setTimeout(r, currentDelay()));
+      for (const dead of tracker.expire(Date.now(), 15_000)) report(dead);
 
-      const gotUpdate = updates > before;
-      console.log('  очередь ' + n + '/' + rows.length + ': match ' + row.match + '  -> ' + (gotUpdate ? 'ОБНОВЛЕНО, ' + lastBytes + ' байт' : 'без обновления'));
-      writeStatus({
-        n, total: rows.length, match: row.match, league: row.league,
-        result: gotUpdate ? 'update' : 'dup', bytes: gotUpdate ? lastBytes : 0,
-        updates, responses, delay: currentDelay(), startedAt: started, ts: Date.now(),
-        queue: true, other: [...other].map(x => ({ type: x[0], count: x[1] })),
-      });
       saveLedger(ledger);
     }
     if (rows.length) saveLedger(ledger);

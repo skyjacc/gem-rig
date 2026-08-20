@@ -6,12 +6,14 @@ import { Seam } from './components/Seam.tsx'
 import { Tape } from './components/Tape.tsx'
 import { Rig } from './components/Rig.tsx'
 import { BundleTable, CatalogTable, MineTable } from './components/Tables.tsx'
+import { Roadmap } from './components/Roadmap.tsx'
 
 const TABS = [
   { id: 'rig', label: 'Пульт' },
   { id: 'mine', label: 'Мои гемы' },
   { id: 'cat', label: 'Каталог' },
   { id: 'bund', label: 'Наборы' },
+  { id: 'road', label: 'Roadmap' },
 ] as const
 type TabId = typeof TABS[number]['id']
 
@@ -81,8 +83,8 @@ export default function App() {
         </nav>
       </header>
 
-      <Seam state={state} />
-      <Tape state={state} />
+      {tab !== 'road' && <Seam state={state} />}
+      {tab !== 'road' && <Tape state={state} />}
 
       <main className="px-6 pb-16">
         <div ref={body}>
@@ -90,6 +92,7 @@ export default function App() {
           {tab === 'mine' && <MineTable state={state} />}
           {tab === 'cat' && <CatalogTable state={state} />}
           {tab === 'bund' && <BundleTable state={state} />}
+          {tab === 'road' && <Roadmap />}
         </div>
       </main>
     </div>

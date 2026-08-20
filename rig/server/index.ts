@@ -14,6 +14,7 @@ import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
 import { isBurned } from './db.ts'
 import { listFiles, senderState, start, stop } from './sender.ts'
+import { roadmap } from './roadmap.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.resolve(here, '..', 'dist')
@@ -51,6 +52,15 @@ app.get('/api/stream', (req, reply) => {
 })
 
 app.get('/api/state', async () => buildState())
+
+// Roadmap считается живьём и не дёшево — держим короткий кеш, чтобы
+// частые опросы не гоняли счёт по трёмстам тысячам матчей.
+let rmCache: any = null
+let rmAt = 0
+app.get('/api/roadmap', async () => {
+  if (!rmCache || Date.now() - rmAt > 5000) { rmCache = roadmap(); rmAt = Date.now() }
+  return rmCache
+})
 
 // ───────────────────────── управление отправщиком ─────────────────────────
 app.post('/api/sender/start', async (req: any) => {

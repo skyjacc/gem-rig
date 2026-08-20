@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 import fs from 'node:fs'
 import path from 'node:path'
 import { TOOLS, GC, SNAPS, readJson } from './paths.ts'
+import { migrate } from './migrate.ts'
 
 export const db = new DatabaseSync(path.join(TOOLS, 'rig.db'))
 
@@ -64,6 +65,10 @@ db.exec(`
   create index if not exists idx_counters_gem on counters (gem, ts);
 `)
 
+// Схема догоняется до текущей при каждом старте. Идемпотентно.
+const migrated = migrate(db)
+if (migrated.length) console.log('миграция:', migrated.join(', '))
+
 const meta = db.prepare(`select count(*) c from burned`).get() as { c: number }
 
 // ── перенос из JSON старой панели, один раз ──
@@ -78,7 +83,9 @@ export function importLegacy() {
       if (!m) continue
       const list = readJson<string[]>(path.join(GC, f), [])
       const stat = fs.statSync(path.join(GC, f))
-      for (const id of list) { insBurn.run(String(id), null, stat.mtimeMs | 0, m[1]); burned++ }
+      // Math.trunc, а не `| 0`: побитовое И усекает до 32 бит, и метка
+      // 1787158694876 превращалась в 455777412 — дату из 1984 года.
+      for (const id of list) { insBurn.run(String(id), null, Math.trunc(stat.mtimeMs), m[1]); burned++ }
     }
   }
 

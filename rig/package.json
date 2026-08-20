@@ -8,7 +8,8 @@
     "dev": "concurrently -n server,web -c green,cyan \"node --watch server/index.ts\" \"vite\"",
     "server": "node server/index.ts",
     "build": "vite build",
-    "start": "vite build && node server/index.ts"
+    "start": "vite build && node server/index.ts",
+    "test": "node --test \"server/**/*.test.ts\""
   },
   "dependencies": {
     "@fastify/static": "^8.0.4",

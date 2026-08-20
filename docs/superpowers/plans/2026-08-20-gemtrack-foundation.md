@@ -52,7 +52,7 @@ git commit -m "chore: import existing project before Gemtrack redesign"
 В `rig/package.json` в блок `scripts` добавить строку:
 
 ```json
-"test": "node --test server/"
+"test": "node --test \"server/**/*.test.ts\""
 ```
 
 - [ ] **Step 3: Написать падающий тест**

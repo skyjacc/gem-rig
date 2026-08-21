@@ -126,17 +126,39 @@ export function rotate(rows: QueueRow[]): QueueRow[] {
 
 // Сколько отправок осталось до потолков.
 //
-// Не оценка, а проход по той самой очереди, что уйдёт отправщику: каждая
-// строка поднимает свои сущности на единицу, и мы смотрим, на каком месте
-// последняя из них добирается до своего числа. Считать делением нельзя —
-// матч, поднимающий двоих, закрывает долг обоим сразу.
+// Не оценка, а проигрывание всей работы наперёд: круг за кругом, ровно так,
+// как её поведёт работник. Делением не обойтись по двум причинам.
 //
-// Это число — знаменатель для растяжки по времени: срок делится на него
+// Первая: матч, поднимающий двоих, закрывает долг обоим сразу.
+//
+// Вторая: дошедший до потолка гем выбывает, и его матчи уходят из очереди
+// вместе с ним — оставшиеся идут дальше без него, круг за кругом короче.
+// Без учёта выбывания счёт выходил 11 154 вместо честных 8 367, и ночной
+// прогон заканчивался бы к восьми утра вместо десяти.
+//
+// Долг обрезается по запасу: у DD 521 матч на потолок в 1328, и ждать
+// недостижимого нельзя.
+//
+// Это число — знаменатель растяжки по времени: срок делится на него
 // и выходит пауза, при которой работа заканчивается ровно к сроку.
-//
-// Долг обрезается по запасу. У DD 568 матчей на потолок в 1328 — без обрезки
-// расчёт ждал бы, пока DD доберётся до своего числа, то есть до конца всей
-// очереди, и знаменатель выходил 21 074 вместо честных тринадцати тысяч.
+function order(rows: QueueRow[], active: Set<string>, taken: Set<string>): Map<string, QueueRow[]> {
+  const weight = (r: QueueRow) => r.entities.reduce((n, e) => n + (active.has(e) ? 1 : 0), 0)
+
+  const live = rows.filter(r => !taken.has(r.match) && weight(r) > 0)
+  live.sort((a, b) => weight(b) - weight(a) || (a.match < b.match ? -1 : a.match > b.match ? 1 : 0))
+
+  const by = new Map<string, QueueRow[]>()
+  for (const r of live) {
+    for (const e of r.entities) {
+      if (!active.has(e)) continue
+      const l = by.get(e)
+      if (l) l.push(r)
+      else by.set(e, [r])
+    }
+  }
+  return by
+}
+
 export function sendsNeeded(rows: QueueRow[], need: Map<string, number>): number {
   const supply = new Map<string, number>()
   for (const r of rows) for (const e of r.entities) supply.set(e, (supply.get(e) ?? 0) + 1)
@@ -148,16 +170,50 @@ export function sendsNeeded(rows: QueueRow[], need: Map<string, number>): number
   }
   if (!left.size) return 0
 
-  for (let i = 0; i < rows.length; i++) {
-    for (const e of rows[i].entities) {
-      const n = left.get(e)
-      if (n === undefined) continue
-      if (n <= 1) left.delete(e)
-      else left.set(e, n - 1)
+  const taken = new Set<string>()
+  let active = new Set(left.keys())
+  let by = order(rows, active, taken)
+  let at = new Map<string, number>([...by.keys()].map(k => [k, 0]))
+  let sends = 0
+
+  while (left.size) {
+    const served = new Set<string>()
+    let moved = false
+
+    for (const e of [...by.keys()].sort()) {
+      if (!left.has(e) || served.has(e)) continue
+      const list = by.get(e)!
+      let i = at.get(e) ?? 0
+      while (i < list.length && taken.has(list[i].match)) i++
+      at.set(e, i)
+      if (i >= list.length) continue
+
+      const row = list[i]
+      at.set(e, i + 1)
+      taken.add(row.match)
+      sends++
+      moved = true
+
+      for (const x of row.entities) {
+        served.add(x)
+        const n = left.get(x)
+        if (n === undefined) continue
+        if (n <= 1) left.delete(x)
+        else left.set(x, n - 1)
+      }
     }
-    if (!left.size) return i + 1
+
+    if (!moved) break
+
+    // Кто-то дошёл до потолка — дальше очередь идёт без него.
+    if (left.size !== active.size) {
+      active = new Set(left.keys())
+      by = order(rows, active, taken)
+      at = new Map([...by.keys()].map(k => [k, 0]))
+    }
   }
-  return rows.length
+
+  return sends
 }
 
 export function queueFor(target: DatabaseSync, picks: Pick[], account: string): QueueRow[] {

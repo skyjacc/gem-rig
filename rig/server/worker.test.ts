@@ -230,3 +230,49 @@ test('срок важнее пересборки: вышел — встали', 
   const d = decide({ ...base, inventoryChanged: true, until: 99_000 })
   assert.equal(d.action, 'halt')
 })
+
+// ── остановка ──
+//
+// Работник обязан вставать сам. Каждая отправка необратима, поэтому «не
+// остановился вовремя» стоит дороже, чем «встал раньше времени».
+
+test('остановка: цель достигнута — встаём, даже если очередь полна', () => {
+  const d = decide({ ...base, senderAlive: true, target: 500, done: 500, queueLength: 20_000 })
+  assert.equal(d.action, 'halt')
+})
+
+test('остановка: цель перевыполнена — тоже встаём', () => {
+  const d = decide({ ...base, senderAlive: true, target: 500, done: 517, queueLength: 20_000 })
+  assert.equal(d.action, 'halt')
+})
+
+test('остановка: срок вышел — встаём, даже если цель не достигнута', () => {
+  const now = 1_700_000_000_000
+  const d = decide({ ...base, senderAlive: true, now, until: now - 1, target: 500, done: 12 })
+  assert.equal(d.action, 'halt')
+})
+
+test('остановка: очередь опустела — не встаём, а ждём новых гемов', () => {
+  const d = decide({ ...base, queueLength: 0 })
+  assert.equal(d.action, 'idle')
+})
+
+test('остановка: выключен человеком — ничего не делаем', () => {
+  const d = decide({ ...base, senderAlive: true, enabled: false })
+  assert.equal(d.action, 'idle')
+})
+
+test('остановка: цель важнее пустой очереди и мёртвого отправщика', () => {
+  const d = decide({ ...base, target: 100, done: 100, queueLength: 0 })
+  assert.equal(d.action, 'halt')
+})
+
+test('остановка: без цели и без срока сами не встаём', () => {
+  const d = decide({ ...base, senderAlive: true, target: null, until: 0, done: 99_999 })
+  assert.notEqual(d.action, 'halt')
+})
+
+test('остановка: цель ещё не взята — продолжаем', () => {
+  const d = decide({ ...base, senderAlive: true, target: 500, done: 499 })
+  assert.notEqual(d.action, 'halt')
+})

@@ -194,6 +194,9 @@ function rebuild(a: Account, u: Unit): number {
   return queue.length
 }
 
+// Темп читается отправщиком из файла перед каждой отправкой.
+const writeDelay = (ms: number) => fs.writeFileSync(path.join(GC, 'delay.txt'), String(ms))
+
 function status(id: string): any {
   try { return JSON.parse(fs.readFileSync(path.join(GC, statusFile(id)), 'utf8')) } catch { return null }
 }
@@ -288,14 +291,14 @@ async function tickOne(a: Account, push: () => void) {
       const want = evenDelay(u.until - Date.now(), sendsLeft(u, count), settings().pace.floor)
       if (want !== u.delay) {
         u.delay = want
-        fs.writeFileSync(path.join(GC, 'delay.txt'), String(u.delay))
+        writeDelay(u.delay)
         note(u, 'watch', 'пауза ' + u.delay + ' мс — ' + nice(u.until - Date.now()) + ' на ' + sendsLeft(u, count) + ' отправок')
       }
     } else if (u.auto) {
       const adv = advise(samples(a.id, u.delay), settings().pace)
       if (adv.suggest !== u.delay && adv.measured >= settings().pace.enough) {
         u.delay = adv.suggest
-        fs.writeFileSync(path.join(GC, 'delay.txt'), String(u.delay))
+        writeDelay(u.delay)
         note(u, 'watch', 'пауза ' + u.delay + ' мс — ' + adv.why)
       }
     }
@@ -373,7 +376,11 @@ export function unitState(a: Account) {
     exit: s.exit,
     lines: s.lines.slice(-40),
     burned: burnedCount(a.steamid),
-    etaMinutes: u.queueLength ? Math.round((u.queueLength * u.delay) / 60_000) : 0,
+    // Сколько осталось на самом деле: до потолков, а не до конца очереди.
+    // По длине очереди выходило 28 часов там, где работы на восемь.
+    etaMinutes: u.queueLength
+      ? Math.round(((u.needSends ? sendsLeft(u, made(a, u)) : u.queueLength) * u.delay) / 60_000)
+      : 0,
     log: u.log.slice(0, 20),
   }
 }
@@ -411,7 +418,14 @@ export function setAutopilot(
   if (!a) return { error: 'нет такого аккаунта' }
   const u = unit(id)
 
-  if (patch.delay && patch.delay >= settings().pace.floor) { u.delay = patch.delay; u.auto = false }
+  if (patch.delay && patch.delay >= settings().pace.floor) {
+    u.delay = patch.delay
+    u.auto = false
+    // Пауза пишется сразу, а не при следующем решении работника: на ручной
+    // паузе он в темп не вмешивается вовсе, и выбранное число доходило до
+    // отправщика только через остановку и запуск.
+    writeDelay(u.delay)
+  }
   if (patch.auto !== undefined) u.auto = !!patch.auto
   if (patch.until !== undefined) {
     u.until = Math.max(0, Math.trunc(Number(patch.until) || 0))

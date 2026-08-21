@@ -219,3 +219,14 @@ test('долг: чего нет в запасе, того и не ждём', () 
   // A получает свои два за два круга, B закрывается в первом же.
   assert.equal(sendsNeeded(rotate(rows), new Map([['A', 2], ['B', 100]])), 3)
 })
+
+test('долг: дошедший выбывает и больше не занимает круг', () => {
+  // A нужен один матч, B — три. После первого круга A выбывает,
+  // и B добирает своё подряд: всего четыре отправки, а не шесть.
+  const rows = buildQueue(new Map([
+    ['A', [{ match: '1', league: '1' }, { match: '2', league: '1' }]],
+    ['B', [{ match: '7', league: '1' }, { match: '8', league: '1' }, { match: '9', league: '1' }]],
+  ]), new Set())
+
+  assert.equal(sendsNeeded(rows, new Map([["A", 1], ["B", 3]])), 4)
+})

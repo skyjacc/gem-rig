@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   ChevronDown, ChevronRight, ExternalLink, Play, Search, Settings2, Square, TriangleAlert,
 } from 'lucide-react'
-import { ago, clock, nf, post, span, type CatalogRow, type Gem, type State } from '../lib/api.ts'
+import { ago, clock, nf, post, span, useJson, type CatalogRow, type Gem, type Kit, type Pool, type State } from '../lib/api.ts'
 import { Bar, Button, Card, Dot, Empty, Field, ItemIcon, Label, Num, PageHead, Segmented } from '../parts/ui.tsx'
 import { Chart } from '../parts/Chart.tsx'
 import { Tune } from '../parts/Tune.tsx'
@@ -95,17 +95,28 @@ function verdict(s: State, now: number): string {
 
 function Inventory({ state, goal }: { state: State; goal: number }) {
   const [open, setOpen] = useState<string | null>(null)
+  const [view, setView] = useState<'gems' | 'sets'>('sets')
   const owned = state.mine.filter(m => m.gem !== '—')
   const picked = new Set(state.autopilot.picked ?? owned.map(m => m.gem))
 
   return (
     <Card>
-      <div className="flex items-baseline gap-3 border-b border-white/[0.06] px-3.5 py-2.5">
+      <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.06] px-3.5 py-2.5">
         <span className="text-[15px] font-medium">Инвентарь</span>
-        <span className="ui-label ml-auto text-muted-foreground/75">
+        <span className="ui-label text-muted-foreground/75">
           {nf(owned.length)} гемов · {nf(owned.reduce((n, m) => n + m.items, 0))} вещей
         </span>
+        <span className="ml-auto">
+          <Segmented
+            value={view}
+            items={[{ id: 'sets' as const, label: 'наборы' }, { id: 'gems' as const, label: 'гемы' }]}
+            onPick={setView}
+          />
+        </span>
       </div>
+
+      {view === 'sets' ? <Sets state={state} goal={goal} /> : null}
+      <div hidden={view !== 'gems'}>
 
       {owned.length === 0 ? (
         <Empty>пусто — купите гем, он появится здесь сам</Empty>
@@ -190,9 +201,116 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
           })}
         </div>
       )}
+      </div>
     </Card>
   )
 }
+
+// ── наборы ──
+//
+// Продаётся собранный набор на героя, а не россыпь частей: семь предметов
+// Pugna со счётчиками стоят иначе, чем семь одиночных вещей. Состав Steam
+// отдаёт в описании каждого предмета, поэтому видно и сколько комплектов
+// собирается, и какой части не хватает до следующего.
+
+function Sets({ state, goal }: { state: State; goal: number }) {
+  const { data } = useJson<Pool>('/api/pool', state.ts)
+  const [open, setOpen] = useState<string | null>(null)
+  if (!data) return <Empty>собираю наборы…</Empty>
+  if (!data.kits.length) return <Empty>пусто — купите гем, он появится здесь сам</Empty>
+
+  return (
+    <div>
+      {data.kits.map(k => (
+        <KitRow
+          key={k.key}
+          k={k}
+          goal={goal}
+          open={open === k.key}
+          onToggle={() => setOpen(open === k.key ? null : k.key)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function KitRow({ k, goal, open, onToggle }: { k: Kit; goal: number; open: boolean; onToggle: () => void }) {
+  const done = k.max >= goal
+  const bare = !k.hero
+  const spread = k.min !== k.max
+
+  return (
+    <div className="border-b border-white/[0.06] last:border-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-white/[0.02]"
+      >
+        {open
+          ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+        <ItemIcon hash={k.icon} size={22} />
+
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-baseline gap-x-2">
+            <span className="truncate text-[13px] font-medium">{k.set}</span>
+            {bare ? null : <span className="shrink-0 text-[12px] text-muted-foreground">{k.hero}</span>}
+            <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/60">×{k.items}</span>
+          </span>
+          <span className="mt-1 block">
+            <Bar pct={(k.max / goal) * 100} tone={done ? 'ok' : 'run'} />
+          </span>
+        </span>
+
+        <span className="shrink-0 text-right">
+          <span className="block">
+            <Num
+              value={k.max}
+              className="font-mono text-[15px] font-medium"
+              style={{ color: done ? 'var(--ok)' : undefined }}
+            />
+            <span className="tnum font-mono text-[12px] text-muted-foreground/50"> / {nf(goal)}</span>
+          </span>
+          <span className="block text-[11px] text-muted-foreground/60">
+            {bare
+              ? k.gem
+              : k.complete
+                ? nf(k.complete) + ' комплект' + tail(k.complete) + (k.spare ? ' + ' + nf(k.spare) : '')
+                : k.distinct + ' из ' + k.pieces + ' частей'}
+          </span>
+        </span>
+      </button>
+
+      {open ? (
+        <div className="border-t border-white/[0.06] bg-white/[0.01] px-3.5 py-2.5 pl-11 text-[12px]">
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-muted-foreground">
+            <span>гем <span className="text-foreground">{k.gem || '—'}</span></span>
+            <span>счётчик <span className="tnum font-mono text-foreground">{spread ? nf(k.min) + '…' + nf(k.max) : nf(k.max)}</span></span>
+            {k.equipped ? <span>надето <span className="tnum font-mono text-foreground">{k.equipped}</span></span> : null}
+            {bare ? null : <span>частей в наборе <span className="tnum font-mono text-foreground">{k.pieces}</span></span>}
+          </div>
+          {k.missing.length ? (
+            <div className="mt-2" style={{ color: 'var(--warn)' }}>
+              до полного не хватает: {k.missing.join(', ')}
+            </div>
+          ) : k.complete ? (
+            <div className="mt-2" style={{ color: 'var(--ok)' }}>
+              набор полный — собирается {nf(k.complete)} комплект{tail(k.complete)}
+              {k.spare ? `, ещё ${nf(k.spare)} ${plural(k.spare, 'предмет', 'предмета', 'предметов')} сверх` : ''}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+// Склонение: «1 комплект», «2 комплекта», «5 комплектов».
+const plural = (n: number, one: string, few: string, many: string) =>
+  n % 10 === 1 && n % 100 !== 11 ? one :
+  n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many
+
+const tail = (n: number) => plural(n, '', 'а', 'ов')
 
 // ── статистика ──
 

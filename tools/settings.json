@@ -1,7 +1,8 @@
 {
-  "goal": 2000,
+  "goal": 1000,
   "tick": 20000,
   "silentLimit": 60000,
+  "startLimit": 300000,
   "maxFailures": 5,
   "invTtl": 60000,
   "treeTop": 12,

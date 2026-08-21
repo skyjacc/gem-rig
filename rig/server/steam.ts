@@ -4,6 +4,7 @@
 
 import { STEAMID, steamKey } from './paths.ts'
 import { settings } from './settings.ts'
+import { parseSet } from './itemset.ts'
 import { saveSnapshot } from './db.ts'
 
 const GAP = 2500
@@ -30,6 +31,10 @@ export type GemItem = {
   value: number
   equipped?: boolean
   carrier: Carrier
+  // Набор, из которого предмет: название и полный состав. Продаётся
+  // собранный набор, а не россыпь частей, поэтому это не украшение.
+  set: string
+  setPieces: string[]
 }
 
 // Чем несётся счётчик.
@@ -100,6 +105,7 @@ export async function refreshInventory(force = false): Promise<boolean> {
       if (!d) continue
       const p = parseDescription(d)
       if (p.value === null) continue
+      const kit = parseSet(d.descriptions ?? [])
       rows.push({
         assetid: a.assetid,
         name: d.market_hash_name ?? d.name,
@@ -108,6 +114,8 @@ export async function refreshInventory(force = false): Promise<boolean> {
         icon: d.icon_url ?? '',
         value: p.value,
         carrier: carrierOf(d.market_hash_name ?? d.name, p.hero),
+        set: kit.name,
+        setPieces: kit.pieces,
       })
     }
 

@@ -10,6 +10,8 @@ import { buildGraph, type GraphEntity } from './graph.ts'
 import { queueFor } from './queue.ts'
 import { inv } from './steam.ts'
 import { picks } from './autopilot.ts'
+import { pieceKey } from './itemset.ts'
+import { settings } from './settings.ts'
 
 const norm = (s: string) => String(s ?? '').replace(/^(Genuine\s+)?Spectator:\s*/, '').trim()
 
@@ -259,4 +261,96 @@ export function burnedList(limit = 500) {
       }
     }),
   }
+}
+
+// ── пул наборов ──
+//
+// Продаётся собранный набор на героя, а не россыпь частей: семь предметов
+// Pugna со счётчиками стоят иначе, чем семь одиночных вещей. Поэтому
+// инвентарь надо смотреть наборами.
+//
+// Состав набора Steam отдаёт в описании каждого предмета — значит видно
+// и сколько комплектов собирается, и чего до следующего не хватает.
+export function itemPool() {
+  const goal = settings().goal
+
+  type Kit = {
+    key: string
+    hero: string
+    set: string
+    gem: string
+    icon: string
+    roster: string[]            // из чего набор состоит по данным Steam
+    have: Map<string, number>   // сколько у меня каждой части
+    items: number
+    min: number
+    max: number
+    equipped: number
+    bare: number
+  }
+
+  const kits = new Map<string, Kit>()
+
+  for (const r of inv.rows) {
+    // Голые самоцветы одного гема — одна строка, а не двенадцать одинаковых.
+    const isBare = r.carrier === 'gem'
+    const key = isBare ? 'самоцвет|' + r.gem : (r.set ? (r.hero || '—') + '|' + r.set : 'один|' + r.name)
+
+    let k = kits.get(key)
+    if (!k) {
+      k = {
+        key,
+        hero: isBare ? '' : (r.hero || '—'),
+        set: isBare ? 'голый самоцвет' : (r.set || r.name),
+        gem: r.gem === '—' ? '' : r.gem,
+        icon: r.icon,
+        roster: isBare ? [] : (r.setPieces ?? []),
+        have: new Map(),
+        items: 0,
+        min: r.value,
+        max: r.value,
+        equipped: 0,
+        bare: 0,
+      }
+      kits.set(key, k)
+    }
+
+    k.items++
+    // Ключ без приставки качества: «Inscribed Primeval Staff» — тот же посох.
+    k.have.set(pieceKey(r.name), (k.have.get(pieceKey(r.name)) ?? 0) + 1)
+    k.min = Math.min(k.min, r.value)
+    k.max = Math.max(k.max, r.value)
+    if (r.equipped) k.equipped++
+    if (isBare) k.bare++
+    if (!k.gem && r.gem !== '—') k.gem = r.gem
+    if (!k.roster.length && r.setPieces?.length) k.roster = r.setPieces
+  }
+
+  const list = [...kits.values()].map(k => {
+    const roster = k.roster.length ? k.roster : [...k.have.keys()]
+    const missing = roster.filter(p => !k.have.get(pieceKey(p)))
+    // Сколько полных комплектов собирается: по самой редкой части.
+    const complete = missing.length ? 0 : Math.min(...roster.map(p => k.have.get(pieceKey(p)) ?? 0))
+    return {
+      key: k.key,
+      hero: k.hero,
+      set: k.set,
+      gem: k.gem,
+      icon: k.icon,
+      items: k.items,
+      pieces: roster.length,
+      distinct: roster.length - missing.length,
+      missing,
+      complete,                       // сколько полных наборов собирается
+      spare: k.items - complete * roster.length,
+      min: k.min,
+      max: k.max,
+      equipped: k.equipped,
+      bare: k.bare,
+      ready: k.min >= goal,
+    }
+  })
+
+  list.sort((a, b) => b.complete - a.complete || b.items - a.items || b.max - a.max)
+  return { goal, kits: list }
 }

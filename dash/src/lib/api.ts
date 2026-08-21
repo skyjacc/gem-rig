@@ -170,6 +170,27 @@ export type GraphData = {
   edges: { a: string; b: string; shared: number }[]
 }
 
+export type Kit = {
+  key: string
+  hero: string
+  set: string
+  gem: string
+  icon: string
+  items: number      // сколько предметов этого набора лежит
+  pieces: number     // из скольких частей набор состоит
+  distinct: number   // сколько разных частей есть
+  missing: string[]
+  complete: number   // сколько полных комплектов собирается
+  spare: number      // предметов сверх комплектов
+  min: number
+  max: number
+  equipped: number
+  bare: number
+  ready: boolean
+}
+
+export type Pool = { goal: number; kits: Kit[] }
+
 export type QueueData = {
   total: number
   weight2: number

@@ -41,13 +41,22 @@ const remember = (s: Sender, line: string) => {
   while (s.lines.length > 200) s.lines.shift()
 }
 
+// Жив ли процесс.
+//
+// Мало проверить exitCode: процесс, убитый сигналом, оставляет его пустым
+// навсегда, а признак смерти кладёт в signalCode. Панель на этом двадцать
+// минут считала мёртвый отправщик живым, работник ничего не предпринимал,
+// и следующий запуск не происходил вовсе.
+export const isAlive = (child: { exitCode: number | null; signalCode: string | null } | null) =>
+  !!child && child.exitCode === null && child.signalCode === null
+
 export const statusFile = (id: string) => (id === 'main' ? 'status.json' : `status-${id}.json`)
 export const queueFile = (id: string) => (id === 'main' ? 'autopilot.csv' : `autopilot-${id}.csv`)
 
 export function senderState(id = 'main') {
   const s = slot(id)
   return {
-    running: !!s.child && s.child.exitCode === null,
+    running: isAlive(s.child),
     pid: s.child?.pid ?? null,
     file: s.file,
     delay: s.delay,
@@ -58,7 +67,7 @@ export function senderState(id = 'main') {
   }
 }
 
-export const runningIds = () => [...S.entries()].filter(([, s]) => s.child && s.child.exitCode === null).map(([id]) => id)
+export const runningIds = () => [...S.entries()].filter(([, s]) => isAlive(s.child)).map(([id]) => id)
 
 // Списки матчей, которые можно скормить отправщику.
 export function listFiles() {
@@ -83,7 +92,7 @@ export function start(
   limit?: number | null,
 ) {
   const s = slot(id)
-  if (s.child && s.child.exitCode === null) return { error: 'отправщик уже работает' }
+  if (isAlive(s.child)) return { error: 'отправщик уже работает' }
 
   const full = path.join(GC, file)
   if (!fs.existsSync(full)) return { error: 'нет файла ' + file }
@@ -131,7 +140,7 @@ export function start(
 
 export function stop(id = 'main') {
   const s = S.get(id)
-  if (!s?.child || s.child.exitCode !== null) return { error: 'отправщик не запущен' }
+  if (!isAlive(s?.child ?? null)) return { error: 'отправщик не запущен' }
   s.child.kill()
   return { ok: true }
 }

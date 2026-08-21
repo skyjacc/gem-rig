@@ -170,21 +170,65 @@ html::-webkit-scrollbar {
 }
 
 /* ─────────────────────────── движение ───────────────────────────
-   Референс почти статичен: у него каталог, который читают. У панели
-   другое дело — она показывает то, что происходит прямо сейчас, и
-   движение здесь несёт смысл, а не украшает.
+   Референс почти статичен: у него каталог, который читают. У панели другое
+   дело — она показывает то, что происходит прямо сейчас, и движение здесь
+   несёт смысл, а не украшает.
 
-   Три правила, чтобы это не превратилось в ярмарку:
-     появление        короткое, один раз, снизу вверх
-     изменение числа  катится, а не прыгает
-     событие          вспышка на строке, которая только что пришла
-   Всё выключается при prefers-reduced-motion. */
+   Три длительности на всё, чтобы интерфейс двигался в одном темпе:
+
+     120 мс   мелочь под пальцем: наведение, нажатие, смена состояния
+     220 мс   переход: экран, вкладка, раскрытие
+     340 мс   появление: карточка, окно, панель
+
+   Замедление одно: cubic-bezier(.2,.8,.2,1) — быстро трогается, мягко
+   останавливается. Обратное движение чуть быстрее прямого, так глазу
+   спокойнее.
+
+   Всё гаснет при prefers-reduced-motion — там правило в самом низу. */
+
+:root {
+  --t-fast: 120ms;
+  --t-mid: 220ms;
+  --t-slow: 340ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
 
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
-.rise { animation: rise .34s cubic-bezier(.2,.8,.2,1) both; }
+.rise { animation: rise var(--t-slow) var(--ease) both; }
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade { animation: fade var(--t-mid) var(--ease) both; }
+
+/* Окно у края въезжает сбоку, окно посередине — подрастает.
+   Подложка всегда просто проявляется. */
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: none; }
+}
+.slide-right { animation: slideRight var(--t-mid) var(--ease) both; }
+
+@keyframes pop {
+  from { opacity: 0; transform: translateY(-8px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+.pop { animation: pop var(--t-mid) var(--ease) both; }
+
+/* Нижняя панель закупки приезжает снизу — она появляется от действия,
+   и должно быть видно, откуда. */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.slide-up { animation: slideUp var(--t-mid) var(--ease) both; }
+
+/* Раскрытие живёт в parts/Reveal.tsx: приём с долями сетки не пережил
+   внутреннюю прокрутку, поэтому высота измеряется. */
 
 @keyframes flash {
   0%   { background: rgb(255 255 255 / 0.10); }
@@ -198,7 +242,7 @@ html::-webkit-scrollbar {
 }
 .tree-edge {
   stroke-dasharray: var(--len, 600);
-  animation: draw .5s cubic-bezier(.2,.8,.2,1) both;
+  animation: draw .5s var(--ease) both;
 }
 
 @keyframes halo {
@@ -207,9 +251,34 @@ html::-webkit-scrollbar {
 }
 .halo { animation: halo 1.4s ease-out infinite; transform-origin: center; }
 
-/* Переход между экранами: короткий, без сдвига раскладки. */
 @keyframes viewIn {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
 }
-.view-in { animation: viewIn .22s ease-out both; }
+.view-in { animation: viewIn var(--t-mid) ease-out both; }
+
+/* Бегунок в переключателе едет за выбором, а не перепрыгивает. */
+.seg { position: relative; }
+.seg-thumb {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgb(255 255 255 / 0.08);
+  transition: transform var(--t-mid) var(--ease), width var(--t-mid) var(--ease);
+  pointer-events: none;
+}
+
+/* Строки таблиц и списков подсвечиваются мягко, а не мгновенно. */
+tbody tr, .row-hover { transition: background-color var(--t-fast) linear; }
+
+/* Всё, что можно нажать, отзывается одинаково. */
+button, a, input, summary { transition: color var(--t-fast), background-color var(--t-fast), border-color var(--t-fast), opacity var(--t-fast); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .bg-ambient::after { background-size: 220px 220px; }
+}

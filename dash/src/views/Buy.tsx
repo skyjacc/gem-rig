@@ -179,7 +179,7 @@ export function Buy({ state }: { state: State }) {
         {cart.units ? <Button onClick={() => setTake({})}>сбросить</Button> : null}
       </div>
 
-      <Card>
+      <Card className="fade">
         <div className="scroll-thin max-h-[calc(100svh-430px)] overflow-auto">
           <table className="w-full text-[13px]">
             <thead className="sticky top-0 bg-[#0f0f0f]">
@@ -264,7 +264,7 @@ export function Buy({ state }: { state: State }) {
       </Card>
 
       {cart.units > 0 ? (
-        <Card className="rise sticky bottom-0 flex flex-wrap items-center gap-x-8 gap-y-3 p-3.5"
+        <Card className="slide-up sticky bottom-0 flex flex-wrap items-center gap-x-8 gap-y-3 p-3.5"
           style={{ background: '#111111e6', backdropFilter: 'blur(16px)' }}>
           <Sum k="позиций" v={nf(cart.lines.length)} />
           <Sum k="самоцветов" v={nf(cart.units)} />

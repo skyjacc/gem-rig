@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { icon as steamIcon } from '../lib/api.ts'
 
 // Кирпичи, снятые с osint-catalog.xyz один в один.
@@ -42,6 +42,8 @@ export function Button({
   return <button type="button" {...rest} className={base + look + className}>{children}</button>
 }
 
+// Переключатель с бегунком: выбранное не перепрыгивает, а переезжает.
+// Ширина у пунктов разная, поэтому положение меряется по самим кнопкам.
 export function Segmented<T extends string>({
   value,
   items,
@@ -53,17 +55,41 @@ export function Segmented<T extends string>({
   onPick: (id: T) => void
   className?: string
 }) {
+  const box = useRef<HTMLDivElement>(null)
+  const [thumb, setThumb] = useState({ x: 0, w: 0, ready: false })
+
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el) return
+    const measure = () => {
+      const active = el.querySelector<HTMLElement>('[data-on="true"]')
+      if (!active) return setThumb(t => ({ ...t, ready: false }))
+      setThumb({ x: active.offsetLeft, w: active.offsetWidth, ready: true })
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [value, items.length])
+
   return (
-    <div className={`inline-flex h-10 shrink-0 border border-white/[0.08] bg-background/40 backdrop-blur ${className}`}>
+    <div
+      ref={box}
+      className={`seg inline-flex h-10 shrink-0 border border-white/[0.08] bg-background/40 backdrop-blur ${className}`}
+    >
+      {thumb.ready ? (
+        <span className="seg-thumb" style={{ transform: `translateX(${thumb.x}px)`, width: thumb.w }} aria-hidden="true" />
+      ) : null}
       {items.map((it, i) => (
         <button
           key={it.id}
           type="button"
+          data-on={value === it.id}
           onClick={() => onPick(it.id)}
           className={
-            'ui-label relative inline-flex items-center justify-center gap-1.5 px-2.5 transition-colors ' +
+            'ui-label relative z-[1] inline-flex items-center justify-center gap-1.5 px-2.5 ' +
             (i ? 'border-l border-white/[0.08] ' : '') +
-            (value === it.id ? 'bg-white/[0.08] text-foreground' : 'text-muted-foreground hover:text-foreground')
+            (value === it.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
           }
         >
           {it.icon}

@@ -6,6 +6,7 @@ import {
 } from '../lib/api.ts'
 import { Bar, Button, Card, Dot, Field, Head, ItemIcon, Label, Num, PageHead, Segmented } from '../parts/ui.tsx'
 import { Modal } from '../parts/Modal.tsx'
+import { Reveal } from '../parts/Reveal.tsx'
 
 // Аккаунты.
 //
@@ -186,7 +187,9 @@ function Row({
 
       {u?.enabled && !open ? <p className="mt-2 text-[12px] text-muted-foreground">{u.why}</p> : null}
 
-      {open && u ? <Tune a={a} u={u} icons={icons} /> : null}
+      <Reveal open={open && !!u}>
+        {open && u ? <Tune a={a} u={u} icons={icons} /> : null}
+      </Reveal>
     </Card>
   )
 }

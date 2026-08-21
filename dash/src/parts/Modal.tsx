@@ -56,7 +56,7 @@ export function Modal({
   return createPortal(
     <div
       className={
-        'fixed inset-0 z-50 flex ' +
+        'fade fixed inset-0 z-50 flex ' +
         (side ? 'justify-end' : 'items-start justify-center overflow-auto p-6 pt-[10vh]')
       }
       style={{ background: 'rgba(10,10,10,0.72)', backdropFilter: 'blur(2px)' }}
@@ -72,8 +72,8 @@ export function Modal({
         className={
           'floating max-w-full outline-none ' +
           (side
-            ? 'flex h-svh flex-col border-l border-white/[0.08] ' + (width === 'w-[520px]' ? 'w-[560px]' : width)
-            : 'rise ' + width)
+            ? 'slide-right flex h-svh flex-col border-l border-white/[0.08] ' + (width === 'w-[520px]' ? 'w-[560px]' : width)
+            : 'pop ' + width)
         }
         style={{ background: '#111111e6' }}
       >

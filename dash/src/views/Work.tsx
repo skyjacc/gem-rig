@@ -6,6 +6,7 @@ import { ago, clock, nf, post, span, useJson, type CatalogRow, type Gem, type Ki
 import { Bar, Button, Card, Dot, Empty, Field, ItemIcon, Label, Num, PageHead, Segmented } from '../parts/ui.tsx'
 import { Chart } from '../parts/Chart.tsx'
 import { Tune } from '../parts/Tune.tsx'
+import { Reveal } from '../parts/Reveal.tsx'
 
 // Работа с гемами — единственный экран, на который заходят каждый день.
 //
@@ -167,9 +168,9 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
                   </span>
                 </button>
 
-                {isOpen ? (
+                <Reveal open={isOpen}>
                   <div className="scroll-thin max-h-[240px] overflow-auto border-t border-white/[0.06] bg-white/[0.01]">
-                    {m.rows.map((r, i) => (
+                    {isOpen ? m.rows.map((r, i) => (
                       <div
                         key={r.assetid}
                         className="rise flex items-center gap-2.5 px-3.5 py-1.5 pl-11"
@@ -185,8 +186,8 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
                           {nf(r.value)}
                         </span>
                       </div>
-                    ))}
-                    {m.supply != null ? (
+                    )) : null}
+                    {isOpen && m.supply != null ? (
                       <div className="px-3.5 py-2 pl-11 text-[11px] text-muted-foreground/60">
                         потолок {nf(m.supply)}
                         {m.supplyKind === 'estimated' ? ' (оценка)' : ''}
@@ -195,7 +196,7 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
                       </div>
                     ) : null}
                   </div>
-                ) : null}
+                </Reveal>
               </div>
             )
           })}
@@ -281,7 +282,7 @@ function KitRow({ k, goal, open, onToggle }: { k: Kit; goal: number; open: boole
         </span>
       </button>
 
-      {open ? (
+      <Reveal open={open}>
         <div className="border-t border-white/[0.06] bg-white/[0.01] px-3.5 py-2.5 pl-11 text-[12px]">
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-muted-foreground">
             <span>гем <span className="text-foreground">{k.gem || '—'}</span></span>
@@ -300,7 +301,7 @@ function KitRow({ k, goal, open, onToggle }: { k: Kit; goal: number; open: boole
             </div>
           ) : null}
         </div>
-      ) : null}
+      </Reveal>
     </div>
   )
 }

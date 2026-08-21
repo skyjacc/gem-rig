@@ -50,7 +50,7 @@ function Queue({ state }: { state: State }) {
         {nf(data.total)} матчей · {nf(data.weight2)} поднимают сразу два гема одной отправкой ·
         жирные идут первыми, чтобы остановка пришлась на дешёвый хвост
       </p>
-      <Card>
+      <Card className="fade">
         <div className="scroll-thin max-h-[calc(100svh-260px)] overflow-auto">
           <table className="w-full text-[13px]">
             <thead className="sticky top-0 bg-[#0f0f0f]">
@@ -103,7 +103,7 @@ function Feed({ state }: { state: State }) {
         ]}
         onPick={setOnly}
       />
-      <Card className="mt-2">
+      <Card className="fade mt-2">
         {rows.length === 0 ? <Empty>событий нет</Empty> : (
           <ul className="scroll-thin max-h-[calc(100svh-280px)] divide-y divide-white/[0.06] overflow-auto">
             {rows.map(e => {
@@ -187,7 +187,7 @@ function Used({ state }: { state: State }) {
         </p>
         <div className="ml-auto"><Field value={q} onChange={setQ} placeholder="матч, турнир, гем" width="w-56" /></div>
       </div>
-      <Card className="mt-2">
+      <Card className="fade mt-2">
         {rows.length === 0 ? <Empty>ничего не нашлось</Empty> : (
           <div className="scroll-thin max-h-[calc(100svh-280px)] overflow-auto">
             <table className="w-full text-[13px]">

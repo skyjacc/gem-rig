@@ -86,7 +86,7 @@ export function Sidebar({
         <div className="flex items-center gap-2">
           <Dot tone={state.autopilot.running ? 'ok' : state.autopilot.enabled ? 'warn' : 'idle'} pulse={state.autopilot.running} />
           <span className="ui-label text-muted-foreground">
-            {state.autopilot.enabled ? (state.autopilot.running ? 'жжёт' : 'ждёт') : 'выключен'}
+            {state.autopilot.enabled ? (state.autopilot.running ? 'накручивает' : 'ждёт') : 'выключен'}
           </span>
         </div>
       </div>

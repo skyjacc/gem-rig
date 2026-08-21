@@ -55,7 +55,7 @@ export function decide(s: Snapshot, limits: Limits = FALLBACK): Decision {
   }
 
   if (s.queueLength <= 0) {
-    return { action: 'idle', why: 'нечего жечь — жду новых гемов' }
+    return { action: 'idle', why: 'нечего накручивать — жду новых гемов' }
   }
 
   if (!s.senderAlive) {

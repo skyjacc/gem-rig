@@ -526,7 +526,7 @@ function Net({ state, size }: { state: State; size: { w: number; h: number } }) 
           <dl className="mt-3 space-y-1.5 text-[12px]">
             <Row k="счётчик" v={nf(chosen.counter) + ' / ' + nf(goal)} />
             <Row k="потолок" v={nf(chosen.pool)} />
-            <Row k="сожжено" v={nf(chosen.burned)} />
+            <Row k="израсходовано" v={nf(chosen.burned)} />
             <Row k="вещей" v={chosen.owned ? String(chosen.owned) : 'нет'} />
             {chosen.price != null ? <Row k="цена" v={'$' + chosen.price.toFixed(2)} /> : null}
           </dl>

@@ -231,7 +231,7 @@ export function roadmap(): { phases: Phase[]; updated: number } {
       detail: 'Гемы лежат на конкретном аккаунте. Панель должна показывать состав и остаток по каждому отдельно, а не в общей куче.' },
   ]
   phases.push({
-    id: 'accounts', title: 'Аккаунты', subtitle: 'на каждом аккаунте те же матчи жгутся заново',
+    id: 'accounts', title: 'Аккаунты', subtitle: 'на каждом аккаунте те же матчи идут в накрутку заново',
     nodes: accNodes,
     progress: { done: accNodes.filter(n => n.status === 'done').length, total: accNodes.length },
     status: acc > 1 ? 'active' : 'todo',

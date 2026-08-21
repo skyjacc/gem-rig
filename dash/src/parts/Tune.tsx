@@ -12,6 +12,10 @@ import { Modal } from './Modal.tsx'
 //
 // Два уровня: «этот аккаунт» — то, что меняют часто; «общие правила» —
 // пороги, которые крутят раз в месяц.
+//
+// Панель у правого края, а не окно посередине: содержимое разной высоты,
+// две вкладки и длинный список порогов. Посередине это прыгало при каждом
+// переключении.
 
 const PACE: [number, string][] = [[500, '0,5 с'], [1000, '1 с'], [2000, '2 с'], [5000, '5 с'], [30000, '30 с']]
 const TARGET: (number | null)[] = [100, 500, 2000, null]
@@ -35,7 +39,7 @@ export function Tune({
       open={open}
       title="Настройка"
       note={unit.label}
-      width="w-[620px]"
+      variant="side"
       onClose={onClose}
       footer={<Button onClick={onClose}>готово</Button>}
     >
@@ -132,7 +136,7 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
       </Line>
 
       <Line
-        k="какие гемы жечь"
+        k="какие гемы накручивать"
         hint={only ? 'выбрано ' + only.length + ' из ' + available.length : 'все, что лежат в инвентаре'}
       >
         {available.length === 0 ? (
@@ -204,7 +208,7 @@ function Rules({ state }: { state: State }) {
 
   return (
     <div>
-      <div className="scroll-thin max-h-[380px] divide-y divide-white/[0.06] overflow-auto">
+      <div className="divide-y divide-white/[0.06]">
         {RULES.map(r => {
           const raw = Number(get(data, r.path))
           const shown = draft[r.path] ?? String(Math.round((r.scale ? raw / r.scale : raw) * 1000) / 1000)

@@ -53,7 +53,7 @@ export function Work({ state, now }: { state: State; now: number }) {
             ) : (
               <Button active onClick={() => post('/api/autopilot', { id: ap.id, on: true })}>
                 <Play className="h-3.5 w-3.5" />
-                <span>жечь</span>
+                <span>накрутить</span>
               </Button>
             )}
           </>
@@ -89,7 +89,7 @@ function verdict(s: State, now: number): string {
   }
   if (!ap.running) return 'включено, поднимаю отправщик — ' + ap.why
   const last = s.confirmed ? ago(s.confirmed.ts, now) : null
-  return `жгу · ${nf(ap.queueLength)} матчей в очереди · ${span(ap.etaMinutes)} до конца` +
+  return `накручиваю · ${nf(ap.queueLength)} матчей в очереди · ${span(ap.etaMinutes)} до конца` +
     (last ? ` · подтверждение ${last} назад` : '')
 }
 
@@ -135,7 +135,7 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
                       <span className="truncate text-[13px] font-medium">{m.gem}</span>
                       <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/60">×{m.items}</span>
                       {!picked.has(m.gem) ? (
-                        <span className="ui-label shrink-0 text-muted-foreground/50">не жжётся</span>
+                        <span className="ui-label shrink-0 text-muted-foreground/50">не в накрутке</span>
                       ) : null}
                     </span>
                     <span className="mt-1 block">
@@ -224,7 +224,7 @@ function Stats({
         </div>
 
         <div className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-white/[0.06] pt-3">
-          <Fact k="сожжено матчей" v={nf(state.burned)} />
+          <Fact k="матчей израсходовано" v={nf(state.burned)} />
           <Fact k="в очереди" v={nf(ap.queueLength)} />
           <Fact k="темп" v={state.rate ? nf(state.rate) + ' / мин' : '—'} />
           <Fact k="до конца" v={span(ap.etaMinutes)} />
@@ -378,7 +378,7 @@ function Shop({ state, goal }: { state: State; goal: number }) {
           <Card>
             <div className="border-b border-white/[0.06] px-3.5 py-2.5">
               <span className="text-[13px] font-medium">Новые команды и игроки</span>
-              <span className="ml-2 text-[12px] text-muted-foreground">жечь с нуля, зато свои матчи</span>
+              <span className="ml-2 text-[12px] text-muted-foreground">накручивать с нуля, зато свои матчи</span>
             </div>
             {fresh.length === 0
               ? <Empty>таких нет</Empty>

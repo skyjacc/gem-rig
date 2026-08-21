@@ -19,10 +19,10 @@ import path from 'node:path'
 import { GC, TOOLS } from './paths.ts'
 import { burnedCount, db } from './db.ts'
 import { decide, freshSendAt, type Action } from './worker.ts'
-import { queueFor, type Pick } from './queue.ts'
+import { queueFor, sendsNeeded, type Pick } from './queue.ts'
 import { inv, refreshInventory } from './steam.ts'
 import { queueFile, senderState, start as startSender, statusFile, stop as stopSender } from './sender.ts'
-import { advise, type Sample } from './pace.ts'
+import { advise, evenDelay, silenceLimit, type Sample } from './pace.ts'
 import { capFor, reached, spreadPlan, type Wave } from './spread.ts'
 import { active, list as accounts, type Account } from './accounts.ts'
 import { settings } from './settings.ts'
@@ -42,6 +42,9 @@ type Unit = {
   until: number            // до какого времени работать; 0 = без срока
   cap: number              // до какого счётчика вести каждый гем; 0 = жечь весь запас
   capped: string[]         // гемы, добравшиеся до своего потолка
+  even: boolean            // растянуть работу ровно до срока, а не жечь и встать
+  needSends: number        // сколько отправок до потолков — считано при пересборке
+  needFrom: number         // сколько было сделано на тот момент
   waves: number            // на сколько партий разложить разброс
   plan: Wave[]
   // Какие гемы жечь на этом аккаунте. null — все, что лежат в инвентаре.
@@ -67,7 +70,8 @@ function unit(id: string): Unit {
   if (!u) {
     u = {
       enabled: false, delay: 1000, auto: true, target: null, ordered: null, until: 0,
-      cap: 0, capped: [], waves: 1, plan: [], only: null,
+      cap: 0, capped: [], even: false, needSends: 0, needFrom: 0,
+      waves: 1, plan: [], only: null,
       startedAt: 0, startBurned: 0, queueLength: 0, fingerprint: '',
       failures: 0, lastAction: 'idle', lastWhy: 'не запускался',
       lastTick: 0, rebuiltAt: 0, log: [],
@@ -155,6 +159,19 @@ export function picksFor(u: { only: string[] | null; cap?: number }) {
   return chosen.filter(p => !done.has(p.key))
 }
 
+// Долг каждого гема: сколько отправок ему не хватает до потолка. Без
+// потолка долг равен всей очереди — растягивать тогда нечего, кроме неё.
+function debts(u: Unit): Map<string, number> {
+  const out = new Map<string, number>()
+  if (!u.cap) return out
+  const now = counters()
+  for (const p of picksFor(u)) {
+    const left = capFor(u.cap, p.key) - (now.get(p.key) ?? 0)
+    if (left > 0) out.set(p.key, left)
+  }
+  return out
+}
+
 function rebuild(a: Account, u: Unit): number {
   const list = picksFor(u)
   if (!list.length) { u.queueLength = 0; return 0 }
@@ -169,6 +186,11 @@ function rebuild(a: Account, u: Unit): number {
   u.queueLength = queue.length
   u.fingerprint = fingerprint()
   u.rebuiltAt = Date.now()
+
+  // Сколько из этой очереди реально уйдёт: до потолков, а не до конца.
+  const need = debts(u)
+  u.needSends = need.size ? sendsNeeded(queue, need) : queue.length
+  u.needFrom = made(a, u)
   return queue.length
 }
 
@@ -197,6 +219,16 @@ function samples(id: string, delay: number): Sample[] {
 
 export function paceAdvice(id: string) {
   return advise(samples(id, unit(id).delay), settings().pace)
+}
+
+// Сколько отправок ещё предстоит: посчитанное при пересборке минус
+// сделанное с того момента.
+const sendsLeft = (u: Unit, done: number) =>
+  Math.max(1, u.needSends - Math.max(0, done - u.needFrom))
+
+const nice = (ms: number) => {
+  const m = Math.max(0, Math.round(ms / 60_000))
+  return m >= 60 ? Math.floor(m / 60) + ' ч ' + (m % 60) + ' мин' : m + ' мин'
 }
 
 async function tickOne(a: Account, push: () => void) {
@@ -233,7 +265,7 @@ async function tickOne(a: Account, push: () => void) {
     displaced: sender.displaced ?? 0,
     until: u.until,
   }, {
-    silentLimit: settings().silentLimit,
+    silentLimit: silenceLimit(settings().silentLimit, u.delay),
     startLimit: settings().startLimit,
     maxFailures: settings().maxFailures,
   })
@@ -252,7 +284,14 @@ async function tickOne(a: Account, push: () => void) {
   if (d.action === 'watch') {
     // Пауза подбирается на ходу: пока GC отвечает на каждую отправку,
     // темп можно поднимать. Отправщик перечитывает delay.txt сам.
-    if (u.auto) {
+    if (u.even && u.until) {
+      const want = evenDelay(u.until - Date.now(), sendsLeft(u, count), settings().pace.floor)
+      if (want !== u.delay) {
+        u.delay = want
+        fs.writeFileSync(path.join(GC, 'delay.txt'), String(u.delay))
+        note(u, 'watch', 'пауза ' + u.delay + ' мс — ' + nice(u.until - Date.now()) + ' на ' + sendsLeft(u, count) + ' отправок')
+      }
+    } else if (u.auto) {
       const adv = advise(samples(a.id, u.delay), settings().pace)
       if (adv.suggest !== u.delay && adv.measured >= settings().pace.enough) {
         u.delay = adv.suggest
@@ -308,6 +347,9 @@ export function unitState(a: Account) {
     target: u.target,
     until: u.until,
     cap: u.cap,
+    even: u.even,
+    needSends: u.needSends,
+    sendsLeft: u.needSends ? sendsLeft(u, made(a, u)) : 0,
     caps: u.cap ? picks().map(p => ({ gem: p.key, cap: capFor(u.cap, p.key) })) : [],
     capped: u.capped,
     ordered: u.ordered,
@@ -361,6 +403,7 @@ export function setAutopilot(
     waves?: number
     until?: number
     cap?: number
+    even?: boolean
     only?: string[] | null
   },
 ) {
@@ -370,7 +413,13 @@ export function setAutopilot(
 
   if (patch.delay && patch.delay >= settings().pace.floor) { u.delay = patch.delay; u.auto = false }
   if (patch.auto !== undefined) u.auto = !!patch.auto
-  if (patch.until !== undefined) u.until = Math.max(0, Math.trunc(Number(patch.until) || 0))
+  if (patch.until !== undefined) {
+    u.until = Math.max(0, Math.trunc(Number(patch.until) || 0))
+    // Срок сам по себе означает «раздели работу на это время». Иначе
+    // «до десяти утра» выжигало бы всё к четырём и стояло бы до десяти.
+    if (patch.even === undefined) u.even = u.until > 0
+  }
+  if (patch.even !== undefined) u.even = !!patch.even
   if (patch.cap !== undefined) {
     u.cap = Math.max(0, Math.trunc(Number(patch.cap) || 0))
     u.capped = []

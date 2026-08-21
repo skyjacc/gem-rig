@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { advise, type Sample } from './pace.ts'
+import { advise, evenDelay, EVEN_CEIL, silenceLimit, type Sample } from './pace.ts'
 
 const ok = (n: number, delay: number): Sample[] =>
   Array.from({ length: n }, (_, i) => ({ delay, ts: i * delay, result: 'update' as const }))
@@ -46,4 +46,26 @@ test('замеры на другом темпе не мешают судить �
   const mixed = [...ok(100, 30000).map(s => ({ ...s, result: 'silent' as const })), ...ok(200, 1000)]
   const a = advise(mixed)
   assert.ok(a.suggest < 1000, 'старая порка на 30 с не должна тормозить сегодняшнюю секунду')
+})
+
+test('растяжка: восемь часов на тысячу отправок — пауза под тридцать секунд', () => {
+  assert.equal(evenDelay(8 * 3600_000, 1000, 300), 28_800)
+})
+
+test('растяжка: работы больше, чем времени — упираемся в пол', () => {
+  assert.equal(evenDelay(60_000, 10_000, 300), 300)
+})
+
+test('растяжка: срок вышел — идём на полу, а не делим на ноль', () => {
+  assert.equal(evenDelay(0, 500, 300), 300)
+  assert.equal(evenDelay(-5000, 500, 300), 300)
+})
+
+test('растяжка: работы почти нет — пауза упирается в потолок, а не в часы', () => {
+  assert.equal(evenDelay(8 * 3600_000, 1, 300), EVEN_CEIL)
+})
+
+test('молчание судится по паузе: на растяжке предел растёт вместе с ней', () => {
+  assert.equal(silenceLimit(60_000, 300), 60_000)
+  assert.equal(silenceLimit(60_000, 30_000), 110_000)
 })

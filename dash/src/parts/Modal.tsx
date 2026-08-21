@@ -41,13 +41,20 @@ export function Modal({
   const box = useRef<HTMLDivElement>(null)
   const downOnBackdrop = useRef(false)
 
+  // Закрывалка живёт в ссылке, а не в зависимостях. Родитель пересоздаёт
+  // её на каждой перерисовке, а состояние прилетает потоком по несколько
+  // раз в минуту — от этого действие срабатывало заново и уводило фокус
+  // на само окно прямо посреди набора: человек печатал, и его выбивало.
+  const close = useRef(onClose)
+  close.current = onClose
+
   useEffect(() => {
     if (!open) return
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') close.current() }
     document.addEventListener('keydown', esc)
     box.current?.focus()
     return () => document.removeEventListener('keydown', esc)
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 

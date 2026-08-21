@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
-import { buildQueue, entityStat, queueFor, rotate, type Pick } from './queue.ts'
+import { buildQueue, entityStat, queueFor, rotate, sendsNeeded, type Pick } from './queue.ts'
 
 const M = (match: string, league: string) => ({ match, league })
 
@@ -184,4 +184,38 @@ test('круг: ни один матч не теряется и не удваи�
   const out = rotate(rows)
   assert.equal(out.length, rows.length)
   assert.equal(new Set(out.map(r => r.match)).size, rows.length)
+})
+
+test('долг: считается по очереди, а общий матч закрывает долг обоим', () => {
+  const rows = buildQueue(new Map([
+    ['A', [{ match: '5', league: '1' }, { match: '1', league: '1' }]],
+    ['B', [{ match: '5', league: '1' }, { match: '9', league: '1' }]],
+  ]), new Set())
+
+  // Обоим нужно по одной — хватит одного общего матча.
+  assert.equal(sendsNeeded(rotate(rows), new Map([['A', 1], ['B', 1]])), 1)
+  // Обоим по две — общий плюс по своему.
+  assert.equal(sendsNeeded(rotate(rows), new Map([['A', 2], ['B', 2]])), 3)
+})
+
+test('долг: запаса не хватает — отдаём всю очередь, а не выдуманное число', () => {
+  const rows = buildQueue(new Map([['A', [{ match: '1', league: '1' }]]]), new Set())
+  assert.equal(sendsNeeded(rotate(rows), new Map([['A', 900]])), 1)
+})
+
+test('долг: никому ничего не должны — ноль отправок', () => {
+  const rows = buildQueue(new Map([['A', [{ match: '1', league: '1' }]]]), new Set())
+  assert.equal(sendsNeeded(rotate(rows), new Map([['A', 0]])), 0)
+  assert.equal(sendsNeeded(rotate(rows), new Map()), 0)
+})
+
+test('долг: чего нет в запасе, того и не ждём', () => {
+  const rows = buildQueue(new Map([
+    ['A', [{ match: '1', league: '1' }, { match: '2', league: '1' }, { match: '3', league: '1' }]],
+    ['B', [{ match: '7', league: '1' }]],
+  ]), new Set())
+
+  // B хочет сотню, а матч у него один: считаем по тому, что есть.
+  // A получает свои два за два круга, B закрывается в первом же.
+  assert.equal(sendsNeeded(rotate(rows), new Map([['A', 2], ['B', 100]])), 3)
 })

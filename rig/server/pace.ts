@@ -78,3 +78,29 @@ export function advise(samples: Sample[], t: Tuning = FALLBACK): Advice {
     measured, silent, atDelay,
   }
 }
+
+// Растяжка по сроку.
+//
+// «До десяти утра» — не «жги как можешь и встань в десять», а «раздели
+// работу на срок». Разница видна на числах: 40 отправок в минуту выжигают
+// заказ за четыре часа и оставляют четыре часа простоя, а те же отправки,
+// разложенные ровно, идут по одной в две секунды — и заканчиваются вовремя.
+//
+// Медленнее ещё и безопаснее: редкие отправки неотличимы от игры.
+//
+// Пауза считается заново каждый круг работника, поэтому промахи в оценке
+// сами выправляются: отстали — темп подрастёт, обогнали — упадёт.
+export const EVEN_CEIL = 120_000
+
+export function evenDelay(msLeft: number, sendsLeft: number, floor: number): number {
+  const n = Math.max(1, Math.trunc(sendsLeft))
+  const ms = Math.max(0, Math.trunc(msLeft))
+  if (ms <= 0) return floor
+  const raw = Math.round(ms / n / 50) * 50
+  return Math.max(floor, Math.min(EVEN_CEIL, raw))
+}
+
+// Молчание отправщика судится по паузе, а не по постоянному числу.
+// На растяжке пауза бывает больше минуты — прежний предел убивал бы
+// живого отправщика, который просто ждёт своей очереди.
+export const silenceLimit = (base: number, delay: number) => Math.max(base, delay * 3 + 20_000)

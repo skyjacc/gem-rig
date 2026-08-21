@@ -63,7 +63,9 @@ export const DEFAULTS: Settings = {
   sellPrice: 10,
   perGem: 25,
   priceTolerance: 0,
-  pace: { floor: 300, ceil: 30_000, enough: 40, clean: 0.01, down: 0.8, up: 1.4 },
+  // Пол 500 мс — не осторожность, а предел отправщика: значение ниже он
+  // из файла не принимает вовсе и молча остаётся на прежнем темпе.
+  pace: { floor: 500, ceil: 30_000, enough: 40, clean: 0.01, down: 0.8, up: 1.4 },
   spread: { band: 0.18, jitter: 0.025 },
 }
 

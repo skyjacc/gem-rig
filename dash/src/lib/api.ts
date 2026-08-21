@@ -87,6 +87,10 @@ export type Unit = {
   cap?: number
   caps?: { gem: string; cap: number }[]
   capped?: string[]
+  // Растяжка: работа делится на оставшееся до срока время.
+  even?: boolean
+  needSends?: number
+  sendsLeft?: number
   done: number
   queueLength: number
   action: ActionId

@@ -19,6 +19,10 @@ import { Modal } from './Modal.tsx'
 
 const PACE: [number, string][] = [[500, '0,5 с'], [1000, '1 с'], [2000, '2 с'], [5000, '5 с'], [30000, '30 с']]
 const TARGET: (number | null)[] = [100, 500, 2000, null]
+// Пауза в человеческом виде: миллисекунды читаются плохо, секунды хорошо.
+const secs = (ms: number) =>
+  ms >= 60_000 ? Math.round(ms / 60_000) + ' мин' : (ms / 1000).toFixed(ms >= 10_000 ? 0 : 1).replace('.', ',') + ' с'
+
 const CAP = [0, 500, 1000, 1500, 2000]
 const WAVES = [1, 2, 3, 4, 5]
 
@@ -86,7 +90,10 @@ export function Tune({
 }
 
 function Run({ state, unit }: { state: State; unit: Unit }) {
-  const [own, setOwn] = useState(unit.ordered ? String(unit.ordered) : '')
+  // Признак «ввожу своё» отдельно от самого текста. Раньше режим держался
+  // на непустоте поля, и стёртое до конца число возвращало прежний набор
+  // прямо под руками — стереть, чтобы набрать заново, было нельзя.
+  const [own, setOwn] = useState<string | null>(null)
   const send = (patch: Record<string, unknown>) => post('/api/autopilot', { id: unit.id, ...patch })
 
   const available = unit.available ?? []
@@ -106,21 +113,21 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
       <Line k="сколько отправок" hint="и встать; «всё» — до конца очереди">
         <span className="flex flex-wrap items-center gap-2">
           <Segmented
-            value={own.trim() ? 'own' : String(unit.ordered)}
+            value={own === null ? String(unit.ordered) : 'own'}
             items={[
               ...TARGET.map(t => ({ id: String(t), label: t === null ? 'всё' : nf(t) })),
               { id: 'own', label: 'своё' },
             ]}
             onPick={id => {
-              if (id === 'own') { setOwn(own || '250'); return }
-              setOwn('')
+              if (id === 'own') { setOwn(String(unit.ordered ?? 250)); return }
+              setOwn(null)
               send({ target: id === 'null' ? null : Number(id) })
             }}
           />
-          {own.trim() ? (
+          {own !== null ? (
             <>
               <Field value={own} onChange={v => setOwn(v.replace(/\D/g, ''))} width="w-24" inputMode="numeric" />
-              <Button onClick={() => send({ target: Number(own) })}>применить</Button>
+              <Button disabled={!own} onClick={() => send({ target: Number(own) })}>применить</Button>
             </>
           ) : null}
         </span>
@@ -211,16 +218,38 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
         ) : null}
       </Line>
 
-      <Line k="пауза" hint="на «сама» темп растёт, пока Valve отвечает на каждую отправку">
+      <Line
+        k="пауза"
+        hint="«к сроку» делит работу на оставшееся время; «сама» гонит, пока Valve отвечает"
+      >
         <span className="flex flex-wrap items-center gap-2">
           <Segmented
-            value={unit.auto ? 'auto' : String(unit.delay)}
-            items={[{ id: 'auto', label: 'сама' }, ...PACE.map(([ms, l]) => ({ id: String(ms), label: l }))]}
-            onPick={id => send(id === 'auto' ? { auto: true } : { delay: Number(id) })}
+            value={unit.even && unit.until ? 'even' : unit.auto ? 'auto' : String(unit.delay)}
+            items={[
+              { id: 'even', label: 'к сроку' },
+              { id: 'auto', label: 'сама' },
+              ...PACE.map(([ms, l]) => ({ id: String(ms), label: l })),
+            ]}
+            onPick={id => send(
+              id === 'even' ? { even: true }
+                : id === 'auto' ? { even: false, auto: true }
+                  : { even: false, delay: Number(id) },
+            )}
           />
           <span className="tnum font-mono text-[12px] text-muted-foreground">{nf(unit.delay)} мс</span>
         </span>
-        {state.autopilot.pace && unit.auto ? (
+        {unit.even && !unit.until ? (
+          <p className="text-[12px]" style={{ color: 'var(--warn)' }}>
+            делить не на что — задайте срок выше
+          </p>
+        ) : null}
+        {unit.even && unit.until ? (
+          <p className="text-[12px] text-muted-foreground">
+            осталось <span className="tnum font-mono text-foreground">{nf(unit.sendsLeft ?? 0)}</span> отправок
+            {' на '}{left(unit.until)} — по одной в{' '}
+            <span className="tnum font-mono text-foreground">{secs(unit.delay)}</span>
+          </p>
+        ) : state.autopilot.pace && unit.auto ? (
           <p className="text-[12px] text-muted-foreground">{state.autopilot.pace.why}</p>
         ) : null}
       </Line>

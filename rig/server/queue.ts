@@ -124,6 +124,42 @@ export function rotate(rows: QueueRow[]): QueueRow[] {
   return out
 }
 
+// Сколько отправок осталось до потолков.
+//
+// Не оценка, а проход по той самой очереди, что уйдёт отправщику: каждая
+// строка поднимает свои сущности на единицу, и мы смотрим, на каком месте
+// последняя из них добирается до своего числа. Считать делением нельзя —
+// матч, поднимающий двоих, закрывает долг обоим сразу.
+//
+// Это число — знаменатель для растяжки по времени: срок делится на него
+// и выходит пауза, при которой работа заканчивается ровно к сроку.
+//
+// Долг обрезается по запасу. У DD 568 матчей на потолок в 1328 — без обрезки
+// расчёт ждал бы, пока DD доберётся до своего числа, то есть до конца всей
+// очереди, и знаменатель выходил 21 074 вместо честных тринадцати тысяч.
+export function sendsNeeded(rows: QueueRow[], need: Map<string, number>): number {
+  const supply = new Map<string, number>()
+  for (const r of rows) for (const e of r.entities) supply.set(e, (supply.get(e) ?? 0) + 1)
+
+  const left = new Map<string, number>()
+  for (const [k, v] of need) {
+    const n = Math.min(v, supply.get(k) ?? 0)
+    if (n > 0) left.set(k, n)
+  }
+  if (!left.size) return 0
+
+  for (let i = 0; i < rows.length; i++) {
+    for (const e of rows[i].entities) {
+      const n = left.get(e)
+      if (n === undefined) continue
+      if (n <= 1) left.delete(e)
+      else left.set(e, n - 1)
+    }
+    if (!left.size) return i + 1
+  }
+  return rows.length
+}
+
 export function queueFor(target: DatabaseSync, picks: Pick[], account: string): QueueRow[] {
   const sets = new Map<string, Match[]>()
   for (const p of picks) sets.set(p.key, matchesOf(target, p))

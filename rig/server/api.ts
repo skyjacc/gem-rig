@@ -3,7 +3,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { GC, TOOLS, readJson } from './paths.ts'
+import { GC, TOOLS, marketKey, readJson } from './paths.ts'
 import { db } from './db.ts'
 import { ACCOUNT, active, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink } from './accounts.ts'
 import { buildGraph, type GraphEntity } from './graph.ts'
@@ -12,6 +12,7 @@ import { inv } from './steam.ts'
 import { picks } from './autopilot.ts'
 import { pieceKey } from './itemset.ts'
 import { settings } from './settings.ts'
+import { buyOne, fetchPrices, gemName, rank, type Offer } from './market.ts'
 
 const norm = (s: string) => String(s ?? '').replace(/^(Genuine\s+)?Spectator:\s*/, '').trim()
 
@@ -353,4 +354,127 @@ export function itemPool() {
 
   list.sort((a, b) => b.complete - a.complete || b.items - a.items || b.max - a.max)
   return { goal, kits: list }
+}
+
+// ── скупка ──
+//
+// Терминал закупки. Цена лота сама по себе ничего не значит: за полцента
+// можно набрать сотню самоцветов, которые не дойдут и до трёхсот просмотров.
+// Значение имеет связка «цена — запас матчей — сколько отправок это стоит».
+//
+// И ограничение у нас не деньги, а время. Копия гема, который уже
+// накручивается, стоит НОЛЬ отправок: одно сообщение поднимает все вещи
+// этой команды разом. Новая команда — это полный прогон в тысячу отправок.
+// Поэтому в терминале две колонки прибыли: на доллар и на отправку.
+
+let priceCache: { at: number; items: any[]; error: string | null } = { at: 0, items: [], error: null }
+
+export async function marketScan(force = false) {
+  const s = settings()
+  const goal = s.goal
+  const sell = s.sellPrice
+
+  if (force || !priceCache.items.length || Date.now() - priceCache.at > 120_000) {
+    const r = await fetchPrices()
+    if (r.items.length) priceCache = { at: Date.now(), items: r.items, error: null }
+    else priceCache = { ...priceCache, error: r.error }
+  }
+
+  const map = readJson<any[]>(path.join(TOOLS, 'gem-map.json'), [])
+  const byName = new Map<string, any>()
+  for (const g of map) byName.set(norm(g.name), g)
+
+  // Что уже лежит и что уже накручивается — от этого зависит цена в отправках.
+  const owned = new Map<string, number>()
+  for (const r of inv.rows) {
+    if (!r.gem || r.gem === '—') continue
+    owned.set(r.gem, (owned.get(r.gem) ?? 0) + 1)
+  }
+  const burning = new Set(picks().map(p => p.key))
+
+  const offers: Offer[] = []
+  for (const it of priceCache.items) {
+    const gem = gemName(it.market_hash_name ?? '')
+    if (!gem) continue
+    const g = byName.get(gem)
+    if (!g?.entity_id || (g.kind !== 'team' && g.kind !== 'player')) continue
+
+    const pool = g.kind === 'team'
+      ? (db.prepare(`select count(*) c from vmatch where radiant = ? or dire = ?`).get(g.entity_id, g.entity_id) as any).c
+      : (db.prepare(
+        `select count(distinct v.match_id) c from vmatch v join vplayer p on p.match_id = v.match_id where p.account_id = ?`,
+      ).get(g.entity_id) as any).c
+
+    offers.push({
+      gem,
+      name: it.market_hash_name,
+      price: Number(it.price) || 0,
+      volume: Number(it.volume) || 0,
+      pool,
+      owned: owned.get(gem) ?? 0,
+    })
+  }
+
+  const ranked = rank(offers, goal).map(o => {
+    // Отправок на штуку: копия уже накручиваемого гема не стоит ни одной,
+    // новая команда — полный прогон до цели.
+    const sends = burning.has(o.gem) ? 0 : Math.min(o.pool, goal)
+    return {
+      ...o,
+      burning: burning.has(o.gem),
+      sends,
+      revenue: o.reaches ? sell : 0,
+      profit: o.reaches ? sell - o.price : -o.price,
+    }
+  })
+
+  return {
+    goal,
+    sell,
+    perGem: s.perGem,
+    updated: priceCache.at,
+    error: priceCache.error,
+    scanned: priceCache.items.length,
+    offers: ranked,
+  }
+}
+
+// Покупка на площадке.
+//
+// Деньги тратятся только по прямому подтверждению человека: без confirm
+// запрос ничего не покупает и просто пересчитывает смету. Работник сюда
+// не ходит вовсе — он умеет накручивать, но не покупать.
+//
+// Каждый лот берётся отдельным запросом с потолком цены: если цена
+// подскочила между просмотром и покупкой, лот не купится, а не спишет
+// больше ожидаемого.
+export async function marketBuy(body: any) {
+  const key = marketKey()
+  const lines: { name: string; take: number; price: number }[] = Array.isArray(body?.lines) ? body.lines : []
+
+  const units = lines.reduce((n, l) => n + (Number(l.take) || 0), 0)
+  const total = lines.reduce((n, l) => n + (Number(l.take) || 0) * (Number(l.price) || 0), 0)
+
+  if (!lines.length) return { error: 'нечего покупать' }
+  if (!key) {
+    return {
+      error: 'нет ключа площадки — положите его в tools/market.key, ' +
+        'взять можно в настройках market.dota2.net',
+    }
+  }
+  if (!body?.confirm) return { preview: true, units, total }
+
+  const done: any[] = []
+  for (const l of lines) {
+    const take = Math.max(0, Math.trunc(Number(l.take) || 0))
+    for (let i = 0; i < take; i++) {
+      const r: any = await buyOne(key, String(l.name), Number(l.price), 'gt-' + Date.now() + '-' + i)
+      done.push({ gem: l.name, ok: !!r?.success, id: r?.id ?? null, error: r?.error ?? null })
+      // Цена ушла или деньги кончились — дальше по этой позиции не долбим.
+      if (!r?.success) break
+      await new Promise(res => setTimeout(res, 350))
+    }
+  }
+
+  return { bought: done.filter(d => d.ok).length, asked: units, planned: total, lines: done.slice(0, 60) }
 }

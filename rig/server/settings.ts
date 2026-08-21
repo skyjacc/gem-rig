@@ -28,6 +28,11 @@ export type Settings = {
   invTtl: number
   // Сколько турниров показывать под гемом в дереве.
   treeTop: number
+  // За сколько уходит готовая вещь, в долларах. От этого числа считается
+  // вся экономика закупки: дешёвый гем сам по себе ничего не значит.
+  sellPrice: number
+  // Сколько брать одного гема за раз в плане закупки.
+  perGem: number
 
   pace: {
     floor: number   // ниже этой паузы не опускаемся никогда, мс
@@ -52,6 +57,8 @@ export const DEFAULTS: Settings = {
   maxFailures: 5,
   invTtl: 60_000,
   treeTop: 12,
+  sellPrice: 10,
+  perGem: 25,
   pace: { floor: 300, ceil: 30_000, enough: 40, clean: 0.01, down: 0.8, up: 1.4 },
   spread: { band: 0.18, jitter: 0.025 },
 }
@@ -66,6 +73,8 @@ const LIMITS: Record<string, [number, number]> = {
   maxFailures: [1, 50],
   invTtl: [10_000, 3_600_000],
   treeTop: [1, 60],
+  sellPrice: [0.01, 10_000],
+  perGem: [1, 5_000],
   'pace.floor': [100, 60_000],
   'pace.ceil': [1_000, 600_000],
   'pace.enough': [5, 5_000],
@@ -88,7 +97,7 @@ const num = (key: string, v: unknown, fallback: number) => {
   if (v === null || v === undefined || v === '') return fallback
   const n = Number(v)
   if (!Number.isFinite(n)) return fallback
-  const whole = key === 'pace.clean' || key.startsWith('spread.') || key === 'pace.down' || key === 'pace.up'
+  const whole = key === 'pace.clean' || key.startsWith('spread.') || key === 'pace.down' || key === 'pace.up' || key === 'sellPrice'
   return clamp(key, whole ? n : Math.trunc(n))
 }
 
@@ -106,6 +115,8 @@ export function merge(base: Settings, patch: any): Settings {
     maxFailures: num('maxFailures', p.maxFailures, base.maxFailures),
     invTtl: num('invTtl', p.invTtl, base.invTtl),
     treeTop: num('treeTop', p.treeTop, base.treeTop),
+    sellPrice: num('sellPrice', p.sellPrice, base.sellPrice),
+    perGem: num('perGem', p.perGem, base.perGem),
     pace: {
       floor: num('pace.floor', pace.floor, base.pace.floor),
       ceil: num('pace.ceil', pace.ceil, base.pace.ceil),

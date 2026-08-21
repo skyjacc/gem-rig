@@ -14,7 +14,7 @@ import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
 import { isBurned } from './db.ts'
 import { listFiles, senderState, start, statusFile, stop } from './sender.ts'
-import { accountList, accountsApi, burnedList, graph, itemPool, queuePreview, tree } from './api.ts'
+import { accountList, accountsApi, burnedList, graph, itemPool, marketBuy, marketScan, queuePreview, tree } from './api.ts'
 import { ACCOUNT, activeId as activeAccountId } from './accounts.ts'
 import { roadmap } from './roadmap.ts'
 import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
@@ -154,6 +154,8 @@ app.post('/api/settings/reset', async () => {
 // ── граф и очередь ──
 app.get('/api/graph', async (req: any) => graph(req.query?.scope === 'all' ? 'all' : 'owned'))
 app.get('/api/queue', async (req: any) => queuePreview(Number(req.query?.limit) || 200))
+app.post('/api/market/buy', async (req: any) => marketBuy(req.body ?? {}))
+app.get('/api/market', async (req: any) => marketScan(req.query?.force === '1'))
 app.get('/api/pool', async () => itemPool())
 app.get('/api/burned', async (req: any) => burnedList(Number(req.query?.limit) || 500))
 app.get('/api/counters', async () => counterLines())

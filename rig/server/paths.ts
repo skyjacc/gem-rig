@@ -22,5 +22,8 @@ function readKey(file: string, env: string) {
 
 export const odKey = () => readKey('opendota.key', 'OPENDOTA_KEY')
 export const steamKey = () => readKey('steam.key', 'STEAM_KEY')
+// Ключ площадки market.dota2.net. Им списываются деньги, поэтому лежит
+// рядом с остальными ключами и в репозиторий не попадает.
+export const marketKey = () => readKey('market.key', 'MARKET_KEY')
 
 export const STEAMID = process.env.STEAMID || '76561198362481819'

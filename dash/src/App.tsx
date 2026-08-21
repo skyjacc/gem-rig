@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Gem, Network, Users, Wrench } from 'lucide-react'
+import { Gem, Network, ShoppingCart, Users, Wrench } from 'lucide-react'
 import { ago, DEMO, useJson, useLive, type Accounts as AccountsData } from './lib/api.ts'
 import { Dot } from './parts/ui.tsx'
 import { Sidebar, type ViewId } from './parts/Sidebar.tsx'
@@ -8,6 +8,7 @@ import { Work } from './views/Work.tsx'
 import { Graph } from './views/Graph.tsx'
 import { Accounts } from './views/Accounts.tsx'
 import { Review } from './views/Review.tsx'
+import { Buy } from './views/Buy.tsx'
 
 export default function App() {
   const { state, online } = useLive()
@@ -41,6 +42,7 @@ export default function App() {
   // по случаю: посмотреть карту, привязать аккаунт, разобрать поломку.
   const items = [
     { id: 'work' as const, label: 'Гемы', icon: <Gem className="h-3.5 w-3.5" />, count: state.mine.filter(m => m.gem !== '—').length },
+    { id: 'buy' as const, label: 'Скупка', icon: <ShoppingCart className="h-3.5 w-3.5" /> },
     { id: 'graph' as const, label: 'Граф', icon: <Network className="h-3.5 w-3.5" /> },
     { id: 'accounts' as const, label: 'Аккаунты', icon: <Users className="h-3.5 w-3.5" />, count: accounts?.list.length },
     { id: 'review' as const, label: 'Разбор', icon: <Wrench className="h-3.5 w-3.5" /> },
@@ -76,6 +78,7 @@ export default function App() {
             className={'scroll-thin min-w-0 flex-1 ' + (view === 'graph' ? 'overflow-hidden p-0' : 'view-in overflow-auto px-8 py-10')}
           >
             {view === 'work' && <Work state={state} now={now} />}
+            {view === 'buy' && <Buy state={state} />}
             {view === 'graph' && <Graph state={state} />}
             {view === 'accounts' && <Accounts state={state} accounts={accounts} onLink={() => setLinking(true)} />}
             {view === 'review' && <Review state={state} />}

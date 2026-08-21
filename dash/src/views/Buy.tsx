@@ -31,20 +31,40 @@ type Offer = {
   profit: number
 }
 
+type Cur = 'RUB' | 'USD' | 'EUR' | 'UAH'
+
 type Scan = {
   goal: number
   sell: number
+  currency: Cur
+  converted: boolean   // цена пересчитана, а не взята у площадки
+  rate: number
   perGem: number
   updated: number
   error: string | null
   scanned: number
+  balance: number | null
+  balanceCurrency: string | null
+  balanceError: string | null
   offers: Offer[]
+}
+
+const SIGN: Record<Cur, string> = { RUB: '₽', USD: '$', EUR: '€', UAH: '₴' }
+
+// Доллар знаком спереди и точкой, остальные — знаком сзади и запятой.
+// Полцента должно остаться полцентом, а не округлиться в ноль.
+function money(v: number, c: Cur) {
+  const n = Number(v) || 0
+  if (c === 'USD') return '$' + n.toFixed(Math.abs(n) < 0.01 && n !== 0 ? 3 : 2)
+  const [w, f] = n.toFixed(Math.abs(n) < 1 && n !== 0 ? 3 : 2).split('.')
+  return w.replace(/\B(?=(\d{3})+$)/g, ' ') + ',' + f + ' ' + SIGN[c]
 }
 
 const SPEED = 76   // отправок в минуту, замер 20 августа
 
 export function Buy({ state }: { state: State }) {
-  const { data } = useJson<Scan>('/api/market', state.ts)
+  const [cur, setCur] = useState<Cur>('USD')
+  const { data } = useJson<Scan>('/api/market?cur=' + cur, state.ts + '|' + cur)
   const [take, setTake] = useState<Record<string, number>>({})
   const [only, setOnly] = useState<'fit' | 'free' | 'all'>('fit')
   const [q, setQ] = useState('')
@@ -111,7 +131,12 @@ export function Buy({ state }: { state: State }) {
               {data.error ? data.error : 'просмотрено ' + nf(data.scanned) + ' позиций'}
               {data.updated ? ' · ' + new Date(data.updated).toLocaleTimeString('ru-RU') : ''}
             </span>
-            <Button onClick={() => fetch('/api/market?force=1')}>
+            <Segmented
+              value={cur}
+              items={(['RUB', 'USD', 'EUR', 'UAH'] as Cur[]).map(c => ({ id: c, label: SIGN[c] + ' ' + c }))}
+              onPick={setCur}
+            />
+            <Button onClick={() => fetch('/api/market?force=1&cur=' + cur)}>
               <RefreshCw className="h-3.5 w-3.5" />
               <span>обновить</span>
             </Button>
@@ -123,13 +148,13 @@ export function Buy({ state }: { state: State }) {
         <Kpi k="гемов подходит" v={nf(kpi.length)} note={'из ' + nf(data.offers.length) + ' найденных'} />
         <Kpi k="лотов доступно" v={nf(kpi.reduce((n, o) => n + o.volume, 0))} />
         <Kpi k="без отправок" v={nf(free.reduce((n, o) => n + o.volume, 0))} note="уже накручиваются" tone="ok" />
-        <Kpi k="цена лота" v={'$' + (kpi[0]?.price ?? 0).toFixed(3)} note="минимальная" />
-        <Kpi k="продажа" v={'$' + data.sell} note="за готовую вещь" />
+        <Kpi k="цена лота" v={money(kpi[0]?.price ?? 0, cur)} note={data.converted ? 'пересчёт по курсу НБУ ' + data.rate.toFixed(2) : 'минимальная'} />
+        <Kpi k="продажа" v={money(data.sell, cur)} note="за готовую вещь" />
         <Kpi
-          k="потенциал"
-          v={'$' + nf(kpi.reduce((n, o) => n + o.volume, 0) * data.sell)}
-          note="если взять все лоты"
-          tone="ok"
+          k="на счету"
+          v={data.balance != null ? money(data.balance, (data.balanceCurrency as Cur) ?? cur) : '—'}
+          note={data.balanceError ?? 'на market.dota2.net'}
+          tone={data.balance ? 'ok' : undefined}
         />
       </div>
 
@@ -192,7 +217,7 @@ export function Buy({ state }: { state: State }) {
                         ) : null}
                       </span>
                     </td>
-                    <td className="tnum px-3.5 py-1.5 text-right font-mono">${o.price.toFixed(3)}</td>
+                    <td className="tnum px-3.5 py-1.5 text-right font-mono">{money(o.price, cur)}</td>
                     <td
                       className="tnum px-3.5 py-1.5 text-right font-mono"
                       style={{ color: o.reaches ? undefined : 'var(--warn)' }}
@@ -225,9 +250,9 @@ export function Buy({ state }: { state: State }) {
                         </button>
                       </span>
                     </td>
-                    <td className="tnum px-3.5 py-1.5 text-right font-mono">{sum ? '$' + sum.toFixed(2) : ''}</td>
+                    <td className="tnum px-3.5 py-1.5 text-right font-mono">{sum ? money(sum, cur) : ''}</td>
                     <td className="tnum px-3.5 py-1.5 text-right font-mono" style={{ color: gain > 0 ? 'var(--ok)' : undefined }}>
-                      {gain ? '$' + nf(gain) : ''}
+                      {gain ? money(gain, cur) : ''}
                     </td>
                   </tr>
                 )
@@ -243,10 +268,10 @@ export function Buy({ state }: { state: State }) {
           style={{ background: '#111111e6', backdropFilter: 'blur(16px)' }}>
           <Sum k="позиций" v={nf(cart.lines.length)} />
           <Sum k="самоцветов" v={nf(cart.units)} />
-          <Sum k="стоимость" v={'$' + cart.cost.toFixed(2)} />
+          <Sum k="стоимость" v={money(cart.cost, cur)} />
           <Sum k="отправок" v={nf(cart.sends)} note={cart.minutes ? '≈ ' + nf(cart.minutes) + ' мин' : 'ничего не надо жечь'} />
-          <Sum k="выручка" v={'$' + nf(cart.revenue)} />
-          <Sum k="прибыль" v={'$' + nf(cart.profit)} tone="ok" />
+          <Sum k="выручка" v={money(cart.revenue, cur)} />
+          <Sum k="прибыль" v={money(cart.profit, cur)} tone="ok" />
           <span className="ml-auto">
             <Button active onClick={() => setConfirm(true)}>
               <ShoppingCart className="h-3.5 w-3.5" />
@@ -272,6 +297,7 @@ export function Buy({ state }: { state: State }) {
                 setBusy(true)
                 const r = await post('/api/market/buy', {
                   lines: cart.lines.map(x => ({ name: x.o.name, take: x.n, price: x.o.price })),
+                  currency: cur,
                   confirm: true,
                 })
                 setResult(r?.error ? String(r.error) : JSON.stringify(r))
@@ -288,20 +314,22 @@ export function Buy({ state }: { state: State }) {
             {cart.lines.map(x => (
               <div key={x.o.gem} className="flex items-baseline gap-3 py-1.5">
                 <span className="min-w-0 flex-1 truncate">{x.o.gem}</span>
-                <span className="tnum font-mono text-muted-foreground">{nf(x.n)} × ${x.o.price.toFixed(3)}</span>
-                <span className="tnum w-16 text-right font-mono">${(x.n * x.o.price).toFixed(2)}</span>
+                <span className="tnum font-mono text-muted-foreground">{nf(x.n)} × {money(x.o.price, cur)}</span>
+                <span className="tnum w-20 text-right font-mono">{money(x.n * x.o.price, cur)}</span>
               </div>
             ))}
           </div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 border-t border-white/[0.06] pt-3 text-[12px]">
-            <Row k="спишется" v={'$' + cart.cost.toFixed(2)} />
+            <Row k="спишется" v={money(cart.cost, cur)} />
             <Row k="отправок потом" v={nf(cart.sends) + (cart.minutes ? ' · ' + nf(cart.minutes) + ' мин' : '')} />
-            <Row k="выручка при $" v={nf(cart.revenue)} />
-            <Row k="прибыль" v={'$' + nf(cart.profit)} />
+            <Row k="выручка" v={money(cart.revenue, cur)} />
+            <Row k="прибыль" v={money(cart.profit, cur)} />
           </div>
           <p className="text-[12px] leading-relaxed text-muted-foreground">
             Покупка идёт на market.dota2.net с вашего баланса. Каждый лот берётся отдельным
             запросом с потолком цены — если цена подскочила, лот просто не купится.
+            Валюта покупки сверяется с валютой счёта: у площадки рубль считается сотнями,
+            а доллар тысячами, и перепутать их значит переплатить вдесятеро.
           </p>
           {result ? (
             <pre className="scroll-thin max-h-[140px] overflow-auto border border-white/[0.08] p-2 text-[11px] text-muted-foreground">

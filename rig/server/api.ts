@@ -12,7 +12,7 @@ import { inv } from './steam.ts'
 import { picks } from './autopilot.ts'
 import { pieceKey } from './itemset.ts'
 import { settings } from './settings.ts'
-import { buyOne, fetchPrices, gemName, rank, type Offer } from './market.ts'
+import { balance, buyOne, fetchPrices, gemName, impliedRate, nbuRate, rank, type Currency, type Offer } from './market.ts'
 
 const norm = (s: string) => String(s ?? '').replace(/^(Genuine\s+)?Spectator:\s*/, '').trim()
 
@@ -367,18 +367,39 @@ export function itemPool() {
 // этой команды разом. Новая команда — это полный прогон в тысячу отправок.
 // Поэтому в терминале две колонки прибыли: на доллар и на отправку.
 
-let priceCache: { at: number; items: any[]; error: string | null } = { at: 0, items: [], error: null }
+type Cache = { at: number; items: any[]; error: string | null }
+const priceCache = new Map<string, Cache>()
+let rateCache = { at: 0, usdToUah: 0 }
 
-export async function marketScan(force = false) {
+// Курс доллара к гривне у площадки взять негде — её цен в гривне нет вовсе.
+// Берём у Национального банка и подписываем, что это пересчёт.
+async function uah(): Promise<number> {
+  if (Date.now() - rateCache.at < 6 * 3600_000 && rateCache.usdToUah) return rateCache.usdToUah
+  const r = await nbuRate()
+  if (r) rateCache = { at: Date.now(), usdToUah: r }
+  return rateCache.usdToUah
+}
+
+async function prices(currency: Currency, force: boolean): Promise<Cache> {
+  const native: Currency = currency === 'UAH' ? 'USD' : currency
+  const has = priceCache.get(native)
+  if (!force && has?.items.length && Date.now() - has.at < 120_000) return has
+  const r = await fetchPrices(native)
+  const next: Cache = r.items.length
+    ? { at: Date.now(), items: r.items, error: null }
+    : { at: has?.at ?? 0, items: has?.items ?? [], error: r.error }
+  priceCache.set(native, next)
+  return next
+}
+
+export async function marketScan(force = false, currency: Currency = 'USD') {
   const s = settings()
   const goal = s.goal
-  const sell = s.sellPrice
 
-  if (force || !priceCache.items.length || Date.now() - priceCache.at > 120_000) {
-    const r = await fetchPrices()
-    if (r.items.length) priceCache = { at: Date.now(), items: r.items, error: null }
-    else priceCache = { ...priceCache, error: r.error }
-  }
+  const cache = await prices(currency, force)
+  // В гривне цены не выдают вовсе, поэтому доллар пересчитывается курсом НБУ.
+  const rate = currency === 'UAH' ? await uah() : 1
+  const sell = s.sellPrice * (currency === 'UAH' ? rate : await sellRate(currency, force))
 
   const map = readJson<any[]>(path.join(TOOLS, 'gem-map.json'), [])
   const byName = new Map<string, any>()
@@ -393,7 +414,7 @@ export async function marketScan(force = false) {
   const burning = new Set(picks().map(p => p.key))
 
   const offers: Offer[] = []
-  for (const it of priceCache.items) {
+  for (const it of cache.items) {
     const gem = gemName(it.market_hash_name ?? '')
     if (!gem) continue
     const g = byName.get(gem)
@@ -408,7 +429,7 @@ export async function marketScan(force = false) {
     offers.push({
       gem,
       name: it.market_hash_name,
-      price: Number(it.price) || 0,
+      price: (Number(it.price) || 0) * rate,
       volume: Number(it.volume) || 0,
       pool,
       owned: owned.get(gem) ?? 0,
@@ -428,15 +449,32 @@ export async function marketScan(force = false) {
     }
   })
 
+  const acc = marketKey() ? await balance(marketKey()!) : null
+
   return {
     goal,
     sell,
+    currency,
+    // Точная цена площадки или пересчёт: подписываем честно.
+    converted: currency === 'UAH',
+    rate: currency === 'UAH' ? rate : 1,
     perGem: s.perGem,
-    updated: priceCache.at,
-    error: priceCache.error,
-    scanned: priceCache.items.length,
+    updated: cache.at,
+    error: cache.error,
+    scanned: cache.items.length,
+    balance: acc?.success ? Number(acc.money) || 0 : null,
+    balanceCurrency: acc?.currency ?? null,
+    balanceError: marketKey() ? (acc?.success ? null : (acc?.error ?? 'площадка не ответила')) : 'нет ключа',
     offers: ranked,
   }
+}
+
+// Цена продажи хранится в долларах. Чтобы показать её в валюте площадки,
+// нужен курс — берём его по её же ценам, а не со стороны.
+async function sellRate(currency: Currency, force: boolean): Promise<number> {
+  if (currency === 'USD') return 1
+  const [usd, other] = await Promise.all([prices('USD', force), prices(currency, force)])
+  return impliedRate(usd.items, other.items) || 1
 }
 
 // Покупка на площадке.
@@ -462,13 +500,31 @@ export async function marketBuy(body: any) {
         'взять можно в настройках market.dota2.net',
     }
   }
-  if (!body?.confirm) return { preview: true, units, total }
+  // Валюта покупки должна совпадать с валютой счёта: у площадки множитель
+  // мелкой единицы разный — рубль сотня, доллар тысяча. Послать рублёвую
+  // цену как долларовую значит переплатить вдесятеро, поэтому сверяем.
+  const acc: any = await balance(key)
+  if (!acc?.success) return { error: 'площадка не отдала баланс: ' + (acc?.error ?? 'нет ответа') }
+  const accCur = String(acc.currency ?? '') as Currency
+  const asked = String(body?.currency ?? accCur) as Currency
+
+  if (asked === 'UAH') {
+    return { error: 'в гривне площадка не торгует — переключите валюту на ту, что у счёта: ' + accCur }
+  }
+  if (asked !== accCur) {
+    return { error: 'валюта счёта ' + accCur + ', а цены показаны в ' + asked + ' — переключите валюту' }
+  }
+  if (Number(acc.money) < total) {
+    return { error: 'на счету ' + acc.money + ' ' + accCur + ', нужно ' + total.toFixed(2) }
+  }
+
+  if (!body?.confirm) return { preview: true, units, total, currency: accCur, balance: Number(acc.money) }
 
   const done: any[] = []
   for (const l of lines) {
     const take = Math.max(0, Math.trunc(Number(l.take) || 0))
     for (let i = 0; i < take; i++) {
-      const r: any = await buyOne(key, String(l.name), Number(l.price), 'gt-' + Date.now() + '-' + i)
+      const r: any = await buyOne(key, String(l.name), Number(l.price), accCur, 'gt-' + Date.now() + '-' + i)
       done.push({ gem: l.name, ok: !!r?.success, id: r?.id ?? null, error: r?.error ?? null })
       // Цена ушла или деньги кончились — дальше по этой позиции не долбим.
       if (!r?.success) break
@@ -476,5 +532,5 @@ export async function marketBuy(body: any) {
     }
   }
 
-  return { bought: done.filter(d => d.ok).length, asked: units, planned: total, lines: done.slice(0, 60) }
+  return { bought: done.filter(d => d.ok).length, wanted: units, planned: total, lines: done.slice(0, 60) }
 }

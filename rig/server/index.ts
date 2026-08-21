@@ -155,7 +155,7 @@ app.post('/api/settings/reset', async () => {
 app.get('/api/graph', async (req: any) => graph(req.query?.scope === 'all' ? 'all' : 'owned'))
 app.get('/api/queue', async (req: any) => queuePreview(Number(req.query?.limit) || 200))
 app.post('/api/market/buy', async (req: any) => marketBuy(req.body ?? {}))
-app.get('/api/market', async (req: any) => marketScan(req.query?.force === '1'))
+app.get('/api/market', async (req: any) => marketScan(req.query?.force === '1', (req.query?.cur ?? 'USD')))
 app.get('/api/pool', async () => itemPool())
 app.get('/api/burned', async (req: any) => burnedList(Number(req.query?.limit) || 500))
 app.get('/api/counters', async () => counterLines())

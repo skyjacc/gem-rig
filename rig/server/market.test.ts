@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cents, gemName, plan, rank } from './market.ts'
+import { cents, gemName, impliedRate, money, plan, rank, units } from './market.ts'
 
 // Цена на площадке в копейках: доллар — тысяча. Ошибка тут стоит денег,
 // поэтому отдельная проверка.
@@ -61,4 +61,53 @@ test('нулевой бюджет — пустой план, а не ошибк�
 test('в план не попадает то, что до цели не дойдёт', () => {
   const p = plan(rank([item('короткий', 0.001, 99, 100)], 1000), 1, 99)
   assert.deepEqual(p.lines, [])
+})
+
+// ── валюты ──
+//
+// Площадка отдаёт цены в рублях, долларах и евро — это её собственные числа,
+// по ним и платят. Гривны у неё нет вовсе (404), поэтому цена в гривне —
+// пересчёт доллара по курсу НБУ, и подавать её надо именно так.
+
+test('курс площадки берётся по её же ценам, а не с потолка', () => {
+  const usd = [{ market_hash_name: 'a', price: '0.005' }, { market_hash_name: 'b', price: '1' }]
+  const rub = [{ market_hash_name: 'a', price: '0.4' }, { market_hash_name: 'b', price: '80' }]
+  assert.equal(impliedRate(usd, rub), 80)
+})
+
+test('перекос одной позиции не сдвигает курс — берём середину', () => {
+  const usd = [{ market_hash_name: 'a', price: '1' }, { market_hash_name: 'b', price: '1' }, { market_hash_name: 'c', price: '1' }]
+  const rub = [{ market_hash_name: 'a', price: '80' }, { market_hash_name: 'b', price: '80' }, { market_hash_name: 'c', price: '9999' }]
+  assert.equal(impliedRate(usd, rub), 80)
+})
+
+test('нет общих позиций — курса нет, а не единица', () => {
+  assert.equal(impliedRate([{ market_hash_name: 'a', price: '1' }], [{ market_hash_name: 'b', price: '2' }]), 0)
+})
+
+test('пустые списки не роняют счёт', () => {
+  assert.equal(impliedRate([], []), 0)
+})
+
+test('нули и мусор в ценах пропускаются', () => {
+  const usd = [{ market_hash_name: 'a', price: '0' }, { market_hash_name: 'b', price: '2' }]
+  const rub = [{ market_hash_name: 'a', price: '5' }, { market_hash_name: 'b', price: '160' }]
+  assert.equal(impliedRate(usd, rub), 80)
+})
+
+test('деньги показываются по правилам своей валюты', () => {
+  assert.equal(money(1234.5, 'RUB'), '1 234,50 ₽')
+  assert.equal(money(0.005, 'USD'), '$0.005')
+  assert.equal(money(12, 'UAH'), '12,00 ₴')
+})
+
+test('множитель мелкой единицы зависит от валюты счёта', () => {
+  assert.equal(units(1, 'RUB'), 100)
+  assert.equal(units(1, 'USD'), 1000)
+  assert.equal(units(1, 'EUR'), 1000)
+})
+
+test('послать рублёвую цену с множителем доллара — переплата вдесятеро', () => {
+  assert.notEqual(units(100, 'RUB'), units(100, 'USD'))
+  assert.equal(units(100, 'USD') / units(100, 'RUB'), 10)
 })

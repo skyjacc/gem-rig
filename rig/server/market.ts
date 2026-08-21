@@ -15,8 +15,58 @@
 
 import { settings } from './settings.ts'
 
-const PRICES = 'https://market.dota2.net/api/v2/prices/USD.json'
 const API = 'https://market.dota2.net/api/v2/'
+
+// Площадка отдаёт цены в трёх валютах — это её собственные числа, по ним
+// и платят. Гривны у неё нет вовсе, запрос отвечает 404, поэтому цена
+// в гривне — пересчёт доллара по курсу Национального банка Украины.
+// Так и подписано в панели: где точная цена, а где пересчёт.
+export type Currency = 'RUB' | 'USD' | 'EUR' | 'UAH'
+export const NATIVE: Currency[] = ['RUB', 'USD', 'EUR']
+const PRICES = (c: string) => 'https://market.dota2.net/api/v2/prices/' + c + '.json'
+const NBU = 'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json'
+
+const SIGN: Record<Currency, string> = { RUB: '₽', USD: '$', EUR: '€', UAH: '₴' }
+
+// Доллар пишется знаком спереди и точкой, остальные — знаком сзади
+// и запятой. Полцента должно остаться полцентом, а не округлиться в ноль.
+export function money(v: number, c: Currency): string {
+  const n = Number(v) || 0
+  if (c === 'USD') {
+    const digits = Math.abs(n) < 0.01 && n !== 0 ? 3 : 2
+    return '$' + n.toFixed(digits)
+  }
+  const [whole, frac] = n.toFixed(2).split('.')
+  const grouped = whole.replace(/\B(?=(\d{3})+$)/g, ' ')
+  return grouped + ',' + frac + ' ' + SIGN[c]
+}
+
+// Курс площадки — по её же ценам: берём середину отношений по всем позициям,
+// которые есть в обоих списках. Одна перекошенная позиция середину не сдвинет.
+export function impliedRate(usd: any[], other: any[]): number {
+  const by = new Map<string, number>()
+  for (const i of usd) {
+    const p = Number(i?.price)
+    if (p > 0) by.set(i.market_hash_name, p)
+  }
+  const ratios: number[] = []
+  for (const i of other) {
+    const a = by.get(i?.market_hash_name)
+    const b = Number(i?.price)
+    if (a && a > 0 && b > 0) ratios.push(b / a)
+  }
+  if (!ratios.length) return 0
+  ratios.sort((x, y) => x - y)
+  return ratios[Math.floor(ratios.length / 2)]
+}
+
+export async function nbuRate(): Promise<number> {
+  try {
+    const r = await fetch(NBU, { headers: { 'User-Agent': 'gemtrack' } })
+    const d: any = await r.json()
+    return Number(d?.[0]?.rate) || 0
+  } catch { return 0 }
+}
 
 export type Offer = {
   gem: string
@@ -32,13 +82,21 @@ export type Ranked = Offer & {
   per1000: number           // цена за тысячу счётчиков
 }
 
-// Цена у них в копейках: доллар — тысяча. Округляем вверх, иначе лот
-// с ценой 0,0051 не купится по 5.
-export function cents(usd: number): number {
-  const n = Number(usd)
+// Цена при покупке — в мелкой единице валюты СЧЁТА, и множитель у них
+// разный: рубль сотня, доллар и евро тысяча. Спутать нельзя: послать
+// рублёвую цену с множителем доллара значит переплатить вдесятеро.
+//
+// Округляем вверх, иначе лот с ценой 0,0051 не купится по пятёрке.
+const MINOR: Record<string, number> = { RUB: 100, USD: 1000, EUR: 1000, UAH: 100 }
+
+export function units(value: number, currency: Currency = 'USD'): number {
+  const n = Number(value)
   if (!Number.isFinite(n) || n <= 0) return 0
-  return Math.ceil(n * 1000)
+  return Math.ceil(n * (MINOR[currency] ?? 1000))
 }
+
+// Прежнее имя оставлено: доллар — тысяча.
+export const cents = (usd: number) => units(usd, 'USD')
 
 const BARE = /^(Genuine\s+)?Spectator:\s*/i
 export const gemName = (hashName: string) =>
@@ -87,9 +145,10 @@ export function plan(ranked: Ranked[], budget: number, perGem: number) {
 
 // ── обращения к площадке ──
 
-export async function fetchPrices(): Promise<{ items: any[]; error: string | null }> {
+export async function fetchPrices(currency: Currency = 'USD'): Promise<{ items: any[]; error: string | null }> {
   try {
-    const r = await fetch(PRICES, { headers: { 'User-Agent': 'gemtrack' } })
+    const c = NATIVE.includes(currency) ? currency : 'USD'
+    const r = await fetch(PRICES(c), { headers: { 'User-Agent': 'gemtrack' } })
     if (!r.ok) return { items: [], error: 'площадка ответила ' + r.status }
     const d: any = await r.json()
     if (!d?.success) return { items: [], error: 'площадка вернула отказ' }
@@ -113,8 +172,8 @@ export const balance = (key: string) => call('get-money', key, {})
 // Цена передаётся потолком: площадка возьмёт самый дешёвый лот не дороже
 // неё. Поэтому потолок — это защита, а не заявка: если цена подскочила,
 // покупка просто не состоится.
-export function buyOne(key: string, hashName: string, maxUsd: number, customId?: string) {
-  const price = cents(maxUsd)
+export function buyOne(key: string, hashName: string, max: number, currency: Currency, customId?: string) {
+  const price = units(max, currency)
   if (!price) return Promise.resolve({ success: false, error: 'нулевая цена' })
   return call('buy', key, {
     hash_name: hashName,

@@ -1,24 +1,13 @@
 import { useEffect, useState } from 'react'
-import {
-  Activity,
-  LayoutGrid,
-  ListOrdered,
-  Network,
-  Settings2,
-  ShoppingCart,
-  Sparkles,
-  Users,
-} from 'lucide-react'
+import { Gem, Network, Users, Wrench } from 'lucide-react'
 import { ago, DEMO, useJson, useLive, type Accounts as AccountsData } from './lib/api.ts'
 import { Dot } from './parts/ui.tsx'
 import { Sidebar, type ViewId } from './parts/Sidebar.tsx'
 import { LinkAccount } from './parts/LinkAccount.tsx'
-import { Overview } from './views/Overview.tsx'
+import { Work } from './views/Work.tsx'
 import { Graph } from './views/Graph.tsx'
 import { Accounts } from './views/Accounts.tsx'
-import { Settings } from './views/Settings.tsx'
-import { Buy, Feed, Queue } from './views/Tables.tsx'
-import { Gems } from './views/Gems.tsx'
+import { Review } from './views/Review.tsx'
 
 export default function App() {
   const { state, online } = useLive()
@@ -48,17 +37,14 @@ export default function App() {
     )
   }
 
+  // Четыре вкладки вместо восьми. Каждый день заходят на первую; остальные —
+  // по случаю: посмотреть карту, привязать аккаунт, разобрать поломку.
   const items = [
-    { id: 'work' as const, label: 'Работа', icon: <LayoutGrid className="h-3.5 w-3.5" /> },
-    { id: 'gems' as const, label: 'Мои гемы', icon: <Sparkles className="h-3.5 w-3.5" />, count: state.mine.filter(m => m.gem !== '—').length },
+    { id: 'work' as const, label: 'Гемы', icon: <Gem className="h-3.5 w-3.5" />, count: state.mine.filter(m => m.gem !== '—').length },
     { id: 'graph' as const, label: 'Граф', icon: <Network className="h-3.5 w-3.5" /> },
-    { id: 'queue' as const, label: 'Очередь', icon: <ListOrdered className="h-3.5 w-3.5" />, count: state.autopilot.queueLength },
-    { id: 'feed' as const, label: 'Лента', icon: <Activity className="h-3.5 w-3.5" /> },
-    { id: 'buy' as const, label: 'Закупка', icon: <ShoppingCart className="h-3.5 w-3.5" />, count: state.catalog.length },
     { id: 'accounts' as const, label: 'Аккаунты', icon: <Users className="h-3.5 w-3.5" />, count: accounts?.list.length },
-    { id: 'settings' as const, label: 'Настройки', icon: <Settings2 className="h-3.5 w-3.5" /> },
+    { id: 'review' as const, label: 'Разбор', icon: <Wrench className="h-3.5 w-3.5" /> },
   ]
-
 
   return (
     <>
@@ -89,14 +75,10 @@ export default function App() {
             key={view}
             className={'scroll-thin min-w-0 flex-1 ' + (view === 'graph' ? 'overflow-hidden p-0' : 'view-in overflow-auto px-8 py-10')}
           >
-            {view === 'work' && <Overview state={state} now={now} />}
-            {view === 'gems' && <Gems state={state} />}
+            {view === 'work' && <Work state={state} now={now} />}
             {view === 'graph' && <Graph state={state} />}
-            {view === 'queue' && <Queue state={state} />}
-            {view === 'feed' && <Feed state={state} />}
-            {view === 'buy' && <Buy state={state} />}
             {view === 'accounts' && <Accounts state={state} accounts={accounts} onLink={() => setLinking(true)} />}
-            {view === 'settings' && <Settings state={state} />}
+            {view === 'review' && <Review state={state} />}
           </main>
         </div>
       </div>

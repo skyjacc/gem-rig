@@ -3,7 +3,7 @@ import type { Accounts, State } from '../lib/api.ts'
 import { post } from '../lib/api.ts'
 import { Dot } from './ui.tsx'
 
-export type ViewId = 'work' | 'gems' | 'graph' | 'queue' | 'feed' | 'buy' | 'accounts' | 'settings'
+export type ViewId = 'work' | 'graph' | 'accounts' | 'review'
 
 export function Sidebar({
   view,

@@ -129,6 +129,7 @@ export type State = {
   autopilot: Autopilot
   confirmed: { ts: number; match_id: string; league_id: string; bytes: number } | null
   rate: number
+  chart: { stamps: number[]; series: { gem: string; points: (number | null)[] }[] }
   inv: { error: string | null; age: number | null; items: number }
   burned: number
   watched: number

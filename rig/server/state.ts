@@ -11,6 +11,7 @@ import { entityStat } from './queue.ts'
 import { classifySupply } from './supply.ts'
 import { ACCOUNT, active, list as accountList } from './accounts.ts'
 import { autopilotState } from './autopilot.ts'
+import { purchaseState } from './purchase.ts'
 
 // Потолок и остаток считаются по локальной карте — по той же выборке,
 // из которой строится очередь. Таблица supply хранит только старую оценку
@@ -140,6 +141,7 @@ export function buildState() {
     chart: counterSeries(),
     sender: senderState(active()?.id ?? 'main'),
     autopilot: autopilotState(),
+    purchase: purchaseState(),
     confirmed: lastConfirmed(),
     rate: ratePerMinute(),
     files: listFiles(),

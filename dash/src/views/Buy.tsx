@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, Minus, Plus, RefreshCw, ShoppingCart, SlidersHorizontal, Wand2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Minus, Plus, RefreshCw, ShoppingCart, SlidersHorizontal, Square, Wand2 } from 'lucide-react'
 import { nf, post, useJson, type State } from '../lib/api.ts'
-import { Button, Card, Dot, Empty, Field, ItemIcon, Label, PageHead, Segmented } from '../parts/ui.tsx'
+import { Bar, Button, Card, Dot, Empty, Field, ItemIcon, Label, PageHead, Segmented } from '../parts/ui.tsx'
 import { Modal } from '../parts/Modal.tsx'
 import { Reveal } from '../parts/Reveal.tsx'
 
@@ -30,6 +30,21 @@ type Offer = {
   sends: number
   revenue: number
   profit: number
+}
+
+type Run = {
+  active: boolean
+  cancel: boolean
+  startedAt: number
+  finishedAt: number
+  currency: string
+  planned: number
+  done: number
+  ok: number
+  spent: number
+  current: string
+  error: string | null
+  log: { ts: number; gem: string; ok: boolean; price: number; reason: string; detail?: string }[]
 }
 
 type Cur = 'RUB' | 'USD' | 'EUR' | 'UAH'
@@ -96,6 +111,9 @@ const used = (r: Record<RangeKey, [string, string]>) =>
   Object.values(r).filter(([a, b]) => a !== '' || b !== '').length
 
 export function Buy({ state }: { state: State }) {
+  // Ход закупки приходит тем же потоком, что и всё остальное: панель
+  // не спрашивает, а видит.
+  const run = (state as any).purchase as Run | undefined
   const [cur, setCur] = useState<Cur>('USD')
   const { data } = useJson<Scan>('/api/market?cur=' + cur, state.ts + '|' + cur)
   const [take, setTake] = useState<Record<string, number>>({})
@@ -250,6 +268,8 @@ export function Buy({ state }: { state: State }) {
         {cart.units ? <Button onClick={() => setTake({})}>сбросить</Button> : null}
       </div>
 
+      {run && (run.active || run.done > 0) ? <Progress run={run} cur={cur} /> : null}
+
       <Reveal open={filters}>
         <Card className="mb-2 p-3.5">
           <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
@@ -403,19 +423,19 @@ export function Buy({ state }: { state: State }) {
             <Button onClick={() => { setConfirm(false); setResult(null) }}>отмена</Button>
             <Button
               active
-              disabled={busy}
+              disabled={busy || !!run?.active}
               onClick={async () => {
                 setBusy(true)
                 const r = await post('/api/market/buy', {
                   lines: cart.lines.map(x => ({ name: x.o.name, take: x.n, price: x.o.price })),
                   currency: cur,
-                  confirm: true,
                 })
-                setResult(r?.error ? String(r.error) : JSON.stringify(r))
+                setResult(r?.error ? String(r.error) : null)
                 setBusy(false)
+                if (!r?.error) setConfirm(false)
               }}
             >
-              {busy ? 'покупаю…' : 'подтвердить'}
+              {busy ? 'запускаю…' : 'подтвердить'}
             </Button>
           </>
         }
@@ -456,6 +476,75 @@ export function Buy({ state }: { state: State }) {
 const iconFor = (state: State, gem: string) =>
   state.mine.find(m => m.gem === gem)?.icon ??
   state.catalog.find(c => c.short === gem)?.icon ?? ''
+
+// Ход закупки.
+//
+// Три вопроса, на которые она отвечает без чтения логов: идёт ли, сколько
+// осталось и не начала ли отказывать. Отказ по цене отделён от прочих —
+// он означает, что список устарел, а не что что-то сломалось.
+function Progress({ run, cur }: { run: Run; cur: Cur }) {
+  const pct = run.planned ? (run.done / run.planned) * 100 : 0
+  const failed = run.done - run.ok
+  const stale = run.log.filter(l => l.reason === 'цена ушла').length
+
+  return (
+    <Card className="slide-up p-3.5">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <span className="flex items-center gap-2">
+          <Dot tone={run.active ? 'ok' : failed ? 'warn' : 'idle'} pulse={run.active} />
+          <span className="text-[13px]">
+            {run.active
+              ? (run.current ? 'покупаю ' + run.current : 'запускаюсь')
+              : run.cancel ? 'остановлено' : 'закупка закончена'}
+          </span>
+        </span>
+
+        <Sum k="куплено" v={nf(run.ok) + ' из ' + nf(run.planned)} tone={run.ok ? 'ok' : undefined} />
+        <Sum k="потрачено" v={money(run.spent, cur)} />
+        {failed ? <Sum k="не вышло" v={nf(failed)} note={stale ? nf(stale) + ' по цене' : undefined} /> : null}
+
+        <span className="ml-auto">
+          {run.active ? (
+            <Button tone="danger" onClick={() => post('/api/market/stop', {})}>
+              <Square className="h-3.5 w-3.5" />
+              <span>остановить</span>
+            </Button>
+          ) : null}
+        </span>
+      </div>
+
+      <div className="mt-3">
+        <Bar pct={pct} tone={run.active ? 'run' : failed ? 'warn' : 'ok'} />
+      </div>
+
+      {run.error ? (
+        <p className="mt-2 text-[12px]" style={{ color: 'var(--stop)' }}>{run.error}</p>
+      ) : null}
+
+      {run.log.length ? (
+        <div className="scroll-thin mt-3 max-h-[160px] divide-y divide-white/[0.06] overflow-auto border-t border-white/[0.06]">
+          {run.log.map((l, i) => (
+            <div key={l.ts + ':' + i} className="flex items-center gap-3 py-1.5 text-[12px]">
+              <Dot tone={l.ok ? 'ok' : l.reason === 'цена ушла' ? 'warn' : 'stop'} />
+              <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/60">
+                {new Date(l.ts).toLocaleTimeString('ru-RU')}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{l.gem}</span>
+              <span className="tnum shrink-0 font-mono text-muted-foreground">{money(l.price, cur)}</span>
+              <span
+                className="w-28 shrink-0 text-right"
+                style={{ color: l.ok ? 'var(--ok)' : l.reason === 'цена ушла' ? 'var(--warn)' : 'var(--stop)' }}
+                title={l.detail}
+              >
+                {l.reason}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </Card>
+  )
+}
 
 function Kpi({ k, v, note, tone }: { k: string; v: string; note?: string; tone?: 'ok' }) {
   return (

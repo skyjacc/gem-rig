@@ -59,6 +59,8 @@ export function Work({ state, now }: { state: State; now: number }) {
         }
       />
 
+      <Growth state={state} />
+
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(420px,1fr))] xl:[grid-template-columns:1.35fr_1fr]">
         <Inventory state={state} goal={goal} />
         <Stats state={state} now={now} ready={ready} items={items} views={views} />
@@ -68,6 +70,38 @@ export function Work({ state, now }: { state: State; now: number }) {
 
       <Tune open={tuning} onClose={() => setTuning(false)} state={state} unit={ap} />
     </div>
+  )
+}
+
+// Рост счётчиков — во всю ширину и первым делом.
+//
+// Он отвечает на вопрос, ради которого экран и открывают: растёт ли. В узкой
+// колонке справа сто линий сливались в кашу, и смотреть на них было незачем.
+// Сворачивается — когда работа идёт ровно, место нужнее спискам.
+function Growth({ state }: { state: State }) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <Card>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-baseline gap-3 border-b border-white/[0.06] px-3.5 py-2.5 text-left transition-colors hover:bg-white/[0.02]"
+      >
+        {open
+          ? <ChevronDown className="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground" />
+          : <ChevronRight className="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground" />}
+        <span className="text-[15px] font-medium">Рост счётчиков</span>
+        <span className="ui-label ml-auto text-muted-foreground/75">
+          каждая вещь · {nf(state.inv.items)} шт
+        </span>
+      </button>
+      <Reveal open={open}>
+        <div className="p-3.5">
+          <Chart state={state} />
+        </div>
+      </Reveal>
+    </Card>
   )
 }
 
@@ -97,16 +131,28 @@ function verdict(s: State, now: number): string {
 function Inventory({ state, goal }: { state: State; goal: number }) {
   const [open, setOpen] = useState<string | null>(null)
   const [view, setView] = useState<'gems' | 'sets'>('sets')
+  // Список на шестьсот вещей длиннее экрана в несколько раз. Свернуть его
+  // нужно ровно так же, как ветку внутри него: одним и тем же движением.
+  const [shown, setShown] = useState(true)
   const owned = state.mine.filter(m => m.gem !== '—')
   const picked = new Set(state.autopilot.picked ?? owned.map(m => m.gem))
 
   return (
     <Card>
       <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.06] px-3.5 py-2.5">
-        <span className="text-[15px] font-medium">Инвентарь</span>
-        <span className="ui-label text-muted-foreground/75">
-          {nf(owned.length)} гемов · {nf(owned.reduce((n, m) => n + m.items, 0))} вещей
-        </span>
+        <button
+          type="button"
+          onClick={() => setShown(!shown)}
+          className="flex min-w-0 items-center gap-2.5 text-left transition-colors hover:text-foreground"
+        >
+          {shown
+            ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+          <span className="text-[15px] font-medium">Инвентарь</span>
+          <span className="ui-label text-muted-foreground/75">
+            {nf(owned.length)} гемов · {nf(owned.reduce((n, m) => n + m.items, 0))} вещей
+          </span>
+        </button>
         <span className="ml-auto">
           <Segmented
             value={view}
@@ -116,6 +162,7 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
         </span>
       </div>
 
+      <Reveal open={shown}>
       {view === 'sets' ? <Sets state={state} goal={goal} /> : null}
       <div hidden={view !== 'gems'}>
 
@@ -203,6 +250,7 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
         </div>
       )}
       </div>
+      </Reveal>
     </Card>
   )
 }
@@ -351,18 +399,6 @@ function Stats({
             tone={state.confirmed && now - state.confirmed.ts < 15_000 ? 'ok' : undefined}
           />
           <Fact k="пауза" v={nf(ap.delay) + (ap.auto ? ' сама' : ' мс')} />
-        </div>
-      </Card>
-
-      <Card>
-        <div className="flex items-baseline gap-3 border-b border-white/[0.06] px-3.5 py-2.5">
-          <span className="text-[15px] font-medium">Рост счётчиков</span>
-          <span className="ui-label ml-auto text-muted-foreground/75">
-            каждая вещь · {nf(state.inv.items)} шт
-          </span>
-        </div>
-        <div className="p-3.5">
-          <Chart state={state} />
         </div>
       </Card>
 

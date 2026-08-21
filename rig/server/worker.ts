@@ -22,6 +22,7 @@ export type Snapshot = {
   failures: number          // сколько раз подряд отправщик падал
   target: number | null     // сколько отправок заказано; null = до конца очереди
   done: number              // сколько уже сделано в этом заходе
+  senderStartedAt: number   // когда подняли нынешний процесс, 0 = не поднимали
 }
 
 export type Action = 'idle' | 'start' | 'restart' | 'rebuild' | 'watch' | 'halt'
@@ -70,6 +71,18 @@ export function decide(s: Snapshot, limits: Limits = FALLBACK): Decision {
 
   if (!s.senderAlive) {
     return { action: 'start', why: 'в очереди ' + s.queueLength + ', запускаю отправщик' }
+  }
+
+  // Запустился и не отправил ни разу дольше срока — он не разогревается,
+  // а не может работать. Так выглядит занятый другой сессией Steam аккаунт:
+  // процесс жив, входит, его выбивает, он ждёт и входит снова. Перезапуск
+  // тут не поможет — сессию должен освободить человек.
+  if (s.lastSendAt === 0 && s.senderStartedAt > 0 && s.now - s.senderStartedAt > SILENT_LIMIT) {
+    return {
+      action: 'halt',
+      why: 'отправщик не смог войти за ' + Math.round((s.now - s.senderStartedAt) / 1000) +
+        ' с — аккаунт занят другой сессией Steam, закройте игру и клиент',
+    }
   }
 
   // lastSendAt === 0 означает «запустился, но ещё не успел отправить».

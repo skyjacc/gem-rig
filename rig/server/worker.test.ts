@@ -12,6 +12,7 @@ const base: Snapshot = {
   failures: 0,
   target: null,
   done: 0,
+  senderStartedAt: 0,
 }
 
 test('выключен — ничего не делаем', () => {
@@ -132,4 +133,34 @@ test('чужая метка не приводит к перезапуску', ()
   const stale = freshSendAt(100_000 - 80_000_000, 99_000)
   const d = decide({ ...base, senderAlive: true, lastSendAt: stale })
   assert.equal(d.action, 'watch', 'иначе работник убивает отправщик каждый такт')
+})
+
+// ── отправщик, который не может войти ──
+//
+// 21 августа: аккаунт был занят игрой, отправщик входил и каждые пятнадцать
+// секунд получал LoggedInElsewhere. Процесс жив, значит «жив» — и работник
+// три минуты докладывал «работает», пока не уходило ни одной отправки.
+//
+// Защита от нулевой метки («запустился, но ещё не слал») тут оборачивалась
+// против нас: не слал он никогда. Значит нужен предел и на разогрев.
+
+test('живой, но ни одной отправки дольше предела — это не работа', () => {
+  const d = decide({ ...base, senderAlive: true, lastSendAt: 0, senderStartedAt: 100_000 - 70_000 })
+  assert.equal(d.action, 'halt')
+  assert.match(d.why, /войти|не отправил/i)
+})
+
+test('разогрев в пределах срока не трогаем', () => {
+  const d = decide({ ...base, senderAlive: true, lastSendAt: 0, senderStartedAt: 100_000 - 10_000 })
+  assert.equal(d.action, 'watch')
+})
+
+test('успел отправить — обычные правила молчания', () => {
+  const d = decide({ ...base, senderAlive: true, lastSendAt: 100_000 - 5_000, senderStartedAt: 100_000 - 70_000 })
+  assert.equal(d.action, 'watch')
+})
+
+test('без метки запуска разогрев не судим', () => {
+  const d = decide({ ...base, senderAlive: true, lastSendAt: 0, senderStartedAt: 0 })
+  assert.equal(d.action, 'watch')
 })

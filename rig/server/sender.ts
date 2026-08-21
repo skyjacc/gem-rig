@@ -139,9 +139,9 @@ export function start(
 }
 
 export function stop(id = 'main') {
-  const s = S.get(id)
-  if (!isAlive(s?.child ?? null)) return { error: 'отправщик не запущен' }
-  s.child.kill()
+  const child = S.get(id)?.child ?? null
+  if (!isAlive(child)) return { error: 'отправщик не запущен' }
+  child!.kill()
   return { ok: true }
 }
 

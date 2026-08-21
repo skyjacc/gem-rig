@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { decide, type Snapshot } from './worker.ts'
+import { decide, freshSendAt, type Snapshot } from './worker.ts'
 
 const base: Snapshot = {
   enabled: true,
@@ -97,4 +97,39 @@ test('без цели считаем до конца очереди', () => {
 test('цель важнее пересборки: досчитали — встали', () => {
   const d = decide({ ...base, inventoryChanged: true, target: 10, done: 10 })
   assert.equal(d.action, 'halt', 'иначе купленный в последнюю секунду гем продлит прогон')
+})
+
+// ── чужая метка времени ──
+//
+// 21 августа проверочный прогон встал намертво: status.json остался
+// со вчерашнего запуска, работник прочитал оттуда метку 23:22 и посчитал,
+// что отправщик молчит 22 часа. Убивал и поднимал его каждые двадцать
+// секунд; новый вход выбивал предыдущий, и ни одна отправка не ушла.
+//
+// Отметка годится, только если сделана нынешним процессом.
+
+test('метка старше запуска отправщика не считается — это чужая', () => {
+  assert.equal(freshSendAt(1000, 5000), 0)
+})
+
+test('метка после запуска — своя, её и берём', () => {
+  assert.equal(freshSendAt(7000, 5000), 7000)
+})
+
+test('ровно в момент запуска — ещё не отправка', () => {
+  assert.equal(freshSendAt(5000, 5000), 0)
+})
+
+test('отправщик не запускался — метки нет', () => {
+  assert.equal(freshSendAt(9999, 0), 0)
+})
+
+test('пустая метка остаётся пустой', () => {
+  assert.equal(freshSendAt(0, 5000), 0)
+})
+
+test('чужая метка не приводит к перезапуску', () => {
+  const stale = freshSendAt(100_000 - 80_000_000, 99_000)
+  const d = decide({ ...base, senderAlive: true, lastSendAt: stale })
+  assert.equal(d.action, 'watch', 'иначе работник убивает отправщик каждый такт')
 })

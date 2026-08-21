@@ -20,8 +20,6 @@ import { Tune } from '../parts/Tune.tsx'
 // со сборки ответа из кусков. Главный вопрос — «всё нормально?» — теперь
 // написан словами в первой строке, а не собирается человеком из чисел.
 
-const LINE = ['oklch(69.6% 0.17 162.48)', 'oklch(70% 0.15 235)', 'oklch(76.9% 0.188 70.08)', 'oklch(62.7% 0.265 303.9)']
-
 const MARKET = 'https://steamcommunity.com/market/search?q=&category_570_Type%5B%5D=tag_supply_crate&appid=570&q='
 
 export function Work({ state, now }: { state: State; now: number }) {
@@ -240,10 +238,12 @@ function Stats({
       <Card>
         <div className="flex items-baseline gap-3 border-b border-white/[0.06] px-3.5 py-2.5">
           <span className="text-[15px] font-medium">Рост счётчиков</span>
-          <span className="ui-label ml-auto text-muted-foreground/75">{nf(state.chart?.stamps.length ?? 0)} срезов</span>
+          <span className="ui-label ml-auto text-muted-foreground/75">
+            каждая вещь · {nf(state.inv.items)} шт
+          </span>
         </div>
         <div className="p-3.5">
-          <Chart stamps={state.chart?.stamps ?? []} series={state.chart?.series ?? []} colors={LINE} />
+          <Chart state={state} />
         </div>
       </Card>
 

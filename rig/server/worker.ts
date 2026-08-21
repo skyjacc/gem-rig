@@ -33,6 +33,16 @@ export type Decision = { action: Action; why: string }
 export type Limits = { silentLimit: number; maxFailures: number }
 const FALLBACK: Limits = { silentLimit: 60_000, maxFailures: 5 }
 
+// Отметка последней отправки годится, только если её сделал нынешний процесс
+// отправщика. Файл отчёта переживает перезапуск панели и компьютера, и метка
+// со вчерашнего запуска выглядит как «молчит двадцать два часа»: работник
+// начинает убивать живой отправщик каждый такт, новый вход выбивает
+// предыдущий, и не уходит ни одна отправка. Проверено 21 августа.
+export function freshSendAt(lastSendAt: number, senderStartedAt: number): number {
+  if (!lastSendAt || !senderStartedAt) return 0
+  return lastSendAt > senderStartedAt ? lastSendAt : 0
+}
+
 export function decide(s: Snapshot, limits: Limits = FALLBACK): Decision {
   const SILENT_LIMIT = limits.silentLimit
   const MAX_FAILURES = limits.maxFailures

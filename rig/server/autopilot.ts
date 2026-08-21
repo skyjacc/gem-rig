@@ -18,7 +18,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { GC, TOOLS } from './paths.ts'
 import { burnedCount, db } from './db.ts'
-import { decide, type Action } from './worker.ts'
+import { decide, freshSendAt, type Action } from './worker.ts'
 import { queueFor, type Pick } from './queue.ts'
 import { inv, refreshInventory } from './steam.ts'
 import { queueFile, senderState, start as startSender, statusFile, stop as stopSender } from './sender.ts'
@@ -183,7 +183,8 @@ async function tickOne(a: Account, push: () => void) {
     senderAlive: sender.running,
     queueLength: u.queueLength,
     inventoryChanged: inv.rows.length > 0 && fingerprint() !== u.fingerprint,
-    lastSendAt: lastSendAt(a.id),
+    // Только своя метка: чужая заставила бы убивать живой отправщик.
+    lastSendAt: freshSendAt(lastSendAt(a.id), sender.startedAt ?? 0),
     now: Date.now(),
     failures: u.failures,
     target: u.target,

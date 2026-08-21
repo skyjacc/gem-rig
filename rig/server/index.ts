@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { GC, TOOLS, readJson } from './paths.ts'
-import { db, importLegacy, pushEvent, supplyRows } from './db.ts'
+import { counterLines, db, importLegacy, pushEvent, supplyRows } from './db.ts'
 import { ingestOne } from './ledger.ts'
 import { refreshEquipped, refreshInventory } from './steam.ts'
 import { entityMatches, type Kind } from './opendota.ts'
@@ -154,6 +154,7 @@ app.post('/api/settings/reset', async () => {
 // ── граф и очередь ──
 app.get('/api/graph', async (req: any) => graph(req.query?.scope === 'all' ? 'all' : 'owned'))
 app.get('/api/queue', async (req: any) => queuePreview(Number(req.query?.limit) || 200))
+app.get('/api/counters', async () => counterLines())
 app.get('/api/tree', async (req: any) => tree(Number(req.query?.top) || settings().treeTop))
 
 app.post('/api/sender/stop', async (req: any) => {

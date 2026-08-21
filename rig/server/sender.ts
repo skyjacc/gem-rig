@@ -91,6 +91,11 @@ export function start(
 
   fs.writeFileSync(path.join(GC, 'delay.txt'), String(delay))
 
+  // Отчёт прошлого запуска стираем. Он переживает перезапуск компьютера,
+  // и по нему работник считал молчание в двадцать два часа, а подбор паузы
+  // судил о темпе по вчерашним замерам.
+  try { fs.unlinkSync(path.join(GC, statusFile(id))) } catch { }
+
   const args = [
     'index.js',
     '--ids', file,

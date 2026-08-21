@@ -197,3 +197,44 @@ export function ratePerMinute(windowMs = 120_000) {
   const r = db.prepare(`select count(*) c from events where ts >= ? and result in ('update','dup')`).get(since) as any
   return Math.round((r?.c ?? 0) / (windowMs / 60_000))
 }
+
+// Рост счётчиков по вещам, а не по гемам.
+//
+// По гемам график врал: показывал максимум и умалчивал, что под ним
+// у Liquid`ixmike88 одна вещь на 7, одна на 3, одна на 1 и девять на нуле.
+// Продаётся вещь, значит и смотреть надо на вещь.
+//
+// Сто двенадцать линий читать нельзя, поэтому одинаковые ветки сливаются
+// в одну с числом вещей: «BZZ ×70» вместо семидесяти совпадающих кривых.
+export function counterLines() {
+  const stamps = (db.prepare(
+    `select distinct ts from counters order by ts asc limit 200`).all() as any[]).map(r => r.ts as number)
+  if (!stamps.length) return { stamps: [], lines: [] as any[] }
+
+  const at = new Map(stamps.map((t, i) => [t, i]))
+  const rows = db.prepare(
+    `select ts, gem, assetid, value from counters order by ts asc`).all() as any[]
+
+  const byAsset = new Map<string, { gem: string; points: (number | null)[] }>()
+  for (const r of rows) {
+    const i = at.get(r.ts as number)
+    if (i === undefined) continue
+    let e = byAsset.get(r.assetid)
+    if (!e) { e = { gem: r.gem, points: Array(stamps.length).fill(null) }; byAsset.set(r.assetid, e) }
+    e.points[i] = r.value
+  }
+
+  const groups = new Map<string, { gem: string; points: (number | null)[]; items: number }>()
+  for (const e of byAsset.values()) {
+    const key = e.gem + '|' + e.points.join(',')
+    const g = groups.get(key)
+    if (g) g.items++
+    else groups.set(key, { gem: e.gem, points: e.points, items: 1 })
+  }
+
+  const last = (p: (number | null)[]) => [...p].reverse().find(v => v != null) ?? 0
+  return {
+    stamps,
+    lines: [...groups.values()].sort((a, b) => last(b.points) - last(a.points) || b.items - a.items),
+  }
+}

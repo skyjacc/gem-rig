@@ -41,6 +41,10 @@ type Unit = {
   ordered: number | null   // что человек попросил до превращения в живое число
   waves: number            // на сколько партий разложить разброс
   plan: Wave[]
+  // Какие гемы жечь на этом аккаунте. null — все, что лежат в инвентаре.
+  // Пул матчей общий, журнал у каждого свой, поэтому два аккаунта могут
+  // как жечь одно и то же независимо, так и разойтись по разным сущностям.
+  only: string[] | null
   startedAt: number
   startBurned: number      // журнал на момент старта — от него считаем сделанное
   queueLength: number
@@ -59,7 +63,7 @@ function unit(id: string): Unit {
   let u = U.get(id)
   if (!u) {
     u = {
-      enabled: false, delay: 1000, auto: true, target: null, ordered: null, waves: 1, plan: [],
+      enabled: false, delay: 1000, auto: true, target: null, ordered: null, waves: 1, plan: [], only: null,
       startedAt: 0, startBurned: 0, queueLength: 0, fingerprint: '',
       failures: 0, lastAction: 'idle', lastWhy: 'не запускался',
       lastTick: 0, rebuiltAt: 0, log: [],
@@ -114,8 +118,16 @@ export function picks(): (Pick & { objects: number })[] {
   return out
 }
 
+// Что жжёт именно этот аккаунт: либо всё из инвентаря, либо выбранное.
+export function picksFor(u: { only: string[] | null }) {
+  const all = picks()
+  if (!u.only?.length) return all
+  const keep = new Set(u.only)
+  return all.filter(p => keep.has(p.key))
+}
+
 function rebuild(a: Account, u: Unit): number {
-  const list = picks()
+  const list = picksFor(u)
   if (!list.length) { u.queueLength = 0; return 0 }
 
   const queue = queueFor(db, list, a.steamid)
@@ -206,7 +218,9 @@ async function tickOne(a: Account, push: () => void) {
 
   if (d.action === 'rebuild') {
     const n = rebuild(a, u)
-    note(u, 'rebuild', n ? 'очередь пересобрана: ' + n + ' матчей' : 'в инвентаре нет гемов с известной сущностью')
+    note(u, 'rebuild', n
+      ? 'очередь пересобрана: ' + n + ' матчей'
+      : (u.only?.length ? 'выбранные гемы ничего не дают' : 'в инвентаре нет гемов с известной сущностью'))
     if (sender.running) stopSender(a.id)
     push()
     return
@@ -247,6 +261,10 @@ export function unitState(a: Account) {
     ordered: u.ordered,
     waves: u.waves,
     plan: u.plan,
+    only: u.only,
+    // Что доступно для выбора и что реально пойдёт в очередь.
+    available: picks().map(p => ({ gem: p.key, objects: p.objects })),
+    picked: picksFor(u).map(p => p.key),
     // Следующая партия: работник сам скажет, когда её добавлять.
     nextWave: u.plan.find(w => w.addAt > made(a, u)) ?? null,
     done: made(a, u),
@@ -283,7 +301,14 @@ export function autopilotState() {
 // on не передан — трогаем только настройки, выключатель остаётся как был.
 export function setAutopilot(
   id: string,
-  patch: { on?: boolean; delay?: number; target?: number | null; auto?: boolean; waves?: number },
+  patch: {
+    on?: boolean
+    delay?: number
+    target?: number | null
+    auto?: boolean
+    waves?: number
+    only?: string[] | null
+  },
 ) {
   const a = accounts().find(x => x.id === id)
   if (!a) return { error: 'нет такого аккаунта' }
@@ -292,6 +317,12 @@ export function setAutopilot(
   if (patch.delay && patch.delay >= settings().pace.floor) { u.delay = patch.delay; u.auto = false }
   if (patch.auto !== undefined) u.auto = !!patch.auto
   if (patch.waves !== undefined) u.waves = Math.max(1, Math.min(8, Math.trunc(patch.waves)))
+  if (patch.only !== undefined) {
+    const list = Array.isArray(patch.only) ? patch.only.map(String).filter(Boolean) : []
+    // Пустой выбор означает «все»: аккаунт без единого гема просто стоял бы.
+    u.only = list.length ? list : null
+    u.fingerprint = ''   // состав изменился — очередь пересобрать
+  }
   if (patch.target !== undefined) {
     if (patch.target === null) {
       u.ordered = null

@@ -12,6 +12,7 @@ import {
 import { ago, useJson, useLive, type Accounts as AccountsData } from './lib/api.ts'
 import { Dot } from './parts/ui.tsx'
 import { Sidebar, type ViewId } from './parts/Sidebar.tsx'
+import { LinkAccount } from './parts/LinkAccount.tsx'
 import { Overview } from './views/Overview.tsx'
 import { Graph } from './views/Graph.tsx'
 import { Accounts } from './views/Accounts.tsx'
@@ -22,6 +23,9 @@ import { Gems } from './views/Gems.tsx'
 export default function App() {
   const { state, online } = useLive()
   const [view, setView] = useState<ViewId>('work')
+  // Привязка открывается поверх любого экрана: кнопка в колонке не должна
+  // уводить человека на другую вкладку ради второй кнопки.
+  const [linking, setLinking] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const { data: accounts } = useJson<AccountsData>('/api/accounts', state?.ts)
 
@@ -60,7 +64,7 @@ export default function App() {
     <>
       <div className="bg-ambient" aria-hidden="true" />
       <div className="flex h-svh">
-        <Sidebar view={view} onView={setView} state={state} accounts={accounts} items={items} />
+        <Sidebar view={view} onView={setView} onLink={() => setLinking(true)} state={state} accounts={accounts} items={items} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/[0.08] px-8">
@@ -85,11 +89,13 @@ export default function App() {
             {view === 'queue' && <Queue state={state} />}
             {view === 'feed' && <Feed state={state} />}
             {view === 'buy' && <Buy state={state} />}
-            {view === 'accounts' && <Accounts state={state} accounts={accounts} />}
+            {view === 'accounts' && <Accounts state={state} accounts={accounts} onLink={() => setLinking(true)} />}
             {view === 'settings' && <Settings state={state} />}
           </main>
         </div>
       </div>
+
+      <LinkAccount open={linking} onClose={() => setLinking(false)} accounts={accounts} />
     </>
   )
 }

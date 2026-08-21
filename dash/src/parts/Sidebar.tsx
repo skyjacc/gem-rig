@@ -8,12 +8,14 @@ export type ViewId = 'work' | 'gems' | 'graph' | 'queue' | 'feed' | 'buy' | 'acc
 export function Sidebar({
   view,
   onView,
+  onLink,
   state,
   accounts,
   items,
 }: {
   view: ViewId
   onView: (v: ViewId) => void
+  onLink: () => void
   state: State
   accounts: Accounts | null
   items: { id: ViewId; label: string; icon: React.ReactNode; count?: number }[]
@@ -52,7 +54,7 @@ export function Sidebar({
         })}
         <button
           type="button"
-          onClick={() => onView('accounts')}
+          onClick={onLink}
           className="flex w-full items-center gap-2 px-4 py-2 text-left text-muted-foreground transition-colors hover:bg-white/[0.03] hover:text-foreground"
         >
           <Plus className="h-3.5 w-3.5" />

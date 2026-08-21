@@ -88,6 +88,10 @@ export type Unit = {
   waves?: number
   plan?: Wave[]
   nextWave?: Wave | null
+  // Какие гемы жечь на этом аккаунте: null — все из инвентаря.
+  only?: string[] | null
+  available?: { gem: string; objects: number }[]
+  picked?: string[]
 }
 
 export type Pace = { suggest: number; why: string; measured: number; silent: number; atDelay: number }

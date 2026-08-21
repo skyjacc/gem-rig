@@ -92,6 +92,7 @@ app.post('/api/autopilot', async (req: any) => {
   if (b.auto !== undefined) patch.auto = !!b.auto
   if (b.target !== undefined) patch.target = b.target === null ? null : Number(b.target)
   if (b.waves !== undefined) patch.waves = Number(b.waves)
+  if (b.only !== undefined) patch.only = b.only
   const r = setAutopilot(id, patch)
   push()
   return r

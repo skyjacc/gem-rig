@@ -231,7 +231,7 @@ export function roadmap(): { phases: Phase[]; updated: number } {
       detail: 'Гемы лежат на конкретном аккаунте. Панель должна показывать состав и остаток по каждому отдельно, а не в общей куче.' },
   ]
   phases.push({
-    id: 'accounts', title: 'Аккаунты', subtitle: 'пул матчей расходуется на каждом заново',
+    id: 'accounts', title: 'Аккаунты', subtitle: 'на каждом аккаунте те же матчи жгутся заново',
     nodes: accNodes,
     progress: { done: accNodes.filter(n => n.status === 'done').length, total: accNodes.length },
     status: acc > 1 ? 'active' : 'todo',
@@ -292,7 +292,7 @@ export function roadmap(): { phases: Phase[]; updated: number } {
       metric: '76 матчей в минуту',
       detail: 'Valve отвечает за треть секунды. Пауза в секунду безопасна с двойным запасом.',
       evidence: '50 из 50 засчитано, инвентарь подтвердил' },
-    { id: 'u3', title: 'История прогонов', status: 'todo',
+    { id: 'u3', title: 'История прожигов', status: 'todo',
       detail: 'Сейчас нет понятия «запуск». Надо запоминать, какие гемы и какая очередь были на старте, иначе непонятно, откуда взялся результат.' },
     { id: 'u4', title: 'Главный экран — что происходит сейчас', status: 'todo',
       detail: 'Работает или нет, сколько осталось, когда закончится, что требует внимания. Не бесконечный лог.' },

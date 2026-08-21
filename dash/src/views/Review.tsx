@@ -44,8 +44,8 @@ function Queue({ state }: { state: State }) {
   return (
     <>
       <p className="text-[12px] text-muted-foreground">
-        {nf(data.total)} матчей · {nf(data.weight2)} поднимают сразу две сущности одной отправкой ·
-        тяжёлые идут первыми, чтобы прерванный прогон обрывался на дешёвом хвосте
+        {nf(data.total)} матчей · {nf(data.weight2)} поднимают сразу два гема одной отправкой ·
+        жирные идут первыми, чтобы остановка пришлась на дешёвый хвост
       </p>
       <Card>
         <div className="scroll-thin max-h-[calc(100svh-260px)] overflow-auto">
@@ -54,8 +54,8 @@ function Queue({ state }: { state: State }) {
               <tr className="ui-label border-b border-white/[0.06] text-left text-muted-foreground/75">
                 <th className="px-3.5 py-2 font-medium">матч</th>
                 <th className="px-3.5 py-2 font-medium">турнир</th>
+                <th className="px-3.5 py-2 font-medium">каким гемам</th>
                 <th className="px-3.5 py-2 font-medium">поднимет</th>
-                <th className="px-3.5 py-2 font-medium">вес</th>
               </tr>
             </thead>
             <tbody>

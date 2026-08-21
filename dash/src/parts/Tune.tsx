@@ -117,7 +117,7 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
         ) : null}
       </Line>
 
-      <Line k="пауза" hint="«сама» поднимает темп, пока Valve отвечает на каждую отправку">
+      <Line k="пауза" hint="на «сама» темп растёт, пока Valve отвечает на каждую отправку">
         <span className="flex flex-wrap items-center gap-2">
           <Segmented
             value={unit.auto ? 'auto' : String(unit.delay)}
@@ -136,7 +136,7 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
         hint={only ? 'выбрано ' + only.length + ' из ' + available.length : 'все, что лежат в инвентаре'}
       >
         {available.length === 0 ? (
-          <span className="text-[12px] text-muted-foreground">гемов с известной сущностью нет</span>
+          <span className="text-[12px] text-muted-foreground">нет гемов, по которым понятно, чьи матчи считать</span>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {available.map(g => {
@@ -172,16 +172,16 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
 // Общие пороги. Крутят редко, поэтому лежат вторым слоем.
 const RULES: { path: string; label: string; hint: string; unit?: string; scale?: number }[] = [
   { path: 'goal', label: 'цель счётчика', hint: 'сколько просмотров делает вещь товаром' },
-  { path: 'tick', label: 'такт работника', hint: 'как часто смотреть инвентарь', unit: 'с', scale: 1000 },
-  { path: 'invTtl', label: 'срок инвентаря', hint: 'через сколько перечитывать Steam', unit: 'с', scale: 1000 },
-  { path: 'silentLimit', label: 'предел молчания', hint: 'сколько отправщик может молчать до перезапуска', unit: 'с', scale: 1000 },
-  { path: 'maxFailures', label: 'падений подряд', hint: 'после скольких встать с причиной' },
+  { path: 'tick', label: 'как часто проверять', hint: 'через сколько заглядывать в инвентарь', unit: 'с', scale: 1000 },
+  { path: 'invTtl', label: 'когда перечитывать Steam', hint: 'через сколько запрашивать инвентарь заново', unit: 'с', scale: 1000 },
+  { path: 'silentLimit', label: 'сколько ждать молча', hint: 'после этого отправка перезапускается', unit: 'с', scale: 1000 },
+  { path: 'maxFailures', label: 'сколько сбоев терпеть', hint: 'после этого остановиться и сказать почему' },
   { path: 'pace.floor', label: 'пол паузы', hint: 'ниже не опускаться никогда', unit: 'мс' },
   { path: 'pace.ceil', label: 'потолок паузы', hint: 'выше не подниматься', unit: 'мс' },
-  { path: 'pace.enough', label: 'нужно замеров', hint: 'меньше — не выборка, а совпадение' },
-  { path: 'pace.clean', label: 'допуск молчаний', hint: 'какая доля без ответа ещё считается нормой', unit: '%', scale: 0.01 },
-  { path: 'spread.band', label: 'полоса разброса', hint: 'на сколько процентов расходятся партии', unit: '%', scale: 0.01 },
-  { path: 'treeTop', label: 'турниров в дереве', hint: 'сколько крупнейших показывать под гемом' },
+  { path: 'pace.enough', label: 'сколько отправок для замера', hint: 'по меньшему числу судить о темпе нельзя' },
+  { path: 'pace.clean', label: 'сколько тишины терпеть', hint: 'доля отправок без ответа, которая ещё нормальна', unit: '%', scale: 0.01 },
+  { path: 'spread.band', label: 'насколько разные числа', hint: 'на сколько процентов расходятся партии', unit: '%', scale: 0.01 },
+  { path: 'treeTop', label: 'турниров в дереве', hint: 'сколько самых больших показывать под гемом' },
 ]
 
 const get = (o: any, p: string) => p.split('.').reduce((a, k) => a?.[k], o)

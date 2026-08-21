@@ -220,7 +220,7 @@ async function tickOne(a: Account, push: () => void) {
     const n = rebuild(a, u)
     note(u, 'rebuild', n
       ? 'очередь пересобрана: ' + n + ' матчей'
-      : (u.only?.length ? 'выбранные гемы ничего не дают' : 'в инвентаре нет гемов с известной сущностью'))
+      : (u.only?.length ? 'выбранные гемы ничего не дают' : 'в инвентаре нет гемов, по которым понятно, чьи матчи считать'))
     if (sender.running) stopSender(a.id)
     push()
     return

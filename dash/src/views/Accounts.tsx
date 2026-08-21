@@ -9,10 +9,10 @@ import { Modal } from '../parts/Modal.tsx'
 
 // Аккаунты.
 //
-// Пул матчей общий, журнал расхода — у каждого свой. Отсюда два следствия,
-// ради которых экран и существует:
+// Матчи общие для всех аккаунтов, а израсходованные — у каждого свои.
+// Отсюда два следствия, ради которых экран и существует:
 //
-//   второй аккаунт жжёт тот же пул с нуля — вдвое больше товара за то же время
+//   второй аккаунт жжёт те же матчи заново — вдвое больше товара за то же время
 //   каждый настраивается отдельно: свой темп, своя цель, свой набор гемов
 //
 // Настройки раскрываются прямо в карточке, а не прячутся за окном: их крутят
@@ -50,7 +50,7 @@ export function Accounts({
     <div className="view-in space-y-6">
       <PageHead
         title="Аккаунты"
-        sub="пул матчей общий, журнал расхода у каждого свой — второй аккаунт жжёт тот же пул с нуля"
+        sub="матчи общие для всех аккаунтов, а израсходованные — у каждого свои: второй аккаунт жжёт те же матчи заново"
         right={
           <Button active onClick={onLink}>
             <Link2 className="h-3.5 w-3.5" />
@@ -275,7 +275,7 @@ function Tune({ a, u, icons }: { a: AccountRow; u: Unit; icons: Map<string, stri
         hint={only ? 'выбрано ' + only.length + ' из ' + available.length : 'все, что лежат в инвентаре'}
       >
         {available.length === 0 ? (
-          <span className="text-[12px] text-muted-foreground">гемов с известной сущностью нет</span>
+          <span className="text-[12px] text-muted-foreground">нет гемов, по которым понятно, чьи матчи считать</span>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {available.map(g => {
@@ -335,7 +335,7 @@ function Common({ state }: { state: State }) {
 
   const rows = [
     { path: 'goal', label: 'цель счётчика', hint: 'сколько просмотров делает вещь товаром', value: data.goal, unit: '', scale: 1 },
-    { path: 'tick', label: 'такт работника', hint: 'как часто смотреть инвентарь', value: data.tick, unit: 'с', scale: 1000 },
+    { path: 'tick', label: 'как часто проверять', hint: 'через сколько заглядывать в инвентарь', value: data.tick, unit: 'с', scale: 1000 },
     { path: 'pace.floor', label: 'пол паузы', hint: 'ниже не опускаться никогда', value: data.pace.floor, unit: 'мс', scale: 1 },
   ]
 

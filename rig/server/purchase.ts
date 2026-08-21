@@ -8,22 +8,52 @@
 // остановить можно в любой момент, и следующая покупка после остановки
 // не начинается.
 //
-// Защита от подорожания встроена в саму площадку: цена передаётся потолком,
-// и лот дороже него просто не купится. Но молча этого мало — отказ по цене
-// отделяется в журнале от прочих, чтобы было видно, что список устарел.
+// Покупается всегда самое дешёвое предложение НА МОМЕНТ ПОКУПКИ, а не то,
+// что было в списке. Разница не теоретическая: список живёт до двух минут,
+// а дешёвые лоты кончаются по мере скупки — забрав десять самых дешёвых
+// Alliance, одиннадцатый ты берёшь уже дороже.
+//
+// Поэтому перед каждым лотом спрашивается нынешняя цена. Упала — берём
+// дешевле, чем планировали. Выросла выше допуска — не берём вовсе
+// и переходим к следующей позиции, а в журнале видно обе цены.
 
 import { marketKey } from './paths.ts'
-import { balance, buyOne, type Currency } from './market.ts'
+import { settings } from './settings.ts'
+import { balance, bestOffer, buyOne, type Currency } from './market.ts'
 
 export type Line = { name: string; take: number; price: number }
+
+// Мелкая единица у площадки своя на валюту: рубль сотня, доллар тысяча.
+const MINOR: Record<string, number> = { RUB: 100, USD: 1000, EUR: 1000 }
+
+// Самое дешёвое предложение среди отданных площадкой.
+export function lowest(res: any, currency: string): number | null {
+  if (!res?.success || !Array.isArray(res.data) || !res.data.length) return null
+  const div = MINOR[currency] ?? 1000
+  const prices = res.data.map((d: any) => Number(d?.price)).filter((p: number) => p > 0)
+  if (!prices.length) return null
+  return Math.min(...prices) / div
+}
+
+// Брать ли лот по нынешней цене.
+//
+// Планировали одну цену, а покупаем по той, что сейчас: упала — берём
+// дешевле, выросла — не берём вовсе. Допуск оставлен настройкой для тех,
+// кому важнее набрать объём, чем сэкономить копейку.
+export function decideBuy(planned: number, now: number | null, tolerance: number) {
+  if (now == null || now <= 0) return { buy: false, price: 0 }
+  const tol = Math.max(0, Number(tolerance) || 0)
+  return { buy: now <= planned * (1 + tol) + 1e-9, price: now }
+}
 
 export type Entry = {
   ts: number
   gem: string
   ok: boolean
   price: number
-  reason: 'куплено' | 'цена ушла' | 'нет денег' | 'отказ' | 'остановлено'
+  reason: 'куплено' | 'цена выросла' | 'нет лотов' | 'цена ушла' | 'нет денег' | 'отказ' | 'остановлено'
   detail?: string
+  planned?: number   // сколько собирались платить
 }
 
 type Job = {
@@ -106,11 +136,11 @@ export async function startPurchase(lines: Line[], currency: Currency, push: () 
 
   // Работа идёт своим чередом, ответ уходит сразу: панель дальше смотрит
   // на состояние, а не ждёт конца.
-  void run(lines, key, accCur, push)
+  void run(lines, key, accCur, settings().priceTolerance, push)
   return { started: true, planned, total, currency: accCur }
 }
 
-async function run(lines: Line[], key: string, currency: Currency, push: () => void) {
+async function run(lines: Line[], key: string, currency: Currency, tolerance: number, push: () => void) {
   try {
     for (const l of lines) {
       const take = Math.max(0, Math.trunc(Number(l.take) || 0))
@@ -123,16 +153,41 @@ async function run(lines: Line[], key: string, currency: Currency, push: () => v
         }
 
         job.current = gem
-        const r: any = await buyOne(key, String(l.name), Number(l.price), currency, 'gt-' + Date.now() + '-' + i)
+
+        // Сколько стоит прямо сейчас. Спрашиваем перед каждым лотом:
+        // цена ползёт вверх по мере того, как мы выбираем дешёвые.
+        const res: any = await bestOffer(key, String(l.name))
+        const now = lowest(res, currency)
+        const call = decideBuy(Number(l.price), now, tolerance)
+
+        if (!call.buy) {
+          job.done++
+          const reason = now == null ? (res?.success ? 'нет лотов' : 'отказ') : 'цена выросла'
+          note({
+            ts: Date.now(), gem, ok: false, price: now ?? 0, planned: l.price, reason,
+            // Пустой ответ и отказ площадки — разные беды, и лечатся
+            // по-разному: в первом случае лоты кончились, во втором
+            // не достучались. Прятать одно под другим значит потом гадать.
+            // Обе цены и так показаны отдельными полями, поэтому пояснение
+            // нужно только там, где причина не видна из чисел.
+            detail: now != null
+              ? undefined
+              : res?.success ? 'предложений не осталось' : 'площадка: ' + String(res?.error ?? 'нет ответа').slice(0, 60),
+          })
+          push()
+          break
+        }
+
+        const r: any = await buyOne(key, String(l.name), call.price, currency, 'gt-' + Date.now() + '-' + i)
         job.done++
 
         if (r?.success) {
           job.ok++
-          job.spent += Number(l.price)
-          note({ ts: Date.now(), gem, ok: true, price: l.price, reason: 'куплено' })
+          job.spent += call.price
+          note({ ts: Date.now(), gem, ok: true, price: call.price, planned: l.price, reason: 'куплено' })
         } else {
           const reason = classify(r?.error ?? '')
-          note({ ts: Date.now(), gem, ok: false, price: l.price, reason, detail: String(r?.error ?? '').slice(0, 80) })
+          note({ ts: Date.now(), gem, ok: false, price: call.price, planned: l.price, reason, detail: String(r?.error ?? '').slice(0, 80) })
           push()
           // Цена ушла — остальные лоты этой позиции стоят столько же,
           // добивать их бессмысленно. Кончились деньги — тем более.

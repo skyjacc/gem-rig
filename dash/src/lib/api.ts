@@ -154,6 +154,7 @@ export type Settings = {
   maxFailures: number
   invTtl: number
   treeTop: number
+  priceTolerance: number
   pace: { floor: number; ceil: number; enough: number; clean: number; down: number; up: number }
   spread: { band: number; jitter: number }
 }

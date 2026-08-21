@@ -187,6 +187,7 @@ const RULES: { path: string; label: string; hint: string; unit?: string; scale?:
   { path: 'pace.clean', label: 'сколько тишины терпеть', hint: 'доля отправок без ответа, которая ещё нормальна', unit: '%', scale: 0.01 },
   { path: 'spread.band', label: 'насколько разные числа', hint: 'на сколько процентов расходятся партии', unit: '%', scale: 0.01 },
   { path: 'treeTop', label: 'турниров в дереве', hint: 'сколько самых больших показывать под гемом' },
+  { path: 'priceTolerance', label: 'допуск по цене', hint: 'на сколько цена может вырасти между планом и покупкой; ноль — только по своей или дешевле', unit: '%', scale: 0.01 },
 ]
 
 const get = (o: any, p: string) => p.split('.').reduce((a, k) => a?.[k], o)

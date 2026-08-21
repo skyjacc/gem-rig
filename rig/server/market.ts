@@ -167,6 +167,12 @@ async function call(method: string, key: string, params: Record<string, string |
 
 export const balance = (key: string) => call('get-money', key, {})
 
+// Нынешние предложения по предмету. Нужны, чтобы покупать по самой низкой
+// цене на момент покупки, а не по той, что была в списке две минуты назад:
+// дешёвые лоты кончаются по мере скупки, и цена ползёт вверх.
+export const bestOffer = (key: string, hashName: string) =>
+  call('search-item-by-hash-name', key, { hash_name: hashName })
+
 // Покупка одного лота.
 //
 // Цена передаётся потолком: площадка возьмёт самый дешёвый лот не дороже

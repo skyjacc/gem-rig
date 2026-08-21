@@ -44,7 +44,7 @@ type Run = {
   spent: number
   current: string
   error: string | null
-  log: { ts: number; gem: string; ok: boolean; price: number; reason: string; detail?: string }[]
+  log: { ts: number; gem: string; ok: boolean; price: number; planned?: number; reason: string; detail?: string }[]
 }
 
 type Cur = 'RUB' | 'USD' | 'EUR' | 'UAH'
@@ -485,7 +485,7 @@ const iconFor = (state: State, gem: string) =>
 function Progress({ run, cur }: { run: Run; cur: Cur }) {
   const pct = run.planned ? (run.done / run.planned) * 100 : 0
   const failed = run.done - run.ok
-  const stale = run.log.filter(l => l.reason === 'цена ушла').length
+  const stale = run.log.filter(l => /цена/.test(l.reason)).length
 
   return (
     <Card className="slide-up p-3.5">
@@ -502,6 +502,7 @@ function Progress({ run, cur }: { run: Run; cur: Cur }) {
         <Sum k="куплено" v={nf(run.ok) + ' из ' + nf(run.planned)} tone={run.ok ? 'ok' : undefined} />
         <Sum k="потрачено" v={money(run.spent, cur)} />
         {failed ? <Sum k="не вышло" v={nf(failed)} note={stale ? nf(stale) + ' по цене' : undefined} /> : null}
+        {run.ok ? <Sum k="средняя цена" v={money(run.spent / run.ok, cur)} /> : null}
 
         <span className="ml-auto">
           {run.active ? (
@@ -530,10 +531,15 @@ function Progress({ run, cur }: { run: Run; cur: Cur }) {
                 {new Date(l.ts).toLocaleTimeString('ru-RU')}
               </span>
               <span className="min-w-0 flex-1 truncate">{l.gem}</span>
-              <span className="tnum shrink-0 font-mono text-muted-foreground">{money(l.price, cur)}</span>
+              <span className="tnum shrink-0 font-mono">
+                {money(l.price, cur)}
+                {l.planned != null && l.planned !== l.price ? (
+                  <span className="text-muted-foreground/50"> вместо {money(l.planned, cur)}</span>
+                ) : null}
+              </span>
               <span
-                className="w-28 shrink-0 text-right"
-                style={{ color: l.ok ? 'var(--ok)' : l.reason === 'цена ушла' ? 'var(--warn)' : 'var(--stop)' }}
+                className="w-32 shrink-0 text-right"
+                style={{ color: l.ok ? 'var(--ok)' : /цена|лотов/.test(l.reason) ? 'var(--warn)' : 'var(--stop)' }}
                 title={l.detail}
               >
                 {l.reason}

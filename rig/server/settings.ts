@@ -33,6 +33,9 @@ export type Settings = {
   sellPrice: number
   // Сколько брать одного гема за раз в плане закупки.
   perGem: number
+  // Насколько цена может вырасти между планом и покупкой и всё ещё
+  // считаться приемлемой. Ноль означает «только по своей цене или дешевле».
+  priceTolerance: number
 
   pace: {
     floor: number   // ниже этой паузы не опускаемся никогда, мс
@@ -59,6 +62,7 @@ export const DEFAULTS: Settings = {
   treeTop: 12,
   sellPrice: 10,
   perGem: 25,
+  priceTolerance: 0,
   pace: { floor: 300, ceil: 30_000, enough: 40, clean: 0.01, down: 0.8, up: 1.4 },
   spread: { band: 0.18, jitter: 0.025 },
 }
@@ -75,6 +79,7 @@ const LIMITS: Record<string, [number, number]> = {
   treeTop: [1, 60],
   sellPrice: [0.01, 10_000],
   perGem: [1, 5_000],
+  priceTolerance: [0, 1],
   'pace.floor': [100, 60_000],
   'pace.ceil': [1_000, 600_000],
   'pace.enough': [5, 5_000],
@@ -97,7 +102,7 @@ const num = (key: string, v: unknown, fallback: number) => {
   if (v === null || v === undefined || v === '') return fallback
   const n = Number(v)
   if (!Number.isFinite(n)) return fallback
-  const whole = key === 'pace.clean' || key.startsWith('spread.') || key === 'pace.down' || key === 'pace.up' || key === 'sellPrice'
+  const whole = key === 'pace.clean' || key.startsWith('spread.') || key === 'pace.down' || key === 'pace.up' || key === 'sellPrice' || key === 'priceTolerance'
   return clamp(key, whole ? n : Math.trunc(n))
 }
 
@@ -117,6 +122,7 @@ export function merge(base: Settings, patch: any): Settings {
     treeTop: num('treeTop', p.treeTop, base.treeTop),
     sellPrice: num('sellPrice', p.sellPrice, base.sellPrice),
     perGem: num('perGem', p.perGem, base.perGem),
+    priceTolerance: num('priceTolerance', p.priceTolerance, base.priceTolerance),
     pace: {
       floor: num('pace.floor', pace.floor, base.pace.floor),
       ceil: num('pace.ceil', pace.ceil, base.pace.ceil),

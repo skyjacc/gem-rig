@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Minus, Plus, RefreshCw, ShoppingCart, Wand2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Minus, Plus, RefreshCw, ShoppingCart, SlidersHorizontal, Wand2 } from 'lucide-react'
 import { nf, post, useJson, type State } from '../lib/api.ts'
 import { Button, Card, Dot, Empty, Field, ItemIcon, Label, PageHead, Segmented } from '../parts/ui.tsx'
 import { Modal } from '../parts/Modal.tsx'
+import { Reveal } from '../parts/Reveal.tsx'
 
 // Скупка.
 //
@@ -62,6 +63,38 @@ function money(v: number, c: Cur) {
 
 const SPEED = 76   // отправок в минуту, замер 20 августа
 
+// Столбцы: по любому можно отсортировать, по числовым — задать диапазон.
+// Порядок тот же, что в таблице, чтобы заголовки и фильтры не разъезжались.
+type SortKey = 'gem' | 'price' | 'pool' | 'volume' | 'sends' | 'take' | 'cost' | 'profit'
+type RangeKey = 'price' | 'pool' | 'volume' | 'sends'
+
+const COLUMNS: { key: SortKey; title: string; align: string }[] = [
+  { key: 'gem', title: 'гем', align: '' },
+  { key: 'price', title: 'цена', align: 'text-right' },
+  { key: 'pool', title: 'потолок', align: 'text-right' },
+  { key: 'volume', title: 'в продаже', align: 'text-right' },
+  { key: 'sends', title: 'отправок', align: 'text-right' },
+  { key: 'take', title: 'взять', align: 'text-center' },
+  { key: 'cost', title: 'стоимость', align: 'text-right' },
+  { key: 'profit', title: 'прибыль', align: 'text-right' },
+]
+
+const RANGES: { key: RangeKey; title: string }[] = [
+  { key: 'price', title: 'цена' },
+  { key: 'pool', title: 'потолок' },
+  { key: 'volume', title: 'в продаже' },
+  { key: 'sends', title: 'отправок' },
+]
+
+const EMPTY: Record<RangeKey, [string, string]> = {
+  price: ['', ''], pool: ['', ''], volume: ['', ''], sends: ['', ''],
+}
+
+// Сколько диапазонов заполнено — числом на кнопке, чтобы не забыть,
+// что список сужен и часть предложений не видна.
+const used = (r: Record<RangeKey, [string, string]>) =>
+  Object.values(r).filter(([a, b]) => a !== '' || b !== '').length
+
 export function Buy({ state }: { state: State }) {
   const [cur, setCur] = useState<Cur>('USD')
   const { data } = useJson<Scan>('/api/market?cur=' + cur, state.ts + '|' + cur)
@@ -69,16 +102,50 @@ export function Buy({ state }: { state: State }) {
   const [only, setOnly] = useState<'fit' | 'free' | 'all'>('fit')
   const [q, setQ] = useState('')
   const [budget, setBudget] = useState('')
+  const [sort, setSort] = useState<{ key: SortKey; down: boolean }>({ key: 'profit', down: true })
+  const [filters, setFilters] = useState(false)
+  const [range, setRange] = useState<Record<RangeKey, [string, string]>>(EMPTY)
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<string | null>(null)
 
   const offers = useMemo(() => {
     if (!data) return []
-    return data.offers
+
+    // Пустая граница означает «без ограничения», а не ноль.
+    const between = (v: number, r: [string, string]) => {
+      const lo = r[0] === '' ? -Infinity : Number(r[0].replace(',', '.'))
+      const hi = r[1] === '' ? Infinity : Number(r[1].replace(',', '.'))
+      return v >= (Number.isFinite(lo) ? lo : -Infinity) && v <= (Number.isFinite(hi) ? hi : Infinity)
+    }
+
+    const rows = data.offers
       .filter(o => (only === 'all' ? true : only === 'free' ? o.burning : o.reaches))
       .filter(o => !q || o.gem.toLowerCase().includes(q.toLowerCase()))
-  }, [data, only, q])
+      .filter(o => between(o.price, range.price) && between(o.pool, range.pool) &&
+        between(o.volume, range.volume) && between(o.sends, range.sends))
+
+    const val = (o: Offer): number | string => {
+      const n = take[o.gem] ?? 0
+      if (sort.key === 'gem') return o.gem.toLowerCase()
+      if (sort.key === 'price') return o.price
+      if (sort.key === 'pool') return o.pool
+      if (sort.key === 'volume') return o.volume
+      if (sort.key === 'sends') return o.sends
+      if (sort.key === 'take') return n
+      if (sort.key === 'cost') return n * o.price
+      return n * (o.reaches ? data.sell : 0) - n * o.price
+    }
+
+    return [...rows].sort((a, b) => {
+      const x = val(a)
+      const y = val(b)
+      const c = typeof x === 'string'
+        ? String(x).localeCompare(String(y))
+        : (x as number) - (y as number)
+      return sort.down ? -c : c
+    })
+  }, [data, only, q, range, sort, take])
 
   const cart = useMemo(() => {
     if (!data) return { lines: [], units: 0, cost: 0, revenue: 0, profit: 0, sends: 0, minutes: 0 }
@@ -169,6 +236,10 @@ export function Buy({ state }: { state: State }) {
           onPick={setOnly}
         />
         <Field value={q} onChange={setQ} placeholder="гем" width="w-44" />
+        <Button active={filters} onClick={() => setFilters(v => !v)}>
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <span>фильтры{used(range) ? " · " + used(range) : ""}</span>
+        </Button>
         <span className="mx-1 h-6 w-px bg-white/[0.08]" />
         <Label>бюджет</Label>
         <Field value={budget} onChange={setBudget} placeholder="$" width="w-24" inputMode="decimal" />
@@ -179,19 +250,56 @@ export function Buy({ state }: { state: State }) {
         {cart.units ? <Button onClick={() => setTake({})}>сбросить</Button> : null}
       </div>
 
+      <Reveal open={filters}>
+        <Card className="mb-2 p-3.5">
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+            {RANGES.map(r => (
+              <span key={r.key}>
+                <Label>{r.title}</Label>
+                <span className="mt-1.5 flex items-center gap-1.5">
+                  <input
+                    value={range[r.key][0]}
+                    onChange={e => setRange(x => ({ ...x, [r.key]: [e.target.value, x[r.key][1]] }))}
+                    placeholder="от"
+                    inputMode="decimal"
+                    className="ui-label h-9 w-20 border border-white/[0.08] bg-background/40 px-2 text-right text-foreground"
+                  />
+                  <span className="text-muted-foreground/40">—</span>
+                  <input
+                    value={range[r.key][1]}
+                    onChange={e => setRange(x => ({ ...x, [r.key]: [x[r.key][0], e.target.value] }))}
+                    placeholder="до"
+                    inputMode="decimal"
+                    className="ui-label h-9 w-20 border border-white/[0.08] bg-background/40 px-2 text-right text-foreground"
+                  />
+                </span>
+              </span>
+            ))}
+            <Button onClick={() => setRange(EMPTY)}>очистить</Button>
+          </div>
+        </Card>
+      </Reveal>
+
       <Card className="fade">
         <div className="scroll-thin max-h-[calc(100svh-430px)] overflow-auto">
           <table className="w-full text-[13px]">
             <thead className="sticky top-0 bg-[#0f0f0f]">
               <tr className="ui-label border-b border-white/[0.06] text-left text-muted-foreground/75">
-                <th className="px-3.5 py-2 font-medium">гем</th>
-                <th className="px-3.5 py-2 text-right font-medium">цена</th>
-                <th className="px-3.5 py-2 text-right font-medium">потолок</th>
-                <th className="px-3.5 py-2 text-right font-medium">в продаже</th>
-                <th className="px-3.5 py-2 text-right font-medium">отправок</th>
-                <th className="px-3.5 py-2 text-center font-medium">взять</th>
-                <th className="px-3.5 py-2 text-right font-medium">стоимость</th>
-                <th className="px-3.5 py-2 text-right font-medium">прибыль</th>
+                {COLUMNS.map(c => (
+                  <th key={c.key} className={"px-3.5 py-2 font-medium " + c.align}>
+                    <button
+                      type="button"
+                      onClick={() => setSort(prev => ({ key: c.key, down: prev.key === c.key ? !prev.down : true }))}
+                      className={"inline-flex items-center gap-1 " +
+                        (sort.key === c.key ? "text-foreground" : "hover:text-foreground")}
+                    >
+                      <span>{c.title}</span>
+                      {sort.key === c.key
+                        ? (sort.down ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />)
+                        : null}
+                    </button>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -262,6 +370,9 @@ export function Buy({ state }: { state: State }) {
           {offers.length === 0 ? <Empty>ничего не подошло</Empty> : null}
         </div>
       </Card>
+      <p className="text-[12px] text-muted-foreground">
+        показано {nf(offers.length)} из {nf(data.offers.length)}
+      </p>
 
       {cart.units > 0 ? (
         <Card className="slide-up sticky bottom-0 flex flex-wrap items-center gap-x-8 gap-y-3 p-3.5"

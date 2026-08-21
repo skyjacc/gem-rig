@@ -179,6 +179,7 @@ const RULES: { path: string; label: string; hint: string; unit?: string; scale?:
   { path: 'tick', label: 'как часто проверять', hint: 'через сколько заглядывать в инвентарь', unit: 'с', scale: 1000 },
   { path: 'invTtl', label: 'когда перечитывать Steam', hint: 'через сколько запрашивать инвентарь заново', unit: 'с', scale: 1000 },
   { path: 'silentLimit', label: 'сколько ждать молча', hint: 'после этого отправка перезапускается', unit: 'с', scale: 1000 },
+  { path: 'startLimit', label: 'сколько ждать первой отправки', hint: 'у отправщика своя лестница отходов при обрывах связи', unit: 'с', scale: 1000 },
   { path: 'maxFailures', label: 'сколько сбоев терпеть', hint: 'после этого остановиться и сказать почему' },
   { path: 'pace.floor', label: 'пол паузы', hint: 'ниже не опускаться никогда', unit: 'мс' },
   { path: 'pace.ceil', label: 'потолок паузы', hint: 'выше не подниматься', unit: 'мс' },

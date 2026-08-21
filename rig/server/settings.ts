@@ -19,6 +19,9 @@ export type Settings = {
   tick: number
   // Сколько отправщик может молчать, прежде чем его перезапустят, мс.
   silentLimit: number
+  // Сколько ждать первой отправки после запуска, мс. Срок отдельный
+  // и длиннее: у отправщика своя лестница отходов при обрывах связи.
+  startLimit: number
   // Сколько падений подряд терпим, прежде чем встать с причиной.
   maxFailures: number
   // Через сколько считать прочитанный инвентарь устаревшим, мс.
@@ -45,6 +48,7 @@ export const DEFAULTS: Settings = {
   goal: 2000,
   tick: 20_000,
   silentLimit: 60_000,
+  startLimit: 300_000,
   maxFailures: 5,
   invTtl: 60_000,
   treeTop: 12,
@@ -58,6 +62,7 @@ const LIMITS: Record<string, [number, number]> = {
   goal: [1, 100_000],
   tick: [5_000, 600_000],
   silentLimit: [10_000, 3_600_000],
+  startLimit: [30_000, 3_600_000],
   maxFailures: [1, 50],
   invTtl: [10_000, 3_600_000],
   treeTop: [1, 60],
@@ -97,6 +102,7 @@ export function merge(base: Settings, patch: any): Settings {
     goal: num('goal', p.goal, base.goal),
     tick: num('tick', p.tick, base.tick),
     silentLimit: num('silentLimit', p.silentLimit, base.silentLimit),
+    startLimit: num('startLimit', p.startLimit, base.startLimit),
     maxFailures: num('maxFailures', p.maxFailures, base.maxFailures),
     invTtl: num('invTtl', p.invTtl, base.invTtl),
     treeTop: num('treeTop', p.treeTop, base.treeTop),

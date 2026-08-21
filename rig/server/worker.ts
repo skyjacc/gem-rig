@@ -23,6 +23,7 @@ export type Snapshot = {
   target: number | null     // сколько отправок заказано; null = до конца очереди
   done: number              // сколько уже сделано в этом заходе
   senderStartedAt: number   // когда подняли нынешний процесс, 0 = не поднимали
+  displaced: number         // сколько раз аккаунт выбило другой сессией Steam
 }
 
 export type Action = 'idle' | 'start' | 'restart' | 'rebuild' | 'watch' | 'halt'
@@ -31,8 +32,12 @@ export type Decision = { action: Action; why: string }
 // Пороги приходят снаружи, из настроек панели. Значения по умолчанию —
 // замер 20 августа: при паузе в секунду отправка идёт раз в 1,3 с, так что
 // минута тишины — это уже не темп, а поломка.
-export type Limits = { silentLimit: number; maxFailures: number }
-const FALLBACK: Limits = { silentLimit: 60_000, maxFailures: 5 }
+// Два срока, а не один. Молчание после успешных отправок — минута: при
+// паузе в секунду это сорок пропущенных отправок, тут гадать нечего.
+// Невозможность войти — пять минут: у отправщика своя лестница отходов
+// 15, 30, 60, 120 секунд, и минута рубила бы его посреди законного ожидания.
+export type Limits = { silentLimit: number; startLimit: number; maxFailures: number }
+const FALLBACK: Limits = { silentLimit: 60_000, startLimit: 300_000, maxFailures: 5 }
 
 // Отметка последней отправки годится, только если её сделал нынешний процесс
 // отправщика. Файл отчёта переживает перезапуск панели и компьютера, и метка
@@ -46,6 +51,7 @@ export function freshSendAt(lastSendAt: number, senderStartedAt: number): number
 
 export function decide(s: Snapshot, limits: Limits = FALLBACK): Decision {
   const SILENT_LIMIT = limits.silentLimit
+  const START_LIMIT = limits.startLimit
   const MAX_FAILURES = limits.maxFailures
   if (!s.enabled) return { action: 'idle', why: 'работник выключен' }
 
@@ -73,15 +79,27 @@ export function decide(s: Snapshot, limits: Limits = FALLBACK): Decision {
     return { action: 'start', why: 'в очереди ' + s.queueLength + ', запускаю отправщик' }
   }
 
-  // Запустился и не отправил ни разу дольше срока — он не разогревается,
-  // а не может работать. Так выглядит занятый другой сессией Steam аккаунт:
-  // процесс жив, входит, его выбивает, он ждёт и входит снова. Перезапуск
-  // тут не поможет — сессию должен освободить человек.
-  if (s.lastSendAt === 0 && s.senderStartedAt > 0 && s.now - s.senderStartedAt > SILENT_LIMIT) {
+  // Аккаунт занят другой сессией. Ждать бессмысленно: вход УДАЁТСЯ, выбивают
+  // после, поэтому счётчик попыток у отправщика сбрасывается и он стучится
+  // каждые пятнадцать секунд без конца. Пока человек не освободит Steam,
+  // ничего не изменится, а лишние входы — шум на ровном месте.
+  // Один раз бывает при пересадке сессии, два подряд — это уже положение.
+  if (s.displaced >= 2) {
     return {
       action: 'halt',
-      why: 'отправщик не смог войти за ' + Math.round((s.now - s.senderStartedAt) / 1000) +
-        ' с — аккаунт занят другой сессией Steam, закройте игру и клиент',
+      why: 'аккаунт занят другой сессией Steam — закройте игру и клиент, тогда продолжу',
+    }
+  }
+
+  // Запустился и не отправил ни разу дольше срока — он не разогревается,
+  // а не может работать. Срок отдельный и длиннее: у отправщика своя
+  // лестница отходов при обрывах связи, и минута рубила бы его посреди
+  // законного ожидания.
+  if (s.lastSendAt === 0 && s.senderStartedAt > 0 && s.now - s.senderStartedAt > START_LIMIT) {
+    return {
+      action: 'halt',
+      why: 'отправщик не смог войти за ' + Math.round((s.now - s.senderStartedAt) / 60_000) +
+        ' мин — нужен разбор',
     }
   }
 

@@ -150,6 +150,7 @@ export type Settings = {
   goal: number
   tick: number
   silentLimit: number
+  startLimit: number
   maxFailures: number
   invTtl: number
   treeTop: number

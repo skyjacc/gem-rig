@@ -13,6 +13,7 @@ const base: Snapshot = {
   target: null,
   done: 0,
   senderStartedAt: 0,
+  displaced: 0,
 }
 
 test('выключен — ничего не делаем', () => {
@@ -145,7 +146,7 @@ test('чужая метка не приводит к перезапуску', ()
 // против нас: не слал он никогда. Значит нужен предел и на разогрев.
 
 test('живой, но ни одной отправки дольше предела — это не работа', () => {
-  const d = decide({ ...base, senderAlive: true, lastSendAt: 0, senderStartedAt: 100_000 - 70_000 })
+  const d = decide({ ...base, now: 1_000_000, senderAlive: true, lastSendAt: 0, senderStartedAt: 1_000_000 - 400_000 })
   assert.equal(d.action, 'halt')
   assert.match(d.why, /войти|не отправил/i)
 })
@@ -163,4 +164,44 @@ test('успел отправить — обычные правила молча
 test('без метки запуска разогрев не судим', () => {
   const d = decide({ ...base, senderAlive: true, lastSendAt: 0, senderStartedAt: 0 })
   assert.equal(d.action, 'watch')
+})
+
+// ── минута годилась не для всех случаев ──
+//
+// Один порог обслуживал два разных положения, и обоим он не подходил.
+//
+// Аккаунт занят другой сессией: вход УДАЁТСЯ, выбивают после — поэтому
+// счётчик попыток отправщика сбрасывается, и он стучится каждые пятнадцать
+// секунд вечно, не наращивая паузу. Ждать тут нечего: пока человек
+// не освободит Steam, ничего не изменится, а двадцать входов за пять минут
+// — это шум на ровном месте.
+//
+// Обрыв связи: там лестница растёт — 15, 30, 60, 120 секунд. Минута рубила
+// отправщик посреди законного отхода, когда он вот-вот бы поднялся.
+
+test('дважды выбило чужой сессией — ждать нечего, это до человека', () => {
+  const d = decide({ ...base, senderAlive: true, lastSendAt: 0, senderStartedAt: 99_000, displaced: 2 })
+  assert.equal(d.action, 'halt')
+  assert.match(d.why, /занят|другой сессией/i)
+})
+
+test('один раз выбило — бывает, не паникуем', () => {
+  const d = decide({ ...base, senderAlive: true, lastSendAt: 0, senderStartedAt: 99_000, displaced: 1 })
+  assert.equal(d.action, 'watch')
+})
+
+test('молчит после успешных отправок — прежняя минута', () => {
+  const d = decide({ ...base, senderAlive: true, lastSendAt: 100_000 - 70_000, senderStartedAt: 10_000 })
+  assert.equal(d.action, 'restart')
+})
+
+test('не вошёл ни разу: минуты мало, ждём дольше', () => {
+  const d = decide({ ...base, senderAlive: true, lastSendAt: 0, senderStartedAt: 100_000 - 90_000 })
+  assert.equal(d.action, 'watch', 'лестница отправщика доходит до двух минут')
+})
+
+test('не вошёл за пять минут — сдаёмся', () => {
+  const d = decide({ ...base, now: 1_000_000, senderAlive: true, lastSendAt: 0, senderStartedAt: 1_000_000 - 310_000 })
+  assert.equal(d.action, 'halt')
+  assert.match(d.why, /не смог войти/i)
 })

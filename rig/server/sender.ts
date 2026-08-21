@@ -20,6 +20,7 @@ type Sender = {
   startedAt: number | null
   lines: string[]
   exit: string | null
+  displaced: number   // сколько раз аккаунт выбило другой сессией Steam
 }
 
 const S = new Map<string, Sender>()
@@ -27,7 +28,7 @@ const S = new Map<string, Sender>()
 const slot = (id: string): Sender => {
   let s = S.get(id)
   if (!s) {
-    s = { child: null, file: null, delay: null, limit: null, startedAt: null, lines: [], exit: null }
+    s = { child: null, file: null, delay: null, limit: null, startedAt: null, lines: [], exit: null, displaced: 0 }
     S.set(id, s)
   }
   return s
@@ -63,6 +64,7 @@ export function senderState(id = 'main') {
     limit: s.limit,
     startedAt: s.startedAt,
     exit: s.exit,
+    displaced: s.displaced,
     lines: s.lines.slice(-60),
   }
 }
@@ -125,6 +127,7 @@ export function start(
   s.startedAt = Date.now()
   s.exit = null
   s.lines = []
+  s.displaced = 0
   remember(s, `запущен: node ${args.join(' ')}`)
 
   child.stdout?.on('data', b => { remember(s, String(b)); onLine() })

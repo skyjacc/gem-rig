@@ -190,7 +190,12 @@ async function tickOne(a: Account, push: () => void) {
     target: u.target,
     done: count,
     senderStartedAt: sender.startedAt ?? 0,
-  }, { silentLimit: settings().silentLimit, maxFailures: settings().maxFailures })
+    displaced: sender.displaced ?? 0,
+  }, {
+    silentLimit: settings().silentLimit,
+    startLimit: settings().startLimit,
+    maxFailures: settings().maxFailures,
+  })
 
   note(u, d.action, d.why)
 

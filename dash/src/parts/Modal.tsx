@@ -61,7 +61,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="закрыть"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-white/[0.08] text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] border border-white/[0.08] text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
           </button>

@@ -13,7 +13,11 @@
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
 
+  /* Скругления. Я ошибся, обнулив всё: у них 305 элементов со скруглением
+     в 6 пикселей и 295 круглых. Прямые углы — у карточек и полос управления,
+     скруглённые — у мелких кнопок, круглые — у значков. */
   --radius: 0;
+  --radius-sm: 6px;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -138,6 +142,16 @@ html::-webkit-scrollbar {
 }
 .floating:hover { background: #1818187a; }
 .floating:focus-visible { outline: none; box-shadow: 0 8px 26px #0003, 0 0 0 1px #ffffff38; }
+
+/* Значок. Их примета, которую я упустил: логотип лежит белым кругом
+   с тонким тёмным кольцом, а не тёмным квадратом. */
+.chip-icon {
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.2);
+  overflow: hidden;
+  flex: none;
+}
 
 /* Карточка. Границы и фон — числа их сборки. */
 .card {

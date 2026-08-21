@@ -32,7 +32,7 @@ export function Button({
   tone?: 'danger'
   children: ReactNode
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const base = 'ui-label inline-flex h-10 shrink-0 items-center justify-center gap-1.5 border bg-background/40 px-3 ' +
+  const base = 'ui-label inline-flex h-10 shrink-0 items-center justify-center gap-1.5 border bg-background/40 px-2.5 ' +
     'backdrop-blur transition-all duration-150 active:scale-95 touch-manipulation disabled:pointer-events-none disabled:opacity-40 '
   const look = tone === 'danger'
     ? 'border-white/[0.08] text-[color:var(--stop)] hover:border-[color:var(--stop)] '
@@ -61,7 +61,7 @@ export function Segmented<T extends string>({
           type="button"
           onClick={() => onPick(it.id)}
           className={
-            'ui-label relative inline-flex items-center justify-center gap-1.5 px-3 transition-colors ' +
+            'ui-label relative inline-flex items-center justify-center gap-1.5 px-2.5 transition-colors ' +
             (i ? 'border-l border-white/[0.08] ' : '') +
             (value === it.id ? 'bg-white/[0.08] text-foreground' : 'text-muted-foreground hover:text-foreground')
           }
@@ -92,7 +92,7 @@ export function Field({
       value={value}
       placeholder={placeholder}
       onChange={e => onChange(e.target.value)}
-      className={`ui-label h-10 border border-white/[0.08] bg-background/40 px-3 text-foreground placeholder:text-muted-foreground/50 ${width}`}
+      className={`ui-label h-10 border border-white/[0.08] bg-background/40 px-2.5 text-foreground placeholder:text-muted-foreground/50 ${width}`}
     />
   )
 }
@@ -117,28 +117,50 @@ export function Dot({ tone, pulse }: { tone: 'ok' | 'warn' | 'stop' | 'idle'; pu
   return <span className={`inline-block h-[6px] w-[6px] shrink-0 ${pulse ? 'animate-pulse' : ''}`} style={{ background: color }} />
 }
 
-// Настоящая картинка предмета из Steam.
-export function ItemIcon({ hash, size = 28 }: { hash: string; size?: number }) {
-  if (!hash) {
-    return <span className="shrink-0 border border-white/[0.08] bg-white/[0.03]" style={{ width: size, height: size }} />
-  }
+// Значок предмета.
+//
+// У них логотип лежит белым кругом с тонким тёмным кольцом:
+// rounded-full bg-white/[0.92] ring-1 ring-black/20. Тёмный квадрат,
+// который я сделал сначала, — главная причина, почему панель на них
+// не походила: круглые белые пятна и есть их узнаваемая примета.
+export function ItemIcon({ hash, size = 22 }: { hash: string; size?: number }) {
   return (
-    <img
-      src={steamIcon(hash, size > 40 ? 128 : 64)}
-      alt=""
-      referrerPolicy="no-referrer"
-      className="shrink-0 border border-white/[0.06] bg-white/[0.02] object-contain"
-      style={{ width: size, height: size }}
-    />
+    <span className="chip-icon inline-flex" style={{ width: size, height: size }} aria-hidden="true">
+      {hash ? (
+        <img
+          src={steamIcon(hash, size > 40 ? 128 : 64)}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="h-full w-full object-cover"
+        />
+      ) : null}
+    </span>
   )
 }
 
 export function Head({ title, note, right }: { title: string; note?: ReactNode; right?: ReactNode }) {
   return (
     <div className="mb-2 flex items-center gap-3">
-      <h2 className="text-[15px] font-medium tracking-[-0.02em] text-foreground/95">{title}</h2>
+      <h2 className="text-[15px] font-medium text-foreground/95">{title}</h2>
       {note ? <span className="ui-label text-muted-foreground/75">{note}</span> : null}
       {right ? <div className="ml-auto flex items-center gap-2">{right}</div> : null}
+    </div>
+  )
+}
+
+// Шапка экрана. У них страница открывается крупной строкой в 26 пикселей
+// со сжатием -0.04em и подписью в 14 под ней — именно этого у меня не было
+// вовсе, и панель читалась как таблица без начала.
+export function PageHead({ title, sub, right }: { title: string; sub?: ReactNode; right?: ReactNode }) {
+  return (
+    <div className="mb-10 flex flex-wrap items-end gap-4">
+      <div className="min-w-0">
+        <h1 className="text-balance text-[26px] font-medium leading-[1.15] tracking-[-0.04em] text-foreground/95">
+          {title}
+        </h1>
+        {sub ? <p className="mt-2 text-sm leading-5 text-muted-foreground">{sub}</p> : null}
+      </div>
+      {right ? <div className="ml-auto flex flex-wrap items-center gap-2">{right}</div> : null}
     </div>
   )
 }

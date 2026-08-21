@@ -1,5 +1,5 @@
 import { ago, clock, nf, span, type State } from '../lib/api.ts'
-import { Bar, Card, Dot, Empty, Head, ItemIcon, Label, Num } from '../parts/ui.tsx'
+import { Bar, Card, Dot, Empty, Head, ItemIcon, Label, Num, PageHead } from '../parts/ui.tsx'
 import { Launcher } from '../parts/Launcher.tsx'
 
 type Alert = { level: 'stop' | 'warn'; text: string }
@@ -45,6 +45,10 @@ export function Overview({ state, now }: { state: State; now: number }) {
 
   return (
     <div className="space-y-6">
+      <PageHead
+        title="Работа"
+        sub="работник смотрит инвентарь сам; купленный гем попадает в очередь без нажатий"
+      />
       <Launcher state={state} unit={ap} />
 
       <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
@@ -61,9 +65,9 @@ export function Overview({ state, now }: { state: State; now: number }) {
       {live.length > 1 ? (
         <div>
           <Head title="В работе" note={live.length + ' аккаунта одновременно'} />
-          <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
             {live.map(u => (
-              <Card key={u.id} className="flex items-center gap-3 p-4">
+              <Card key={u.id} className="flex items-center gap-3 p-3.5">
                 <Dot tone={u.running ? 'ok' : 'warn'} pulse={u.running} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px]">{u.label}</span>
@@ -81,14 +85,14 @@ export function Overview({ state, now }: { state: State; now: number }) {
         {owned.length === 0 ? (
           <Card><Empty>гемов нет — купите, работник заметит сам</Empty></Card>
         ) : (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
             {owned.map((m, i) => {
               const done = m.max >= goal
               const capped = m.supply != null && m.supply < goal
               return (
-                <Card key={m.gem} hover className="rise flex flex-col gap-2.5 p-4" style={{ animationDelay: i * 35 + 'ms' }}>
+                <Card key={m.gem} hover className="rise flex flex-col gap-2.5 p-3.5" style={{ animationDelay: i * 35 + 'ms' }}>
                   <div className="flex min-w-0 items-center gap-2.5">
-                    <ItemIcon hash={m.icon} size={32} />
+                    <ItemIcon hash={m.icon} size={22} />
                     <span className="block min-w-0 flex-1 truncate text-[15px] font-medium">{m.gem}</span>
                     <span className="tnum shrink-0 font-mono text-[12px] text-muted-foreground">×{m.items}</span>
                   </div>
@@ -156,7 +160,7 @@ function Metric({ label, value, roll, note, tone }: {
 }) {
   const color = tone === 'ok' ? 'var(--ok)' : undefined
   return (
-    <Card hover className="rise p-4">
+    <Card hover className="rise p-3.5">
       <Label>{label}</Label>
       <div className="mt-2 font-mono text-2xl font-medium tracking-tight" style={{ color }}>
         {roll !== undefined ? <Num value={roll} /> : value}

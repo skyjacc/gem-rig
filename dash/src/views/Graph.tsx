@@ -81,7 +81,7 @@ function Ctl({
       type="button"
       onClick={onClick}
       className={
-        'floating ui-label inline-flex h-9 items-center gap-1.5 px-3 transition-colors ' +
+        'floating ui-label inline-flex h-9 items-center gap-1.5 px-2.5 transition-colors ' +
         (join ? 'border-l border-white/[0.08] ' : '') +
         (active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
       }

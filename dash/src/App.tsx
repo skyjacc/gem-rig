@@ -55,7 +55,6 @@ export default function App() {
     { id: 'settings' as const, label: 'Настройки', icon: <Settings2 className="h-3.5 w-3.5" /> },
   ]
 
-  const title = items.find(i => i.id === view)?.label ?? ''
 
   return (
     <>
@@ -64,8 +63,7 @@ export default function App() {
         <Sidebar view={view} onView={setView} state={state} accounts={accounts} items={items} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.08] px-6">
-            <h1 className="text-[15px] font-medium tracking-[-0.02em]">{title}</h1>
+          <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/[0.08] px-8">
             <div className="ml-auto flex items-center gap-4">
               <span className="ui-label text-muted-foreground/75">
                 инвентарь {state.inv.age != null ? ago(Date.now() - state.inv.age * 1000, now) + ' назад' : '—'}
@@ -79,7 +77,7 @@ export default function App() {
 
           <main
             key={view}
-            className={'scroll-thin min-w-0 flex-1 ' + (view === 'graph' ? 'overflow-hidden p-0' : 'view-in overflow-auto p-6')}
+            className={'scroll-thin min-w-0 flex-1 ' + (view === 'graph' ? 'overflow-hidden p-0' : 'view-in overflow-auto px-8 py-10')}
           >
             {view === 'work' && <Overview state={state} now={now} />}
             {view === 'gems' && <Gems state={state} />}

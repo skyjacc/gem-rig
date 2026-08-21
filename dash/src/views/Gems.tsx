@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Gem as GemIcon, LayoutGrid, Rows3, Shirt } from 'lucide-react'
 import { nf, type Gem, type State } from '../lib/api.ts'
-import { Bar, Card, Empty, Field, Head, ItemIcon, Num, Segmented } from '../parts/ui.tsx'
+import { Bar, Card, Empty, Field, ItemIcon, Num, PageHead, Segmented } from '../parts/ui.tsx'
 
 // Мои гемы.
 //
@@ -74,12 +74,12 @@ export function Gems({ state }: { state: State }) {
     const all = rows.flatMap(m => m.rows.map(r => ({ ...r, gem: m.gem })))
     return (
       <div className="view-in">
-        <Head title="Мои гемы" note={`${nf(all.length)} вещей`} right={controls} />
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+        <PageHead title="Мои гемы" sub={`${nf(all.length)} вещей — продаётся вещь, а не гем`} right={controls} />
+        <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
           {all.map((r, i) => (
-            <Card key={r.assetid} hover className="rise flex flex-col gap-2 p-3" style={{ animationDelay: Math.min(i, 30) * 12 + 'ms' }}>
+            <Card key={r.assetid} hover className="rise flex flex-col gap-2 p-3.5" style={{ animationDelay: Math.min(i, 30) * 12 + 'ms' }}>
               <div className="flex items-center gap-2">
-                <ItemIcon hash={r.icon} size={26} />
+                <ItemIcon hash={r.icon} size={22} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px]">{r.gem}</span>
                   <span className="block truncate text-[11px] text-muted-foreground/60">
@@ -107,7 +107,7 @@ export function Gems({ state }: { state: State }) {
 
   return (
     <div className="view-in">
-      <Head title="Мои гемы" note={`${nf(rows.length)} видов · ${nf(items)} вещей`} right={controls} />
+      <PageHead title="Мои гемы" sub={`${nf(rows.length)} видов · ${nf(items)} вещей · голый самоцвет и предмет со вставленным — разный товар`} right={controls} />
       <Card>
         <table className="w-full text-[13px]">
           <thead>
@@ -178,7 +178,7 @@ function GemRows({ gem, goal, open, onToggle }: { gem: Gem; goal: number; open: 
           <span className="flex min-w-0 items-center gap-2">
             {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-            <ItemIcon hash={gem.icon} size={24} />
+            <ItemIcon hash={gem.icon} size={22} />
             <span className="min-w-0">
               <span className="block truncate font-medium">{gem.gem}</span>
               <span className="block truncate text-[11px] text-muted-foreground/60">

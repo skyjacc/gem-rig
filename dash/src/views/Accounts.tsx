@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { Link2, Pencil, Play, Settings2, Square, Unlink } from 'lucide-react'
 import { nf, post, span, type AccountRow, type Accounts as AccountsData, type State, type Unit } from '../lib/api.ts'
-import { Bar, Button, Card, Dot, Field, Head, Label, Num, Segmented } from '../parts/ui.tsx'
+import { Bar, Button, Card, Dot, Field, Head, Label, Num, PageHead, Segmented } from '../parts/ui.tsx'
 import { Modal } from '../parts/Modal.tsx'
 
 // Аккаунты.
@@ -44,9 +44,9 @@ export function Accounts({ state, accounts }: { state: State; accounts: Accounts
   return (
     <div className="view-in space-y-6">
       <div>
-        <Head
+        <PageHead
           title="Аккаунты"
-          note={`${nf(list.length)}`}
+          sub="пул матчей общий, журнал расхода у каждого свой — второй аккаунт жжёт тот же пул с нуля"
           right={
             <Button active onClick={() => { setLabel(''); post('/api/accounts/link/cancel', {}); setLinking(true) }}>
               <Link2 className="h-3.5 w-3.5" />
@@ -71,7 +71,7 @@ export function Accounts({ state, accounts }: { state: State; accounts: Accounts
 
       <div>
         <Head title="Как это работает" />
-        <Card className="p-4 text-[13px] leading-relaxed text-muted-foreground">
+        <Card className="p-3.5 text-[13px] leading-relaxed text-muted-foreground">
           Пул матчей общий на все аккаунты, журнал расхода — у каждого свой. Матч,
           израсходованный на одном, на другом остаётся свежим. Ограничение «одна сессия»
           действует на аккаунт, а не на машину, поэтому работники идут рядом.
@@ -187,7 +187,7 @@ function Row({
   const [editing, setEditing] = useState(false)
 
   return (
-    <Card hover className="rise p-4">
+    <Card hover className="rise p-3.5">
       <div className="flex items-center gap-2.5">
         <Dot tone={u?.running ? 'ok' : u?.enabled ? 'warn' : a.session ? 'idle' : 'stop'} pulse={u?.running} />
         <span className="min-w-0 flex-1">

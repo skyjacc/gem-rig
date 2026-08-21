@@ -40,7 +40,7 @@ export function Launcher({ state, unit }: { state: State; unit: Unit }) {
   }
 
   return (
-    <Card className="rise p-4">
+    <Card className="rise p-3.5">
       <div className="flex flex-wrap items-center gap-2">
         {unit.enabled ? (
           <Button tone="danger" onClick={() => run(false)} className="min-w-[132px]">

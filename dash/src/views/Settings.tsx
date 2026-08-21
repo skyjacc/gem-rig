@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { nf, post, useJson, type State } from '../lib/api.ts'
-import { Button, Card, Field, Head, Label } from '../parts/ui.tsx'
+import { Button, Card, Field, Head, Label, PageHead } from '../parts/ui.tsx'
 
 // Настройки.
 //
@@ -116,9 +116,9 @@ export function Settings({ state }: { state: State }) {
 
   return (
     <div className="view-in space-y-6">
-      <Head
+      <PageHead
         title="Настройки"
-        note="пороги, которые раньше были зашиты в код"
+        sub="пороги, которые раньше были зашиты в код: значения по умолчанию — замер 20 августа"
         right={
           <Button onClick={() => post('/api/settings/reset', {})}>
             <RotateCcw className="h-3.5 w-3.5" />
@@ -167,7 +167,7 @@ export function Settings({ state }: { state: State }) {
 
       <div>
         <Head title="Что сейчас действует" />
-        <Card className="p-4">
+        <Card className="p-3.5">
           <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[12px] sm:grid-cols-3">
             <Fact k="цель" v={nf(data.goal)} />
             <Fact k="такт" v={data.tick / 1000 + ' с'} />

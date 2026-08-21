@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { clock, nf, useJson, type QueueData, type State } from '../lib/api.ts'
-import { Card, Dot, Empty, Field, Head, ItemIcon, Segmented } from '../parts/ui.tsx'
+import { Card, Dot, Empty, Field, ItemIcon, PageHead, Segmented } from '../parts/ui.tsx'
 
 // ── очередь ──
 
@@ -10,9 +10,9 @@ export function Queue({ state }: { state: State }) {
 
   return (
     <div>
-      <Head
+      <PageHead
         title="Очередь"
-        note={data ? `${nf(data.total)} матчей · ${nf(data.weight2)} поднимают сразу две сущности` : 'считаю…'}
+        sub={data ? `${nf(data.total)} матчей · ${nf(data.weight2)} поднимают сразу две сущности одной отправкой` : 'считаю…'}
       />
       <Card>
         {!data ? <Empty>собираю…</Empty> : data.rows.length === 0 ? <Empty>очередь пуста</Empty> : (
@@ -64,9 +64,9 @@ export function Feed({ state }: { state: State }) {
 
   return (
     <div>
-      <Head
+      <PageHead
         title="Лента"
-        note={`${nf(state.events.length)} последних`}
+        sub={`${nf(state.events.length)} последних отправок, как их видел игровой координатор`}
         right={
           <Segmented
             value={filter}
@@ -117,9 +117,9 @@ export function Buy({ state }: { state: State }) {
 
   return (
     <div>
-      <Head
+      <PageHead
         title="Закупка"
-        note={`${nf(rows.length)} из ${nf(state.catalog.length)}`}
+        sub={`${nf(rows.length)} из ${nf(state.catalog.length)} самоцветов каталога`}
         right={
           <>
             <Segmented
@@ -151,7 +151,7 @@ export function Buy({ state }: { state: State }) {
                 <tr key={c.name} className="border-b border-white/[0.06] transition-colors last:border-0 hover:bg-white/[0.03]">
                   <td className="px-4 py-2.5">
                     <span className="flex min-w-0 items-center gap-2.5">
-                      <ItemIcon hash={c.icon} size={24} />
+                      <ItemIcon hash={c.icon} size={22} />
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{c.short}</span>
                         <span className="block truncate text-[11px] text-muted-foreground/60">{c.kind ?? '—'}</span>

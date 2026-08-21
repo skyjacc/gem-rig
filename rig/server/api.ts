@@ -218,3 +218,45 @@ export function tree(top = 12): TreeNode {
   tKey = key
   return tCache
 }
+
+// ── израсходованные матчи ──
+//
+// «Какие катки уже ушли» — вопрос, на который человек должен отвечать сам,
+// а не спрашивать. Матч расходуется навсегда, поэтому список должен быть
+// виден: с турниром, временем и тем, каким гемам он поднял счётчик.
+export function burnedList(limit = 500) {
+  const acc = ACCOUNT()
+  const rows = db.prepare(
+    `select match_id, league_id, ts, state from burned where account = ? order by ts desc limit ?`,
+  ).all(acc, limit) as any[]
+
+  // Кому этот матч служил: сверяем с наборами гемов из инвентаря.
+  const sets = new Map<string, Set<string>>()
+  for (const p of picks()) {
+    const ids = p.kind === 'team'
+      ? db.prepare(`select match_id from vmatch where radiant = ? or dire = ?`).all(p.id, p.id)
+      : db.prepare(
+        `select v.match_id from vmatch v join vplayer pl on pl.match_id = v.match_id where pl.account_id = ?`,
+      ).all(p.id)
+    sets.set(p.key, new Set((ids as any[]).map(r => String(r.match_id))))
+  }
+
+  const total = (db.prepare(`select count(*) c from burned where account = ?`).get(acc) as any).c
+
+  return {
+    total,
+    rows: rows.map(r => {
+      const id = String(r.match_id)
+      const gems: string[] = []
+      for (const [gem, set] of sets) if (set.has(id)) gems.push(gem)
+      return {
+        match: id,
+        league: String(r.league_id ?? ''),
+        leagueName: r.league_id ? leagueName(String(r.league_id)) : '',
+        ts: r.ts ?? null,
+        state: r.state,
+        gems,
+      }
+    }),
+  }
+}

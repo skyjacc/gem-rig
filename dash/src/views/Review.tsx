@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { ExternalLink } from 'lucide-react'
 import { clock, nf, useJson, type QueueData, type State } from '../lib/api.ts'
-import { Card, Dot, Empty, PageHead, Segmented } from '../parts/ui.tsx'
+import { Card, Dot, Empty, Field, PageHead, Segmented } from '../parts/ui.tsx'
 
 // Разбор.
 //
@@ -10,7 +11,7 @@ import { Card, Dot, Empty, PageHead, Segmented } from '../parts/ui.tsx'
 // что панель сложнее, чем есть.
 
 export function Review({ state }: { state: State }) {
-  const [tab, setTab] = useState<'queue' | 'feed' | 'log'>('queue')
+  const [tab, setTab] = useState<'queue' | 'used' | 'feed' | 'log'>('queue')
 
   return (
     <div className="view-in space-y-4">
@@ -22,6 +23,7 @@ export function Review({ state }: { state: State }) {
             value={tab}
             items={[
               { id: 'queue' as const, label: 'очередь' },
+              { id: 'used' as const, label: 'израсходованные' },
               { id: 'feed' as const, label: 'отправки' },
               { id: 'log' as const, label: 'решения' },
             ]}
@@ -30,6 +32,7 @@ export function Review({ state }: { state: State }) {
         }
       />
       {tab === 'queue' ? <Queue state={state} /> : null}
+      {tab === 'used' ? <Used state={state} /> : null}
       {tab === 'feed' ? <Feed state={state} /> : null}
       {tab === 'log' ? <Log state={state} /> : null}
     </div>
@@ -144,5 +147,94 @@ function Log({ state }: { state: State }) {
         </ul>
       )}
     </Card>
+  )
+}
+
+// Израсходованные матчи.
+//
+// Матч расходуется навсегда и только на этом аккаунте, поэтому «какие катки
+// уже ушли» — вопрос, на который человек должен отвечать сам, глядя в список,
+// а не спрашивать. Номер матча кликается: открывается его страница.
+
+type Used = {
+  total: number
+  rows: { match: string; league: string; leagueName: string; ts: number | null; state: string; gems: string[] }[]
+}
+
+const STATE: Record<string, { tone: 'ok' | 'warn' | 'idle'; word: string }> = {
+  confirmed: { tone: 'ok', word: 'засчитан' },
+  dup: { tone: 'warn', word: 'спорный' },
+  ledger: { tone: 'idle', word: 'из журнала' },
+  reconstructed: { tone: 'idle', word: 'восстановлен' },
+}
+
+function Used({ state }: { state: State }) {
+  const { data } = useJson<Used>('/api/burned?limit=500', state.ts)
+  const [q, setQ] = useState('')
+  if (!data) return <Card><Empty>читаю журнал…</Empty></Card>
+
+  const rows = data.rows.filter(r =>
+    !q ||
+    r.match.includes(q) ||
+    r.leagueName.toLowerCase().includes(q.toLowerCase()) ||
+    r.gems.some(g => g.toLowerCase().includes(q.toLowerCase())))
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-[12px] text-muted-foreground">
+          {nf(data.total)} матчей израсходовано на этом аккаунте · на другом они остались бы свежими
+        </p>
+        <div className="ml-auto"><Field value={q} onChange={setQ} placeholder="матч, турнир, гем" width="w-56" /></div>
+      </div>
+      <Card className="mt-2">
+        {rows.length === 0 ? <Empty>ничего не нашлось</Empty> : (
+          <div className="scroll-thin max-h-[calc(100svh-280px)] overflow-auto">
+            <table className="w-full text-[13px]">
+              <thead className="sticky top-0 bg-[#0f0f0f]">
+                <tr className="ui-label border-b border-white/[0.06] text-left text-muted-foreground/75">
+                  <th className="px-3.5 py-2 font-medium">матч</th>
+                  <th className="px-3.5 py-2 font-medium">турнир</th>
+                  <th className="px-3.5 py-2 font-medium">каким гемам</th>
+                  <th className="px-3.5 py-2 font-medium">когда</th>
+                  <th className="px-3.5 py-2 font-medium">итог</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => {
+                  const s = STATE[r.state] ?? STATE.confirmed
+                  return (
+                    <tr key={r.match} className="border-b border-white/[0.06] last:border-0 hover:bg-white/[0.02]">
+                      <td className="px-3.5 py-1.5">
+                        <a
+                          href={'https://www.opendota.com/matches/' + r.match}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="tnum inline-flex items-center gap-1.5 font-mono transition-colors hover:text-foreground"
+                        >
+                          {r.match}
+                          <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                        </a>
+                      </td>
+                      <td className="px-3.5 py-1.5 text-muted-foreground">{r.leagueName || '—'}</td>
+                      <td className="px-3.5 py-1.5">{r.gems.length ? r.gems.join(' · ') : <span className="text-muted-foreground/50">не из моих</span>}</td>
+                      <td className="tnum px-3.5 py-1.5 font-mono text-[12px] text-muted-foreground">
+                        {r.ts ? new Date(r.ts).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </td>
+                      <td className="px-3.5 py-1.5">
+                        <span className="flex items-center gap-2">
+                          <Dot tone={s.tone} />
+                          <span className="text-[12px] text-muted-foreground">{s.word}</span>
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </>
   )
 }

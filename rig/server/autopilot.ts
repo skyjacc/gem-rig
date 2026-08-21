@@ -25,9 +25,11 @@ import { queueFile, senderState, start as startSender, statusFile, stop as stopS
 import { advise, type Sample } from './pace.ts'
 import { spreadPlan, type Wave } from './spread.ts'
 import { active, list as accounts, type Account } from './accounts.ts'
+import { settings } from './settings.ts'
 
-export const TICK = 20_000
-const GOAL = 2000
+// Как часто смотреть и что считать товаром — из настроек.
+export const TICK = () => settings().tick
+const GOAL = () => settings().goal
 
 type Log = { ts: number; action: Action; why: string }
 
@@ -153,7 +155,7 @@ function samples(id: string, delay: number): Sample[] {
 }
 
 export function paceAdvice(id: string) {
-  return advise(samples(id, unit(id).delay))
+  return advise(samples(id, unit(id).delay), settings().pace)
 }
 
 async function tickOne(a: Account, push: () => void) {
@@ -174,7 +176,7 @@ async function tickOne(a: Account, push: () => void) {
     failures: u.failures,
     target: u.target,
     done: count,
-  })
+  }, { silentLimit: settings().silentLimit, maxFailures: settings().maxFailures })
 
   note(u, d.action, d.why)
 
@@ -191,8 +193,8 @@ async function tickOne(a: Account, push: () => void) {
     // Пауза подбирается на ходу: пока GC отвечает на каждую отправку,
     // темп можно поднимать. Отправщик перечитывает delay.txt сам.
     if (u.auto) {
-      const adv = advise(samples(a.id, u.delay))
-      if (adv.suggest !== u.delay && adv.measured >= 40) {
+      const adv = advise(samples(a.id, u.delay), settings().pace)
+      if (adv.suggest !== u.delay && adv.measured >= settings().pace.enough) {
         u.delay = adv.suggest
         fs.writeFileSync(path.join(GC, 'delay.txt'), String(u.delay))
         note(u, 'watch', 'пауза ' + u.delay + ' мс — ' + adv.why)
@@ -268,7 +270,7 @@ export function autopilotState() {
   const list = picks()
   const a = active()
   return {
-    goal: GOAL,
+    goal: GOAL(),
     objects: list.reduce((n, p) => n + p.objects, 0),
     gems: list.map(p => ({ gem: p.key, objects: p.objects })),
     units: accounts().map(unitState),
@@ -287,7 +289,7 @@ export function setAutopilot(
   if (!a) return { error: 'нет такого аккаунта' }
   const u = unit(id)
 
-  if (patch.delay && patch.delay >= 300) { u.delay = patch.delay; u.auto = false }
+  if (patch.delay && patch.delay >= settings().pace.floor) { u.delay = patch.delay; u.auto = false }
   if (patch.auto !== undefined) u.auto = !!patch.auto
   if (patch.waves !== undefined) u.waves = Math.max(1, Math.min(8, Math.trunc(patch.waves)))
   if (patch.target !== undefined) {
@@ -299,7 +301,7 @@ export function setAutopilot(
       // Круглое число на витрине выдаёт накрутку, поэтому заказ превращается
       // в живое: 1000 → 1147. Ниже заказанного не опускаемся.
       u.ordered = Math.max(1, Math.trunc(patch.target))
-      u.plan = spreadPlan(u.ordered, u.waves, id + ':' + u.ordered)
+      u.plan = spreadPlan(u.ordered, u.waves, id + ':' + u.ordered, settings().spread)
       u.target = u.plan[0].value
     }
   }

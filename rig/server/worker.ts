@@ -27,15 +27,15 @@ export type Snapshot = {
 export type Action = 'idle' | 'start' | 'restart' | 'rebuild' | 'watch' | 'halt'
 export type Decision = { action: Action; why: string }
 
-// Отправщик, который молчит дольше этого, считается зависшим.
-// Замер 20 августа: при паузе в секунду отправка идёт раз в 1,3 с,
-// так что минута тишины — это уже не темп, а поломка.
-const SILENT_LIMIT = 60_000
+// Пороги приходят снаружи, из настроек панели. Значения по умолчанию —
+// замер 20 августа: при паузе в секунду отправка идёт раз в 1,3 с, так что
+// минута тишины — это уже не темп, а поломка.
+export type Limits = { silentLimit: number; maxFailures: number }
+const FALLBACK: Limits = { silentLimit: 60_000, maxFailures: 5 }
 
-// Сколько падений подряд терпим, прежде чем остановиться с причиной.
-const MAX_FAILURES = 5
-
-export function decide(s: Snapshot): Decision {
+export function decide(s: Snapshot, limits: Limits = FALLBACK): Decision {
+  const SILENT_LIMIT = limits.silentLimit
+  const MAX_FAILURES = limits.maxFailures
   if (!s.enabled) return { action: 'idle', why: 'работник выключен' }
 
   if (s.failures >= MAX_FAILURES) {

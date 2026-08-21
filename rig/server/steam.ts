@@ -3,6 +3,7 @@
 // иначе Steam отвечает 429 и уходит в отказ на несколько минут.
 
 import { STEAMID, steamKey } from './paths.ts'
+import { settings } from './settings.ts'
 import { saveSnapshot } from './db.ts'
 
 const GAP = 2500
@@ -46,7 +47,6 @@ const BARE = /^(Genuine\s+)?Spectator:\s*/i
 export const carrierOf = (name: string, hero: string): Carrier =>
   BARE.test(String(name ?? '')) && !String(hero ?? '').trim() ? 'gem' : 'item'
 
-const TTL = 60_000
 const BACKOFF = 300_000
 
 export const inv = {
@@ -76,7 +76,7 @@ function parseDescription(desc: any): { gem: string; hero: string; value: number
 
 export async function refreshInventory(force = false): Promise<boolean> {
   const now = Date.now()
-  if (!force && now - inv.ts < TTL) return false
+  if (!force && now - inv.ts < settings().invTtl) return false
   if (now < inv.backoffUntil) return false
 
   try {

@@ -129,6 +129,17 @@ export type AccountRow = {
   burned: number
 }
 
+export type Settings = {
+  goal: number
+  tick: number
+  silentLimit: number
+  maxFailures: number
+  invTtl: number
+  treeTop: number
+  pace: { floor: number; ceil: number; enough: number; clean: number; down: number; up: number }
+  spread: { band: number; jitter: number }
+}
+
 export type Accounts = {
   active: string | null
   link: { id: string; label: string; url: string | null; steamid: string | null; error: string | null; done: boolean; lines: string[] } | null

@@ -81,7 +81,7 @@ test('разброс укладывается в разумную полосу',
 
 test('на тысяче получаются числа вроде 1023 и 1213, а не 1000', () => {
   for (const w of spreadPlan(1000, 3, 'seed')) {
-    assert.ok(w.value > 1000 && w.value < 1300, w.value)
+    assert.ok(w.value > 1000 && w.value < 1300, String(w.value))
     assert.notEqual(w.value % 100, 0)
   }
 })

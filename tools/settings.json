@@ -1,0 +1,20 @@
+{
+  "goal": 2000,
+  "tick": 20000,
+  "silentLimit": 60000,
+  "maxFailures": 5,
+  "invTtl": 60000,
+  "treeTop": 12,
+  "pace": {
+    "floor": 300,
+    "ceil": 30000,
+    "enough": 40,
+    "clean": 0.01,
+    "down": 0.8,
+    "up": 1.4
+  },
+  "spread": {
+    "band": 0.18,
+    "jitter": 0.025
+  }
+}

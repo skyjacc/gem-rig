@@ -17,7 +17,8 @@ import { listFiles, senderState, start, statusFile, stop } from './sender.ts'
 import { accountList, accountsApi, graph, queuePreview, tree } from './api.ts'
 import { ACCOUNT, activeId as activeAccountId } from './accounts.ts'
 import { roadmap } from './roadmap.ts'
-import { autopilotState, setAutopilot, tick } from './autopilot.ts'
+import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
+import { reset as resetSettings, settings, update as updateSettings } from './settings.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 // Фронт живёт в отдельной папке: оформление переделано с нуля,
@@ -131,10 +132,28 @@ app.post('/api/accounts/unlink', async (req: any) => {
   return r
 })
 
+// ── настройки ──
+//
+// Всё, что раньше было константой в коде. Пороги подбирались замерами,
+// но замеры устаревают: у другого канала и времени суток числа другие.
+app.get('/api/settings', async () => settings())
+
+app.post('/api/settings', async (req: any) => {
+  const r = updateSettings(req.body ?? {})
+  push()
+  return r
+})
+
+app.post('/api/settings/reset', async () => {
+  const r = resetSettings()
+  push()
+  return r
+})
+
 // ── граф и очередь ──
 app.get('/api/graph', async (req: any) => graph(req.query?.scope === 'all' ? 'all' : 'owned'))
 app.get('/api/queue', async (req: any) => queuePreview(Number(req.query?.limit) || 200))
-app.get('/api/tree', async (req: any) => tree(Number(req.query?.top) || 12))
+app.get('/api/tree', async (req: any) => tree(Number(req.query?.top) || settings().treeTop))
 
 app.post('/api/sender/stop', async (req: any) => {
   const r = stop(String(req.body?.id ?? activeAccountId()))
@@ -242,6 +261,13 @@ const cycle = async () => {
 
 // Автопилот тикает отдельно и чаще: он должен замечать смерть отправщика
 // быстрее, чем обновляется инвентарь.
-setInterval(() => { tick(() => push()).catch(e => console.error('автопилот:', e.message)) }, 20_000)
+// Работник тикает по своему расписанию: оно меняется из настроек,
+// поэтому проверяем срок сами, а не полагаемся на фиксированный интервал.
+let lastTickAt = 0
+setInterval(() => {
+  if (Date.now() - lastTickAt < TICK()) return
+  lastTickAt = Date.now()
+  tick(() => push()).catch(e => console.error('автопилот:', e.message))
+}, 5_000)
 cycle()
 setInterval(cycle, 20_000)

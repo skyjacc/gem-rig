@@ -53,10 +53,12 @@ export type Wave = {
 // Случайные значения из одного диапазона тут не годятся: три числа могут лечь
 // в восьми единицах друг от друга, и тогда разброс выглядит хуже, чем его
 // отсутствие. Партии разносятся ровным шагом, а дрожание добавляется поверх.
-const BAND = 0.18
-const JITTER = 0.025
+export type Shape = { band: number; jitter: number }
+const FALLBACK: Shape = { band: 0.18, jitter: 0.025 }
 
-export function spreadPlan(base: number, waves: number, seed: string): Wave[] {
+export function spreadPlan(base: number, waves: number, seed: string, shape: Shape = FALLBACK): Wave[] {
+  const BAND = shape.band
+  const JITTER = shape.jitter
   const b = Math.max(1, Math.trunc(base))
   const n = Math.max(1, Math.trunc(waves))
   if (n === 1) return [{ index: 0, addAt: 0, value: livelyTarget(b, seed + ':0') }]

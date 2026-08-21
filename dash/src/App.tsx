@@ -4,6 +4,7 @@ import {
   LayoutGrid,
   ListOrdered,
   Network,
+  Settings2,
   ShoppingCart,
   Sparkles,
   Users,
@@ -14,6 +15,7 @@ import { Sidebar, type ViewId } from './parts/Sidebar.tsx'
 import { Overview } from './views/Overview.tsx'
 import { Graph } from './views/Graph.tsx'
 import { Accounts } from './views/Accounts.tsx'
+import { Settings } from './views/Settings.tsx'
 import { Buy, Feed, Queue } from './views/Tables.tsx'
 import { Gems } from './views/Gems.tsx'
 
@@ -50,6 +52,7 @@ export default function App() {
     { id: 'feed' as const, label: 'Лента', icon: <Activity className="h-3.5 w-3.5" /> },
     { id: 'buy' as const, label: 'Закупка', icon: <ShoppingCart className="h-3.5 w-3.5" />, count: state.catalog.length },
     { id: 'accounts' as const, label: 'Аккаунты', icon: <Users className="h-3.5 w-3.5" />, count: accounts?.list.length },
+    { id: 'settings' as const, label: 'Настройки', icon: <Settings2 className="h-3.5 w-3.5" /> },
   ]
 
   const title = items.find(i => i.id === view)?.label ?? ''
@@ -84,7 +87,8 @@ export default function App() {
             {view === 'queue' && <Queue state={state} />}
             {view === 'feed' && <Feed state={state} />}
             {view === 'buy' && <Buy state={state} />}
-            {view === 'accounts' && <Accounts state={state} accounts={accounts} now={now} />}
+            {view === 'accounts' && <Accounts state={state} accounts={accounts} />}
+            {view === 'settings' && <Settings state={state} />}
           </main>
         </div>
       </div>

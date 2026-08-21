@@ -21,23 +21,25 @@ export type Advice = {
   atDelay: number       // на какой паузе замерено
 }
 
-// Ниже этого не опускаемся. При 300 мс отправки идут чаще, чем GC успевал
-// отвечать в худших замерах, и «без ответа» станет нормой.
-const FLOOR = 300
+// Пороги приходят из настроек. По умолчанию — то, что измерено:
+//   floor  при 300 мс отправки идут чаще, чем GC успевал отвечать
+//   ceil   выше этого советовать бессмысленно, дело уже не в темпе
+//   enough меньше этого числа отправок — не выборка, а совпадение
+//   clean  ноль был бы слишком строг: одно молчание на сотню бывает от сети
+export type Tuning = {
+  floor: number
+  ceil: number
+  enough: number
+  clean: number
+  down: number
+  up: number
+}
 
-// Выше этого советовать бессмысленно: если и здесь молчит, дело не в темпе.
-const CEIL = 30_000
+const FALLBACK: Tuning = { floor: 300, ceil: 30_000, enough: 40, clean: 0.01, down: 0.8, up: 1.4 }
 
-// Меньше этого числа отправок — не выборка, а совпадение.
-const ENOUGH = 40
-
-// Доля молчаний, ниже которой темп считается чистым. Ноль был бы слишком
-// строг: одно молчание на сотню бывает от сети, а не от частоты.
-const CLEAN = 0.01
-
-const round = (ms: number) => Math.max(FLOOR, Math.min(CEIL, Math.round(ms / 50) * 50))
-
-export function advise(samples: Sample[]): Advice {
+export function advise(samples: Sample[], t: Tuning = FALLBACK): Advice {
+  const { floor: FLOOR, ceil: CEIL, enough: ENOUGH, clean: CLEAN } = t
+  const round = (ms: number) => Math.max(FLOOR, Math.min(CEIL, Math.round(ms / 50) * 50))
   if (!samples.length) {
     return { suggest: 1000, why: 'нет замеров — начинаем с секунды, она проверена', measured: 0, silent: 0, atDelay: 0 }
   }
@@ -61,7 +63,7 @@ export function advise(samples: Sample[]): Advice {
 
   if (share > CLEAN) {
     // Нашли потолок. Отходим настолько, насколько сильно молчит.
-    const back = share > 0.1 ? 2 : 1.4
+    const back = share > 0.1 ? t.up * 1.45 : t.up
     return {
       suggest: round(atDelay * back),
       why: silent + ' из ' + measured + ' без ответа — это потолок, отхожу',
@@ -71,7 +73,7 @@ export function advise(samples: Sample[]): Advice {
 
   // Чисто. Шаг вниз небольшой: перелёт стоит дороже, чем лишняя минута.
   return {
-    suggest: round(atDelay * 0.8),
+    suggest: round(atDelay * t.down),
     why: measured + ' отправок подряд с ответом — можно быстрее',
     measured, silent, atDelay,
   }

@@ -46,6 +46,23 @@ export function decideBuy(planned: number, now: number | null, tolerance: number
   return { buy: now <= planned * (1 + tol) + 1e-9, price: now }
 }
 
+// Что делать после неудачи. Беды разной природы:
+//
+//   нет денег      дальше бессмысленно всё
+//   цена выросла   остальные лоты позиции стоят столько же — бросаем её
+//   нет лотов      брать нечего — бросаем позицию
+//   отказ          площадка не ответила; это не приговор, пробуем ещё,
+//                  но не бесконечно — после трёх подряд идём дальше
+//
+// Одна ошибка связи не должна стоить всей позиции: 22 августа так и вышло —
+// пять сбоев отняли сто тридцать лотов.
+export function after(reason: string, failsInARow: number): 'стоп' | 'позиция' | 'ещё' | 'дальше' {
+  if (reason === 'нет денег') return 'стоп'
+  if (reason === 'цена выросла' || reason === 'нет лотов' || reason === 'цена ушла') return 'позиция'
+  if (reason === 'отказ') return failsInARow >= 3 ? 'дальше' : 'ещё'
+  return 'дальше'
+}
+
 export type Entry = {
   ts: number
   gem: string
@@ -67,13 +84,16 @@ type Job = {
   ok: number          // сколько куплено
   spent: number
   current: string     // что покупается прямо сейчас
+  pass: number        // какой заход по списку идёт
+  positions: { gem: string; asked: number; got: number; done: boolean; why: string }[]
   log: Entry[]
   error: string | null
 }
 
 const EMPTY: Job = {
   active: false, cancel: false, startedAt: 0, finishedAt: 0, currency: 'RUB',
-  planned: 0, done: 0, ok: 0, spent: 0, current: '', log: [], error: null,
+  planned: 0, done: 0, ok: 0, spent: 0, current: '', pass: 0,
+  positions: [], log: [], error: null,
 }
 
 let job: Job = { ...EMPTY }
@@ -141,61 +161,99 @@ export async function startPurchase(lines: Line[], currency: Currency, push: () 
 }
 
 async function run(lines: Line[], key: string, currency: Currency, tolerance: number, push: () => void) {
+  // Список работ: у каждой позиции своё «сколько ещё надо».
+  const work = lines
+    .map(l => ({
+      name: String(l.name),
+      gem: String(l.name).replace(/^(Genuine\s+)?Spectator:\s*/i, ''),
+      price: Number(l.price),
+      left: Math.max(0, Math.trunc(Number(l.take) || 0)),
+      done: false,
+      why: '',
+    }))
+    .filter(w => w.left > 0)
+
+  job.positions = work.map(w => ({ gem: w.gem, asked: w.left, got: 0, done: false, why: '' }))
+
+  const mark = (i: number) => {
+    const p = job.positions[i]
+    const w = work[i]
+    p.got = p.asked - w.left
+    p.done = w.done
+    p.why = w.why
+  }
+
   try {
-    for (const l of lines) {
-      const take = Math.max(0, Math.trunc(Number(l.take) || 0))
-      const gem = String(l.name).replace(/^(Genuine\s+)?Spectator:\s*/i, '')
+    // Несколько заходов по списку. Сбой связи не должен стоить позиции:
+    // недобранное остаётся в работе и добирается на следующем круге.
+    for (let round = 1; round <= 3; round++) {
+      if (job.cancel || work.every(w => w.done || w.left === 0)) break
+      job.pass = round
 
-      for (let i = 0; i < take; i++) {
-        if (job.cancel) {
-          note({ ts: Date.now(), gem, ok: false, price: l.price, reason: 'остановлено' })
-          return
-        }
+      for (let i = 0; i < work.length; i++) {
+        const w = work[i]
+        if (w.done || w.left === 0) continue
 
-        job.current = gem
+        let failsInARow = 0
 
-        // Сколько стоит прямо сейчас. Спрашиваем перед каждым лотом:
-        // цена ползёт вверх по мере того, как мы выбираем дешёвые.
-        const res: any = await bestOffer(key, String(l.name))
-        const now = lowest(res, currency)
-        const call = decideBuy(Number(l.price), now, tolerance)
+        while (w.left > 0 && !w.done) {
+          if (job.cancel) {
+            note({ ts: Date.now(), gem: w.gem, ok: false, price: w.price, reason: 'остановлено' })
+            mark(i)
+            return
+          }
 
-        if (!call.buy) {
-          job.done++
-          const reason = now == null ? (res?.success ? 'нет лотов' : 'отказ') : 'цена выросла'
-          note({
-            ts: Date.now(), gem, ok: false, price: now ?? 0, planned: l.price, reason,
-            // Пустой ответ и отказ площадки — разные беды, и лечатся
-            // по-разному: в первом случае лоты кончились, во втором
-            // не достучались. Прятать одно под другим значит потом гадать.
-            // Обе цены и так показаны отдельными полями, поэтому пояснение
-            // нужно только там, где причина не видна из чисел.
-            detail: now != null
+          job.current = w.gem
+
+          // Сколько стоит прямо сейчас: дешёвые лоты кончаются по мере
+          // скупки, и цена ползёт вверх во время самой закупки.
+          const res: any = await bestOffer(key, w.name)
+          const now = lowest(res, currency)
+          const call = decideBuy(w.price, now, tolerance)
+
+          let reason: Entry['reason']
+          let ok = false
+          let paid = call.price
+          let detail: string | undefined
+
+          if (!call.buy) {
+            reason = now == null ? (res?.success ? 'нет лотов' : 'отказ') : 'цена выросла'
+            paid = now ?? w.price
+            detail = now != null
               ? undefined
-              : res?.success ? 'предложений не осталось' : 'площадка: ' + String(res?.error ?? 'нет ответа').slice(0, 60),
-          })
+              : res?.success ? 'предложений не осталось' : 'площадка: ' + String(res?.error ?? 'нет ответа').slice(0, 60)
+          } else {
+            const r: any = await buyOne(key, w.name, call.price, currency, 'gt-' + Date.now() + '-' + w.left)
+            ok = !!r?.success
+            reason = ok ? 'куплено' : classify(r?.error ?? '')
+            detail = ok ? undefined : String(r?.error ?? '').slice(0, 80)
+          }
+
+          job.done++
+          if (ok) {
+            job.ok++
+            job.spent += paid
+            w.left--
+            failsInARow = 0
+          } else {
+            failsInARow++
+          }
+
+          note({ ts: Date.now(), gem: w.gem, ok, price: paid, planned: w.price, reason, detail })
+          mark(i)
           push()
-          break
+
+          if (!ok) {
+            const step = after(reason, failsInARow)
+            if (step === 'стоп') { w.why = reason; mark(i); return }
+            if (step === 'позиция') { w.done = true; w.why = reason; mark(i); break }
+            // «дальше» — эта позиция пока не даётся, переходим к другим
+            // и вернёмся к ней следующим кругом.
+            if (step === 'дальше') { mark(i); break }
+          }
+
+          await new Promise(res2 => setTimeout(res2, 350))
         }
-
-        const r: any = await buyOne(key, String(l.name), call.price, currency, 'gt-' + Date.now() + '-' + i)
-        job.done++
-
-        if (r?.success) {
-          job.ok++
-          job.spent += call.price
-          note({ ts: Date.now(), gem, ok: true, price: call.price, planned: l.price, reason: 'куплено' })
-        } else {
-          const reason = classify(r?.error ?? '')
-          note({ ts: Date.now(), gem, ok: false, price: call.price, planned: l.price, reason, detail: String(r?.error ?? '').slice(0, 80) })
-          push()
-          // Цена ушла — остальные лоты этой позиции стоят столько же,
-          // добивать их бессмысленно. Кончились деньги — тем более.
-          if (reason === 'цена ушла' || reason === 'нет денег') break
-        }
-
-        push()
-        await new Promise(res => setTimeout(res, 350))
       }
     }
   } catch (e: any) {

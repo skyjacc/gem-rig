@@ -43,6 +43,8 @@ type Run = {
   ok: number
   spent: number
   current: string
+  pass: number
+  positions: { gem: string; asked: number; got: number; done: boolean; why: string }[]
   error: string | null
   log: { ts: number; gem: string; ok: boolean; price: number; planned?: number; reason: string; detail?: string }[]
 }
@@ -494,7 +496,7 @@ function Progress({ run, cur }: { run: Run; cur: Cur }) {
           <Dot tone={run.active ? 'ok' : failed ? 'warn' : 'idle'} pulse={run.active} />
           <span className="text-[13px]">
             {run.active
-              ? (run.current ? 'покупаю ' + run.current : 'запускаюсь')
+              ? (run.current ? 'покупаю ' + run.current + (run.pass > 1 ? ' · заход ' + run.pass : '') : 'запускаюсь')
               : run.cancel ? 'остановлено' : 'закупка закончена'}
           </span>
         </span>
@@ -517,6 +519,27 @@ function Progress({ run, cur }: { run: Run; cur: Cur }) {
       <div className="mt-3">
         <Bar pct={pct} tone={run.active ? 'run' : failed ? 'warn' : 'ok'} />
       </div>
+
+      {run.positions?.length ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {run.positions.map(p => (
+            <span
+              key={p.gem}
+              className="inline-flex items-center gap-2 border px-2 py-1 text-[12px]"
+              style={{ borderColor: p.got >= p.asked ? 'var(--ok)' : 'rgb(255 255 255 / 0.08)' }}
+              title={p.why || undefined}
+            >
+              <span className="truncate">{p.gem}</span>
+              <span className="tnum font-mono" style={{ color: p.got >= p.asked ? 'var(--ok)' : undefined }}>
+                {nf(p.got)}/{nf(p.asked)}
+              </span>
+              {p.done && p.got < p.asked ? (
+                <span className="ui-label" style={{ color: 'var(--warn)' }}>{p.why}</span>
+              ) : null}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {run.error ? (
         <p className="mt-2 text-[12px]" style={{ color: 'var(--stop)' }}>{run.error}</p>

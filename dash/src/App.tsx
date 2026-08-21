@@ -9,7 +9,7 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react'
-import { ago, useJson, useLive, type Accounts as AccountsData } from './lib/api.ts'
+import { ago, DEMO, useJson, useLive, type Accounts as AccountsData } from './lib/api.ts'
 import { Dot } from './parts/ui.tsx'
 import { Sidebar, type ViewId } from './parts/Sidebar.tsx'
 import { LinkAccount } from './parts/LinkAccount.tsx'
@@ -68,13 +68,19 @@ export default function App() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/[0.08] px-8">
+            {DEMO ? (
+              <span className="ui-label flex items-center gap-2 border border-white/[0.08] px-2.5 py-1 text-muted-foreground">
+                <span className="h-[6px] w-[6px] shrink-0" style={{ background: 'var(--warn)' }} />
+                показ — снимок данных, ничего никуда не отправляется
+              </span>
+            ) : null}
             <div className="ml-auto flex items-center gap-4">
               <span className="ui-label text-muted-foreground/75">
-                инвентарь {state.inv.age != null ? ago(Date.now() - state.inv.age * 1000, now) + ' назад' : '—'}
+                {DEMO ? 'снимок 21 августа' : 'инвентарь ' + (state.inv.age != null ? ago(Date.now() - state.inv.age * 1000, now) + ' назад' : '—')}
               </span>
               <span className="flex items-center gap-2">
                 <Dot tone={online ? 'ok' : 'stop'} pulse={online} />
-                <span className="ui-label text-muted-foreground">{online ? 'в эфире' : 'нет связи'}</span>
+                <span className="ui-label text-muted-foreground">{DEMO ? 'без сервера' : online ? 'в эфире' : 'нет связи'}</span>
               </span>
             </div>
           </header>

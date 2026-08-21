@@ -1,6 +1,18 @@
 // Связь с сервером. Одна подписка на поток, ничего не опрашиваем.
 
 import { useEffect, useRef, useState } from 'react'
+import snapshot from '../demo/snapshot.json'
+
+// Режим показа.
+//
+// Панель без сервера: данные берутся из снимка, сложенного в саму сборку,
+// поток не открывается, ни один запрос наружу не уходит. Нужен ровно для
+// одного — дать ссылку, по которой интерфейс можно посмотреть, не заводя
+// аккаунта и не подпуская чужого человека к живой сессии Steam.
+//
+// Снимок обезличен: steamid подменён, номера вещей заменены.
+export const DEMO = import.meta.env.VITE_DEMO === '1'
+const SNAP: any = snapshot
 
 export type Kind = 'team' | 'player' | 'league' | 'studio' | 'unknown' | null
 export type SupplyKind = 'measured' | 'estimated' | 'empty'
@@ -163,11 +175,12 @@ export type QueueData = {
 }
 
 export function useLive() {
-  const [state, setState] = useState<State | null>(null)
-  const [online, setOnline] = useState(false)
+  const [state, setState] = useState<State | null>(DEMO ? (SNAP.state as State) : null)
+  const [online, setOnline] = useState(DEMO)
   const es = useRef<EventSource | null>(null)
 
   useEffect(() => {
+    if (DEMO) return
     const s = new EventSource('/api/stream')
     es.current = s
     s.onopen = () => setOnline(true)
@@ -182,11 +195,25 @@ export function useLive() {
 }
 
 // Запрос, который сам обновляется по тику потока состояния.
+const CANNED: Record<string, string> = {
+  '/api/accounts': 'accounts',
+  '/api/settings': 'settings',
+}
+
+function canned(url: string) {
+  const exact = CANNED[url]
+  if (exact) return SNAP[exact]
+  if (url.startsWith('/api/tree')) return SNAP.tree
+  if (url.startsWith('/api/queue')) return SNAP.queue
+  if (url.startsWith('/api/graph')) return url.includes('all') ? SNAP.graphAll : SNAP.graphOwned
+  return null
+}
+
 export function useJson<T>(url: string | null, dep: unknown): { data: T | null; loading: boolean } {
-  const [data, setData] = useState<T | null>(null)
+  const [data, setData] = useState<T | null>(DEMO && url ? (canned(url) as T) : null)
   const [loading, setLoading] = useState(false)
   useEffect(() => {
-    if (!url) return
+    if (!url || DEMO) return
     let alive = true
     setLoading(true)
     fetch(url)
@@ -200,6 +227,9 @@ export function useJson<T>(url: string | null, dep: unknown): { data: T | null; 
 }
 
 export async function post(url: string, body: unknown) {
+  // В показе ничего не отправляется. Это не заглушка ради вида: за кнопкой
+  // «запустить» стоят необратимые сообщения игровому координатору.
+  if (DEMO) return { error: 'показ: панель без сервера, ничего не отправляется' }
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

@@ -83,6 +83,10 @@ export type Unit = {
   auto: boolean
   target: number | null
   until?: number
+  // До какого счётчика вести каждый гем; 0 — жечь весь запас матчей.
+  cap?: number
+  caps?: { gem: string; cap: number }[]
+  capped?: string[]
   done: number
   queueLength: number
   action: ActionId

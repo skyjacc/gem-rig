@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { livelyTarget, spreadPlan } from './spread.ts'
+import { capFor, livelyTarget, reached, spreadPlan } from './spread.ts'
 
 test('круглое число превращается в живое', () => {
   const v = livelyTarget(1000, 'main:BZZ')
@@ -84,4 +84,33 @@ test('на тысяче получаются числа вроде 1023 и 1213,
     assert.ok(w.value > 1000 && w.value < 1300, String(w.value))
     assert.notEqual(w.value % 100, 0)
   }
+})
+
+// ── потолок на гем ──
+//
+// Цель — довести каждую вещь примерно до тысячи, а не выжечь весь запас
+// матчей. Выжженный запас значит, что докупленный завтра гем той же
+// команды не поднимется вовсе: свободных матчей не останется.
+
+test('потолок у каждого гема свой и некруглый', () => {
+  const a = capFor(1000, 'Alliance')
+  const b = capFor(1000, 'NaVi')
+  assert.notEqual(a, b)
+  assert.notEqual(a % 50, 0)
+  assert.ok(a >= 1000 && a < 1400)
+})
+
+test('одно имя — то же число, перезапуск ничего не сдвинет', () => {
+  assert.equal(capFor(1000, 'Alliance'), capFor(1000, 'Alliance'))
+})
+
+test('гем добравшийся до своего потолка выбывает', () => {
+  const cap = capFor(1000, 'Alliance')
+  assert.equal(reached(cap, cap), true)
+  assert.equal(reached(cap, cap + 5), true)
+  assert.equal(reached(cap, cap - 1), false)
+})
+
+test('без потолка не выбывает никто', () => {
+  assert.equal(reached(0, 99999), false)
 })

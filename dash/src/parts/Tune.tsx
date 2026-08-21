@@ -19,6 +19,7 @@ import { Modal } from './Modal.tsx'
 
 const PACE: [number, string][] = [[500, '0,5 с'], [1000, '1 с'], [2000, '2 с'], [5000, '5 с'], [30000, '30 с']]
 const TARGET: (number | null)[] = [100, 500, 2000, null]
+const CAP = [0, 500, 1000, 1500, 2000]
 const WAVES = [1, 2, 3, 4, 5]
 
 // Срок задаётся кнопкой, а не вводом времени: ночью проще ткнуть «до утра»,
@@ -155,6 +156,41 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
             </span>
           ) : null}
         </span>
+      </Line>
+
+      <Line
+        k="докуда вести каждый гем"
+        hint="дойдя до потолка, гем выходит из работы, а его матчи остаются целыми"
+      >
+        <span className="flex flex-wrap items-center gap-2">
+          <Segmented
+            value={String(unit.cap ?? 0)}
+            items={CAP.map(c => ({ id: String(c), label: c === 0 ? 'весь запас' : nf(c) }))}
+            onPick={id => send({ cap: Number(id) })}
+          />
+          {(unit.capped ?? []).length ? (
+            <span className="text-[12px]" style={{ color: 'var(--ok)' }}>
+              дошли: {unit.capped!.join(', ')}
+            </span>
+          ) : null}
+        </span>
+        {(unit.caps ?? []).length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {unit.caps!.map(c => (
+              <span
+                key={c.gem}
+                className="tnum border border-white/[0.08] px-2 py-1 font-mono text-[12px]"
+                style={(unit.capped ?? []).includes(c.gem) ? { color: 'var(--ok)' } : undefined}
+              >
+                <span className="mr-2 font-sans text-muted-foreground">{c.gem}</span>
+                {nf(c.cap)}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <p className="text-[12px] text-muted-foreground">
+          у каждого гема потолок свой и некруглый — счётчики выходят разными сами собой
+        </p>
       </Line>
 
       <Line k="разброс" hint="партиями, чтобы счётчики вышли разными, а не одинаковыми">

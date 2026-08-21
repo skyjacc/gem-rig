@@ -83,3 +83,17 @@ export function spreadPlan(base: number, waves: number, seed: string, shape: Sha
   const longest = values[0]
   return values.map((value, index) => ({ index, addAt: longest - value, value }))
 }
+
+// Потолок на гем.
+//
+// Цель — довести каждую вещь примерно до заданного числа, а не выжечь весь
+// запас матчей команды. Разница важная: выжженный запас означает, что гем
+// той же команды, купленный завтра, не поднимется вовсе — свободных матчей
+// не останется. А сохранённый запас поднимет и новые вещи, и старые вместе
+// с ними: они идут в ногу.
+//
+// У каждого гема потолок свой и некруглый, поэтому счётчики выходят
+// разными сами собой: 1043 у одного, 1187 у другого.
+export const capFor = (goal: number, gem: string) => livelyTarget(goal, 'cap:' + gem)
+
+export const reached = (cap: number, counter: number) => cap > 0 && counter >= cap

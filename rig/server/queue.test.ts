@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
-import { buildQueue, entityStat, queueFor, type Pick } from './queue.ts'
+import { buildQueue, entityStat, queueFor, rotate, type Pick } from './queue.ts'
 
 const M = (match: string, league: string) => ({ match, league })
 
@@ -142,4 +142,46 @@ test('спорное не уменьшает остаток', () => {
 
 test('у неизвестной сущности потолок ноль', () => {
   assert.deepEqual(entityStat(fresh(), { key: 'X', kind: 'team', id: 99999 }, 'A'), { supply: 0, burned: 0, left: 0 })
+})
+
+test('круг: за один проход каждая сущность получает по матчу', () => {
+  const rows = buildQueue(new Map([
+    ['A', [{ match: '1', league: '1' }, { match: '2', league: '1' }, { match: '3', league: '1' }]],
+    ['B', [{ match: '7', league: '1' }, { match: '8', league: '1' }, { match: '9', league: '1' }]],
+  ]), new Set())
+
+  const order = rotate(rows).map(r => r.entities.join('+'))
+  assert.deepEqual(order, ['A', 'B', 'A', 'B', 'A', 'B'])
+})
+
+test('круг: общий матч засчитывается обоим и второй раз в круге не берётся', () => {
+  const rows = buildQueue(new Map([
+    ['A', [{ match: '5', league: '1' }, { match: '1', league: '1' }]],
+    ['B', [{ match: '5', league: '1' }, { match: '9', league: '1' }]],
+  ]), new Set())
+
+  const order = rotate(rows).map(r => r.match)
+  // Общий матч идёт первым и закрывает круг для обоих.
+  assert.deepEqual(order, ['5', '1', '9'])
+})
+
+test('круг: закончившаяся сущность не мешает остальным', () => {
+  const rows = buildQueue(new Map([
+    ['A', [{ match: '1', league: '1' }]],
+    ['B', [{ match: '7', league: '1' }, { match: '8', league: '1' }, { match: '9', league: '1' }]],
+  ]), new Set())
+
+  assert.deepEqual(rotate(rows).map(r => r.match), ['1', '7', '8', '9'])
+})
+
+test('круг: ни один матч не теряется и не удваивается', () => {
+  const rows = buildQueue(new Map([
+    ['A', [{ match: '1', league: '1' }, { match: '2', league: '1' }, { match: '5', league: '1' }]],
+    ['B', [{ match: '5', league: '1' }, { match: '6', league: '1' }]],
+    ['C', [{ match: '9', league: '1' }]],
+  ]), new Set())
+
+  const out = rotate(rows)
+  assert.equal(out.length, rows.length)
+  assert.equal(new Set(out.map(r => r.match)).size, rows.length)
 })

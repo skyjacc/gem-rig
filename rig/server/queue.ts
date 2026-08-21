@@ -9,9 +9,14 @@
 // и засчитывается обеим. У Empire и BZZ таких 209 штук: без слияния они
 // уходят дважды и половина времени тратится впустую.
 //
-// Вторая — порядок. Сортировка по числу обслуживаемых сущностей не ускоряет
-// прогон, но делает так, что прерванный прогон обрывается на дешёвом хвосте,
-// а не на самом ценном куске.
+// Вторая — порядок. Внутри сущности матчи идут от самых полезных к самым
+// дешёвым, чтобы прерванный прогон обрывался на хвосте, а не на ценном куске.
+// А между сущностями порядок круговой: один круг — по одному матчу каждой.
+//
+// Без круга список уходил по номеру матча, то есть по времени. Alliance
+// и NaVi играли в 2013-м, Ohaiyo и BZZ — недавно, поэтому старые команды
+// забирали весь прогон себе: Virtus.pro доходил до 206, а Ohaiyo стоял на 0.
+// С кругом счётчики поднимаются вместе.
 //
 // Матч без номера турнира сюда не попадает вовсе: GC такое молча отвергает,
 // а снаружи это неотличимо от «уже использован».
@@ -73,10 +78,56 @@ export function burnedSet(target: DatabaseSync, account: string): Set<string> {
   return new Set(rows.map(r => String(r.match_id)))
 }
 
+// Круговая раздача: за один круг каждая сущность получает ровно один матч.
+//
+// Матч, входящий в наборы двух сущностей, поднимает обе разом — поэтому
+// тот, кого уже обслужили чужим матчем, свой в этом круге не берёт. Иначе
+// пересечение Empire и BZZ дало бы им вдвое больше остальных.
+export function rotate(rows: QueueRow[]): QueueRow[] {
+  const by = new Map<string, QueueRow[]>()
+  for (const r of rows) {
+    for (const e of r.entities) {
+      const l = by.get(e)
+      if (l) l.push(r)
+      else by.set(e, [r])
+    }
+  }
+
+  const keys = [...by.keys()].sort()
+  const at = new Map<string, number>(keys.map(k => [k, 0]))
+  const taken = new Set<string>()
+  const out: QueueRow[] = []
+
+  while (out.length < rows.length) {
+    const served = new Set<string>()
+    let moved = false
+
+    for (const k of keys) {
+      if (served.has(k)) continue
+      const list = by.get(k)!
+      let i = at.get(k)!
+      while (i < list.length && taken.has(list[i].match)) i++
+      at.set(k, i)
+      if (i >= list.length) continue
+
+      const row = list[i]
+      at.set(k, i + 1)
+      taken.add(row.match)
+      out.push(row)
+      for (const e of row.entities) served.add(e)
+      moved = true
+    }
+
+    if (!moved) break
+  }
+
+  return out
+}
+
 export function queueFor(target: DatabaseSync, picks: Pick[], account: string): QueueRow[] {
   const sets = new Map<string, Match[]>()
   for (const p of picks) sets.set(p.key, matchesOf(target, p))
-  return buildQueue(sets, burnedSet(target, account))
+  return rotate(buildQueue(sets, burnedSet(target, account)))
 }
 
 // Потолок сущности — не оценка со стороны, а число матчей, которые реально

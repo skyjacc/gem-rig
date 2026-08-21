@@ -23,7 +23,7 @@ import { queueFor, type Pick } from './queue.ts'
 import { inv, refreshInventory } from './steam.ts'
 import { queueFile, senderState, start as startSender, statusFile, stop as stopSender } from './sender.ts'
 import { advise, type Sample } from './pace.ts'
-import { spreadPlan, type Wave } from './spread.ts'
+import { capFor, reached, spreadPlan, type Wave } from './spread.ts'
 import { active, list as accounts, type Account } from './accounts.ts'
 import { settings } from './settings.ts'
 
@@ -40,6 +40,8 @@ type Unit = {
   target: number | null    // сколько отправок заказано; null = до конца очереди
   ordered: number | null   // что человек попросил до превращения в живое число
   until: number            // до какого времени работать; 0 = без срока
+  cap: number              // до какого счётчика вести каждый гем; 0 = жечь весь запас
+  capped: string[]         // гемы, добравшиеся до своего потолка
   waves: number            // на сколько партий разложить разброс
   plan: Wave[]
   // Какие гемы жечь на этом аккаунте. null — все, что лежат в инвентаре.
@@ -64,7 +66,8 @@ function unit(id: string): Unit {
   let u = U.get(id)
   if (!u) {
     u = {
-      enabled: false, delay: 1000, auto: true, target: null, ordered: null, until: 0, waves: 1, plan: [], only: null,
+      enabled: false, delay: 1000, auto: true, target: null, ordered: null, until: 0,
+      cap: 0, capped: [], waves: 1, plan: [], only: null,
       startedAt: 0, startBurned: 0, queueLength: 0, fingerprint: '',
       failures: 0, lastAction: 'idle', lastWhy: 'не запускался',
       lastTick: 0, rebuiltAt: 0, log: [],
@@ -94,6 +97,28 @@ function gemMap(): any[] {
   return mapCache
 }
 
+// Наибольший счётчик по каждому гему: по нему видно, дошёл ли он
+// до своего потолка.
+function counters(): Map<string, number> {
+  const by = new Map<string, number>()
+  for (const r of inv.rows) {
+    if (!r.gem || r.gem === '—') continue
+    by.set(r.gem, Math.max(by.get(r.gem) ?? 0, r.value))
+  }
+  return by
+}
+
+// Кто уже добрался. Потолок у каждого гема свой и некруглый, поэтому
+// счётчики выходят разными сами собой.
+export function cappedGems(cap: number): string[] {
+  if (!cap) return []
+  const out: string[] = []
+  for (const [gem, value] of counters()) {
+    if (reached(capFor(cap, gem), value)) out.push(gem)
+  }
+  return out.sort()
+}
+
 // Отпечаток состава: считаем по assetid, а не по счётчикам. Счётчики
 // меняются каждую отправку, состав — только при покупке.
 const fingerprint = () => inv.rows.map(r => r.assetid).sort().join(',')
@@ -120,11 +145,14 @@ export function picks(): (Pick & { objects: number })[] {
 }
 
 // Что жжёт именно этот аккаунт: либо всё из инвентаря, либо выбранное.
-export function picksFor(u: { only: string[] | null }) {
+export function picksFor(u: { only: string[] | null; cap?: number }) {
   const all = picks()
-  if (!u.only?.length) return all
-  const keep = new Set(u.only)
-  return all.filter(p => keep.has(p.key))
+  const chosen = u.only?.length ? all.filter(p => new Set(u.only).has(p.key)) : all
+  if (!u.cap) return chosen
+  // Добравшиеся до потолка выбывают: их матчи больше не жжём, запас
+  // остаётся для тех гемов этой же команды, что купят позже.
+  const done = new Set(cappedGems(u.cap))
+  return chosen.filter(p => !done.has(p.key))
 }
 
 function rebuild(a: Account, u: Unit): number {
@@ -178,6 +206,17 @@ async function tickOne(a: Account, push: () => void) {
 
   const sender = senderState(a.id)
   const count = made(a, u)
+
+  // Гем добрался до потолка — состав работы изменился, даже если инвентарь
+  // прежний. Счётчики растут каждую отправку, поэтому отпечаток состава
+  // такого не ловит: он считается по номерам вещей, а не по числам на них.
+  const capped = cappedGems(u.cap)
+  const capsChanged = capped.join(',') !== u.capped.join(',')
+  if (capsChanged) {
+    u.capped = capped
+    u.fingerprint = ''
+    if (capped.length) note(u, 'rebuild', 'дошли до потолка: ' + capped.join(', '))
+  }
 
   const d = decide({
     enabled: u.enabled,
@@ -268,6 +307,9 @@ export function unitState(a: Account) {
     auto: u.auto,
     target: u.target,
     until: u.until,
+    cap: u.cap,
+    caps: u.cap ? picks().map(p => ({ gem: p.key, cap: capFor(u.cap, p.key) })) : [],
+    capped: u.capped,
     ordered: u.ordered,
     waves: u.waves,
     plan: u.plan,
@@ -318,6 +360,7 @@ export function setAutopilot(
     auto?: boolean
     waves?: number
     until?: number
+    cap?: number
     only?: string[] | null
   },
 ) {
@@ -328,6 +371,11 @@ export function setAutopilot(
   if (patch.delay && patch.delay >= settings().pace.floor) { u.delay = patch.delay; u.auto = false }
   if (patch.auto !== undefined) u.auto = !!patch.auto
   if (patch.until !== undefined) u.until = Math.max(0, Math.trunc(Number(patch.until) || 0))
+  if (patch.cap !== undefined) {
+    u.cap = Math.max(0, Math.trunc(Number(patch.cap) || 0))
+    u.capped = []
+    u.fingerprint = ''   // состав работы меняется — пересобрать очередь
+  }
   if (patch.waves !== undefined) u.waves = Math.max(1, Math.min(8, Math.trunc(patch.waves)))
   if (patch.only !== undefined) {
     const list = Array.isArray(patch.only) ? patch.only.map(String).filter(Boolean) : []

@@ -82,6 +82,7 @@ export type Unit = {
   delay: number
   auto: boolean
   target: number | null
+  until?: number
   done: number
   queueLength: number
   action: ActionId

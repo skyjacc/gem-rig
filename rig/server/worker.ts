@@ -24,6 +24,7 @@ export type Snapshot = {
   done: number              // сколько уже сделано в этом заходе
   senderStartedAt: number   // когда подняли нынешний процесс, 0 = не поднимали
   displaced: number         // сколько раз аккаунт выбило другой сессией Steam
+  until: number             // до какого времени работать; 0 = без срока
 }
 
 export type Action = 'idle' | 'start' | 'restart' | 'rebuild' | 'watch' | 'halt'
@@ -59,8 +60,12 @@ export function decide(s: Snapshot, limits: Limits = FALLBACK): Decision {
     return { action: 'halt', why: s.failures + ' падений подряд — остановился, нужен разбор' }
   }
 
-  // Цель проверяется раньше всего остального, включая пересборку: иначе
-  // гем, купленный в последнюю секунду, продлил бы заказанный прогон.
+  // Срок и цель проверяются раньше всего остального, включая пересборку:
+  // иначе гем, купленный в последнюю секунду, продлил бы заказанное.
+  if (s.until > 0 && s.now >= s.until) {
+    return { action: 'halt', why: 'вышел срок — остановился, как договаривались' }
+  }
+
   if (s.target !== null && s.done >= s.target) {
     return { action: 'halt', why: 'цель достигнута: ' + s.done + ' из ' + s.target }
   }

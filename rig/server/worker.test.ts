@@ -14,6 +14,7 @@ const base: Snapshot = {
   done: 0,
   senderStartedAt: 0,
   displaced: 0,
+  until: 0,
 }
 
 test('выключен — ничего не делаем', () => {
@@ -204,4 +205,28 @@ test('не вошёл за пять минут — сдаёмся', () => {
   const d = decide({ ...base, now: 1_000_000, senderAlive: true, lastSendAt: 0, senderStartedAt: 1_000_000 - 310_000 })
   assert.equal(d.action, 'halt')
   assert.match(d.why, /не смог войти/i)
+})
+
+// ── работа до срока ──
+//
+// «До десяти утра» — это время, а не число отправок. Ночной прогон
+// удобнее задавать сроком: сколько успеется, столько и хорошо.
+
+test('срок вышел — встаём', () => {
+  const d = decide({ ...base, senderAlive: true, until: 99_000 })
+  assert.equal(d.action, 'halt')
+  assert.match(d.why, /срок|время/i)
+})
+
+test('до срока работаем', () => {
+  assert.equal(decide({ ...base, senderAlive: true, until: 200_000 }).action, 'watch')
+})
+
+test('без срока — как раньше', () => {
+  assert.equal(decide({ ...base, senderAlive: true, until: 0 }).action, 'watch')
+})
+
+test('срок важнее пересборки: вышел — встали', () => {
+  const d = decide({ ...base, inventoryChanged: true, until: 99_000 })
+  assert.equal(d.action, 'halt')
 })

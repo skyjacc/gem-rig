@@ -39,6 +39,7 @@ type Unit = {
   auto: boolean            // подбирать паузу самому
   target: number | null    // сколько отправок заказано; null = до конца очереди
   ordered: number | null   // что человек попросил до превращения в живое число
+  until: number            // до какого времени работать; 0 = без срока
   waves: number            // на сколько партий разложить разброс
   plan: Wave[]
   // Какие гемы жечь на этом аккаунте. null — все, что лежат в инвентаре.
@@ -63,7 +64,7 @@ function unit(id: string): Unit {
   let u = U.get(id)
   if (!u) {
     u = {
-      enabled: false, delay: 1000, auto: true, target: null, ordered: null, waves: 1, plan: [], only: null,
+      enabled: false, delay: 1000, auto: true, target: null, ordered: null, until: 0, waves: 1, plan: [], only: null,
       startedAt: 0, startBurned: 0, queueLength: 0, fingerprint: '',
       failures: 0, lastAction: 'idle', lastWhy: 'не запускался',
       lastTick: 0, rebuiltAt: 0, log: [],
@@ -191,6 +192,7 @@ async function tickOne(a: Account, push: () => void) {
     done: count,
     senderStartedAt: sender.startedAt ?? 0,
     displaced: sender.displaced ?? 0,
+    until: u.until,
   }, {
     silentLimit: settings().silentLimit,
     startLimit: settings().startLimit,
@@ -265,6 +267,7 @@ export function unitState(a: Account) {
     delay: u.delay,
     auto: u.auto,
     target: u.target,
+    until: u.until,
     ordered: u.ordered,
     waves: u.waves,
     plan: u.plan,
@@ -314,6 +317,7 @@ export function setAutopilot(
     target?: number | null
     auto?: boolean
     waves?: number
+    until?: number
     only?: string[] | null
   },
 ) {
@@ -323,6 +327,7 @@ export function setAutopilot(
 
   if (patch.delay && patch.delay >= settings().pace.floor) { u.delay = patch.delay; u.auto = false }
   if (patch.auto !== undefined) u.auto = !!patch.auto
+  if (patch.until !== undefined) u.until = Math.max(0, Math.trunc(Number(patch.until) || 0))
   if (patch.waves !== undefined) u.waves = Math.max(1, Math.min(8, Math.trunc(patch.waves)))
   if (patch.only !== undefined) {
     const list = Array.isArray(patch.only) ? patch.only.map(String).filter(Boolean) : []

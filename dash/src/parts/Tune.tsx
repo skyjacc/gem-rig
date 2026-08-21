@@ -21,6 +21,36 @@ const PACE: [number, string][] = [[500, '0,5 с'], [1000, '1 с'], [2000, '2 с'
 const TARGET: (number | null)[] = [100, 500, 2000, null]
 const WAVES = [1, 2, 3, 4, 5]
 
+// Срок задаётся кнопкой, а не вводом времени: ночью проще ткнуть «до утра»,
+// чем вспоминать, какое сегодня число.
+function untilFrom(id: string): number {
+  const now = Date.now()
+  if (id === '2ч') return now + 2 * 3600_000
+  if (id === '8ч') return now + 8 * 3600_000
+  if (id === 'утро') {
+    const d = new Date()
+    d.setHours(10, 0, 0, 0)
+    if (d.getTime() <= now) d.setDate(d.getDate() + 1)
+    return d.getTime()
+  }
+  return 0
+}
+
+function untilLabel(until: number) {
+  if (!until) return 'нет'
+  const d = new Date(until)
+  if (d.getHours() === 10 && d.getMinutes() === 0) return 'утро'
+  return (until - Date.now()) / 3600_000 > 5 ? '8ч' : '2ч'
+}
+
+function left(until: number) {
+  const ms = until - Date.now()
+  if (ms <= 0) return 'срок вышел'
+  const h = Math.floor(ms / 3600_000)
+  const m = Math.round((ms % 3600_000) / 60_000)
+  return h ? h + ' ч ' + m + ' мин' : m + ' мин'
+}
+
 export function Tune({
   open,
   onClose,
@@ -101,6 +131,30 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
               : ''}
           </p>
         ) : null}
+      </Line>
+
+      <Line k="работать до" hint="ночной прогон удобнее задавать сроком: сколько успеется, столько и хорошо">
+        <span className="flex flex-wrap items-center gap-2">
+          <Segmented
+            value={untilLabel(unit.until ?? 0)}
+            items={[
+              { id: 'нет', label: 'без срока' },
+              { id: '2ч', label: '2 ч' },
+              { id: '8ч', label: '8 ч' },
+              { id: 'утро', label: 'до 10 утра' },
+            ]}
+            onPick={id => send({ until: untilFrom(id) })}
+          />
+          {unit.until ? (
+            <span className="text-[12px] text-muted-foreground">
+              встану в{' '}
+              <span className="tnum font-mono text-foreground">
+                {new Date(unit.until).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+              </span>
+              {' · осталось '}{left(unit.until)}
+            </span>
+          ) : null}
+        </span>
       </Line>
 
       <Line k="разброс" hint="партиями, чтобы счётчики вышли разными, а не одинаковыми">

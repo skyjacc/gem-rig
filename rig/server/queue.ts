@@ -24,14 +24,20 @@
 import type { DatabaseSync } from 'node:sqlite'
 
 export type Match = { match: string; league: string }
-export type QueueRow = { match: string; league: string; weight: number; entities: string[] }
+export type QueueRow = { match: string; league: string; weight: number; entities: string[]; tried: boolean }
 
 // Что жжём: имя для отчёта плюс адрес сущности в карте.
 export type Pick = { key: string; kind: 'team' | 'player'; id: number }
 
 const usable = (league: string) => /^[0-9]{1,10}$/.test(String(league)) && Number(league) > 0
 
-export function buildQueue(sets: Map<string, Match[]>, burned: Set<string>): QueueRow[] {
+// Порядок внутри сущности: сначала матчи, поднимающие двоих, потом
+// нетронутые, и только в самом конце — те, что уже пробовались и ответили
+// пусто. Спорные из очереди не выкидываются: отвергнутый матч отвечает тем
+// же, что и настоящий дубль, и вполне может быть живым. Но ставить их
+// первыми — значит потратить на них весь прогон: 22 августа очередь из трёх
+// гемов начиналась с восьмисот таких, и первые полчаса ушли в пустоту.
+export function buildQueue(sets: Map<string, Match[]>, burned: Set<string>, tried: Set<string> = new Set()): QueueRow[] {
   const by = new Map<string, { league: string; entities: string[] }>()
 
   for (const [entity, matches] of sets) {
@@ -45,8 +51,13 @@ export function buildQueue(sets: Map<string, Match[]>, burned: Set<string>): Que
   }
 
   return [...by.entries()]
-    .map(([match, v]) => ({ match, league: v.league, weight: v.entities.length, entities: v.entities }))
-    .sort((a, b) => b.weight - a.weight || (a.match < b.match ? -1 : a.match > b.match ? 1 : 0))
+    .map(([match, v]) => ({
+      match, league: v.league, weight: v.entities.length, entities: v.entities, tried: tried.has(match),
+    }))
+    .sort((a, b) =>
+      Number(a.tried) - Number(b.tried)
+      || b.weight - a.weight
+      || (a.match < b.match ? -1 : a.match > b.match ? 1 : 0))
 }
 
 // Матчи сущности из локальной карты. Команда ищется с обеих сторон,
@@ -72,6 +83,14 @@ export function matchesOf(target: DatabaseSync, p: Pick): Match[] {
 //
 // Пул матчей общий на все аккаунты, журнал расхода — у каждого свой.
 // Отсюда весь смысл второго аккаунта: он жжёт тот же пул с нуля.
+// Уже пробованное этим аккаунтом без начисления. Не запрет, а понижение
+// в очереди: такой матч уходит в хвост, а не выбывает.
+export function triedSet(target: DatabaseSync, account: string): Set<string> {
+  const rows = target.prepare(
+    `select match_id from burned where account = ? and state = 'dup'`).all(String(account)) as any[]
+  return new Set(rows.map(r => String(r.match_id)))
+}
+
 export function burnedSet(target: DatabaseSync, account: string): Set<string> {
   const rows = target.prepare(
     `select match_id from burned where account = ? and state = 'confirmed'`).all(String(account)) as any[]
@@ -145,7 +164,10 @@ function order(rows: QueueRow[], active: Set<string>, taken: Set<string>): Map<s
   const weight = (r: QueueRow) => r.entities.reduce((n, e) => n + (active.has(e) ? 1 : 0), 0)
 
   const live = rows.filter(r => !taken.has(r.match) && weight(r) > 0)
-  live.sort((a, b) => weight(b) - weight(a) || (a.match < b.match ? -1 : a.match > b.match ? 1 : 0))
+  live.sort((a, b) =>
+    Number(a.tried) - Number(b.tried)
+    || weight(b) - weight(a)
+    || (a.match < b.match ? -1 : a.match > b.match ? 1 : 0))
 
   const by = new Map<string, QueueRow[]>()
   for (const r of live) {
@@ -219,7 +241,7 @@ export function sendsNeeded(rows: QueueRow[], need: Map<string, number>): number
 export function queueFor(target: DatabaseSync, picks: Pick[], account: string): QueueRow[] {
   const sets = new Map<string, Match[]>()
   for (const p of picks) sets.set(p.key, matchesOf(target, p))
-  return rotate(buildQueue(sets, burnedSet(target, account)))
+  return rotate(buildQueue(sets, burnedSet(target, account), triedSet(target, account)))
 }
 
 // Потолок сущности — не оценка со стороны, а число матчей, которые реально

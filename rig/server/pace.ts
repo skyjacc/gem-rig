@@ -92,6 +92,19 @@ export function advise(samples: Sample[], t: Tuning = FALLBACK): Advice {
 // сами выправляются: отстали — темп подрастёт, обогнали — упадёт.
 export const EVEN_CEIL = 120_000
 
+// Доля отправок, за которые действительно начислили.
+//
+// Матч может ответить пустым: он уже сосчитан этим гемом или не годится ему
+// вовсе. Такая отправка тратит время, но долг не уменьшает. Если делить срок
+// на один только долг, прогон отстаёт ровно во столько раз, во сколько
+// пустых отправок больше нуля: 22 августа при половине пустых работа на час
+// растянулась бы на два.
+export function creditRate(update: number, dup: number): number {
+  const all = update + dup
+  if (all < 20) return 1
+  return Math.max(0.15, Math.min(1, update / all))
+}
+
 export function evenDelay(msLeft: number, sendsLeft: number, floor: number): number {
   const n = Math.max(1, Math.trunc(sendsLeft))
   const ms = Math.max(0, Math.trunc(msLeft))

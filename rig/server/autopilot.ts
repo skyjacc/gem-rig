@@ -22,7 +22,7 @@ import { decide, freshSendAt, type Action } from './worker.ts'
 import { queueFor, sendsNeeded, type Pick } from './queue.ts'
 import { inv, refreshInventory } from './steam.ts'
 import { queueFile, senderState, start as startSender, statusFile, stop as stopSender } from './sender.ts'
-import { advise, evenDelay, silenceLimit, type Sample } from './pace.ts'
+import { advise, creditRate, evenDelay, silenceLimit, type Sample } from './pace.ts'
 import { capFor, reached, spreadPlan, type Wave } from './spread.ts'
 import { active, list as accounts, type Account } from './accounts.ts'
 import { settings } from './settings.ts'
@@ -226,8 +226,12 @@ export function paceAdvice(id: string) {
 
 // Сколько отправок ещё предстоит: посчитанное при пересборке минус
 // сделанное с того момента.
-const sendsLeft = (u: Unit, done: number) =>
-  Math.max(1, u.needSends - Math.max(0, done - u.needFrom))
+const sendsLeft = (u: Unit, done: number) => {
+  // Заказанное число главнее расчёта: человек сказал «столько-то отправок»,
+  // и делить срок надо на них, а не на путь до потолков.
+  if (u.target !== null) return Math.max(1, u.target - done)
+  return Math.max(1, u.needSends - Math.max(0, done - u.needFrom))
+}
 
 const nice = (ms: number) => {
   const m = Math.max(0, Math.round(ms / 60_000))
@@ -245,6 +249,19 @@ async function tickOne(a: Account, push: () => void) {
   // Гем добрался до потолка — состав работы изменился, даже если инвентарь
   // прежний. Счётчики растут каждую отправку, поэтому отпечаток состава
   // такого не ловит: он считается по номерам вещей, а не по числам на них.
+  // Потолок судит по счётчикам из инвентаря. Steam режет чтение по 429
+  // и держит отказ часами: 22 августа счётчики стояли с 02:25 до утра,
+  // пока работник жёг дальше. Слепой потолок хуже отсутствующего — он
+  // обещает остановку, которой не будет, а матчи тратятся необратимо.
+  const stale = Date.now() - (inv.ts || 0)
+  if (u.cap && stale > settings().invStale) {
+    note(u, 'halt', 'счётчики не читаются ' + Math.round(stale / 60_000) + ' мин — потолок вслепую не считаю')
+    u.enabled = false
+    if (sender.running) stopSender(a.id)
+    push()
+    return
+  }
+
   const capped = cappedGems(u.cap)
   const capsChanged = capped.join(',') !== u.capped.join(',')
   if (capsChanged) {
@@ -288,11 +305,17 @@ async function tickOne(a: Account, push: () => void) {
     // Пауза подбирается на ходу: пока GC отвечает на каждую отправку,
     // темп можно поднимать. Отправщик перечитывает delay.txt сам.
     if (u.even && u.until) {
-      const want = evenDelay(u.until - Date.now(), sendsLeft(u, count), settings().pace.floor)
+      // Долг считается в начислениях, а отправок на него уйдёт больше:
+      // часть отвечает пустым. Делим срок на отправки, а не на долг.
+      const t = status(a.id)?.tally ?? { update: 0, dup: 0 }
+      const rate = creditRate(Number(t.update) || 0, Number(t.dup) || 0)
+      const want = evenDelay(u.until - Date.now(), Math.round(sendsLeft(u, count) / rate), settings().pace.floor)
       if (want !== u.delay) {
         u.delay = want
         writeDelay(u.delay)
-        note(u, 'watch', 'пауза ' + u.delay + ' мс — ' + nice(u.until - Date.now()) + ' на ' + sendsLeft(u, count) + ' отправок')
+        note(u, 'watch', 'пауза ' + u.delay + ' мс — ' + nice(u.until - Date.now())
+          + ' на ' + Math.round(sendsLeft(u, count) / rate) + ' отправок'
+          + (rate < 0.95 ? ' (начисляет ' + Math.round(rate * 100) + '%)' : ''))
       }
     } else if (u.auto) {
       const adv = advise(samples(a.id, u.delay), settings().pace)

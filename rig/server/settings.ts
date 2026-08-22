@@ -26,6 +26,8 @@ export type Settings = {
   maxFailures: number
   // Через сколько считать прочитанный инвентарь устаревшим, мс.
   invTtl: number
+  // Насколько старым счётчикам ещё можно верить при работе с потолком.
+  invStale: number
   // Сколько турниров показывать под гемом в дереве.
   treeTop: number
   // За сколько уходит готовая вещь, в долларах. От этого числа считается
@@ -59,6 +61,7 @@ export const DEFAULTS: Settings = {
   startLimit: 300_000,
   maxFailures: 5,
   invTtl: 60_000,
+  invStale: 1_800_000,
   treeTop: 12,
   sellPrice: 10,
   perGem: 25,
@@ -78,6 +81,7 @@ const LIMITS: Record<string, [number, number]> = {
   startLimit: [30_000, 3_600_000],
   maxFailures: [1, 50],
   invTtl: [10_000, 3_600_000],
+  invStale: [60_000, 86_400_000],
   treeTop: [1, 60],
   sellPrice: [0.01, 10_000],
   perGem: [1, 5_000],
@@ -121,6 +125,7 @@ export function merge(base: Settings, patch: any): Settings {
     startLimit: num('startLimit', p.startLimit, base.startLimit),
     maxFailures: num('maxFailures', p.maxFailures, base.maxFailures),
     invTtl: num('invTtl', p.invTtl, base.invTtl),
+    invStale: num('invStale', p.invStale, base.invStale),
     treeTop: num('treeTop', p.treeTop, base.treeTop),
     sellPrice: num('sellPrice', p.sellPrice, base.sellPrice),
     perGem: num('perGem', p.perGem, base.perGem),

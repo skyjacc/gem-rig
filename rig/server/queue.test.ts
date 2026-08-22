@@ -230,3 +230,32 @@ test('долг: дошедший выбывает и больше не зани�
 
   assert.equal(sendsNeeded(rows, new Map([["A", 1], ["B", 3]])), 4)
 })
+
+test('уже пробованное уходит в хвост, но из очереди не выбывает', () => {
+  const rows = buildQueue(
+    new Map([['A', [{ match: '1', league: '1' }, { match: '2', league: '1' }, { match: '3', league: '1' }]]]),
+    new Set(),
+    new Set(['1', '2']),
+  )
+
+  assert.deepEqual(rows.map(r => r.match), ['3', '1', '2'])
+  assert.equal(rows.length, 3, 'спорные остаются в работе')
+})
+
+test('общий матч всё равно впереди нетронутого одиночного', () => {
+  const rows = buildQueue(new Map([
+    ['A', [{ match: '5', league: '1' }, { match: '9', league: '1' }]],
+    ['B', [{ match: '5', league: '1' }]],
+  ]), new Set(), new Set())
+
+  assert.equal(rows[0].match, '5')
+})
+
+test('пробованный общий матч уступает нетронутому одиночному', () => {
+  const rows = buildQueue(new Map([
+    ['A', [{ match: '5', league: '1' }, { match: '9', league: '1' }]],
+    ['B', [{ match: '5', league: '1' }]],
+  ]), new Set(), new Set(['5']))
+
+  assert.deepEqual(rows.map(r => r.match), ['9', '5'])
+})

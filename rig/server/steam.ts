@@ -79,6 +79,15 @@ function parseDescription(desc: any): { gem: string; hero: string; value: number
   return { gem, hero, value }
 }
 
+// Steam смотрит на то, чем представился запрос.
+//
+// С «rig» инвентарь отдавался, пока запросов было мало, а под нагрузкой
+// уходил в 429 на часы: 22 августа счётчики стояли с 02:25 до полудня,
+// и потолок всё это время был слепым. Тот же запрос с обычным браузерным
+// именем отвечал 200 сразу. Смысла в честном «rig» нет: это не обход
+// защиты, а единственный принимаемый вид обращения.
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0 Safari/537.36'
+
 export async function refreshInventory(force = false): Promise<boolean> {
   const now = Date.now()
   if (!force && now - inv.ts < settings().invTtl) return false
@@ -87,7 +96,7 @@ export async function refreshInventory(force = false): Promise<boolean> {
   try {
     const res = await paced(
       `https://steamcommunity.com/inventory/${STEAMID}/570/2?l=english&count=2000`,
-      { headers: { 'User-Agent': 'rig', Accept: 'application/json' } },
+      { headers: { 'User-Agent': UA, Accept: 'application/json' } },
     )
     if (res.status === 429) {
       inv.backoffUntil = now + BACKOFF
@@ -141,7 +150,7 @@ export async function refreshEquipped() {
   try {
     const r = await paced(
       `https://api.steampowered.com/IEconItems_570/GetPlayerItems/v1/?key=${key}&steamid=${STEAMID}`,
-      { headers: { 'User-Agent': 'rig' } },
+      { headers: { 'User-Agent': UA } },
     )
     if (!r.ok) return
     const j: any = await r.json()

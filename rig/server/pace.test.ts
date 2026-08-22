@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { advise, evenDelay, EVEN_CEIL, silenceLimit, type Sample } from './pace.ts'
+import { advise, creditRate, evenDelay, EVEN_CEIL, silenceLimit, type Sample } from './pace.ts'
 
 const ok = (n: number, delay: number): Sample[] =>
   Array.from({ length: n }, (_, i) => ({ delay, ts: i * delay, result: 'update' as const }))
@@ -68,4 +68,25 @@ test('растяжка: работы почти нет — пауза упира
 test('молчание судится по паузе: на растяжке предел растёт вместе с ней', () => {
   assert.equal(silenceLimit(60_000, 300), 60_000)
   assert.equal(silenceLimit(60_000, 30_000), 110_000)
+})
+
+test('растяжка: час на две с половиной тысячи — полторы секунды', () => {
+  assert.equal(evenDelay(3600_000, 2400, 500), 1500)
+})
+
+test('растяжка: работы на час, а срок час — темп не гонится к полу', () => {
+  const d = evenDelay(3600_000, 2400, 500)
+  assert.ok(d > 500, 'пауза ' + d + ' не должна упираться в пол')
+})
+
+test('доля начислений: мало замеров — считаем, что начисляет всё', () => {
+  assert.equal(creditRate(5, 5), 1)
+})
+
+test('доля начислений: половина пустых — половина', () => {
+  assert.equal(creditRate(50, 50), 0.5)
+})
+
+test('доля начислений: ниже пятнадцати процентов не опускаемся', () => {
+  assert.equal(creditRate(1, 999), 0.15)
 })

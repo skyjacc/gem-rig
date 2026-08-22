@@ -13,9 +13,18 @@ test('меняется только то, что прислали', () => {
 })
 
 test('вложенное правится по полю, а не целиком', () => {
-  const s = merge(DEFAULTS, { pace: { floor: 400 } })
-  assert.equal(s.pace.floor, 400)
+  const s = merge(DEFAULTS, { pace: { floor: 800 } })
+  assert.equal(s.pace.floor, 800)
   assert.equal(s.pace.ceil, DEFAULTS.pace.ceil, 'остальное на месте')
+})
+
+// Отправщик не принимает из файла значение ниже пятисот вовсе
+// (tools/gcwatch/lib.js, effectiveDelay) и молча остаётся на прежнем темпе.
+// Пол ниже пятисот означал бы, что панель показывает паузу, которой нет.
+test('пол паузы не опускается ниже того, что примет отправщик', () => {
+  assert.equal(merge(DEFAULTS, { pace: { floor: 300 } }).pace.floor, 500)
+  assert.equal(merge(DEFAULTS, { pace: { floor: 499 } }).pace.floor, 500)
+  assert.equal(merge(DEFAULTS, { pace: { floor: 500 } }).pace.floor, 500)
 })
 
 test('мусор отбрасывается, а не роняет настройки', () => {
@@ -26,7 +35,7 @@ test('мусор отбрасывается, а не роняет настрой
 test('значения зажимаются в разумные пределы', () => {
   assert.equal(merge(DEFAULTS, { goal: 0 }).goal, 1)
   assert.equal(merge(DEFAULTS, { goal: 999_999 }).goal, 100_000)
-  assert.equal(merge(DEFAULTS, { pace: { floor: 10 } }).pace.floor, 100)
+  assert.equal(merge(DEFAULTS, { pace: { floor: 10 } }).pace.floor, 500)
   assert.equal(merge(DEFAULTS, { tick: 1 }).tick, 5_000)
 })
 

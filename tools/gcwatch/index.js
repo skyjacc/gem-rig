@@ -171,7 +171,12 @@ async function qrRefreshToken() {
 }
 
 // Темп в режиме очереди: число миллисекунд в delay.txt перекрывает --delay без перезапуска.
-const DELAY_FILE = path.join(__dirname, 'delay.txt');
+//
+// Файл у каждого аккаунта свой: --delay-file delay-<метка>.txt. Общий файл
+// был ошибкой ровно того же рода, что и общий status.json — два отправщика
+// перетирали бы друг другу темп, и работник второго аккаунта разгонял бы
+// первый. По умолчанию delay.txt: единственный аккаунт ничего не заметит.
+const DELAY_FILE = path.resolve(__dirname, opt('--delay-file', 'delay.txt'));
 function currentDelay() {
   let fromFile = null;
   try { fromFile = Number(fs.readFileSync(DELAY_FILE, 'utf8').trim()); }
@@ -271,6 +276,14 @@ async function main() {
   user.on('error', e => {
     const kind = classifyError(e.message);
 
+    // Метка для панели, рядом с человеческим текстом.
+    //
+    // Панель уже читает наш вывод (QRURL, STEAMID) — это её единственный
+    // канал к тому, ЧТО именно случилось. Без метки она видела только
+    // «процесс жив» и не могла отличить «Steam выбивает сессию» от обычной
+    // тишины: разбор русской фразы сломался бы от первой же правки текста.
+    console.log('EVENT ' + kind);
+
     if (kind === 'stale-token') {
       if (!USE_PASSWORD && fs.existsSync(TOKEN_FILE)) {
         fs.unlinkSync(TOKEN_FILE);
@@ -293,6 +306,7 @@ async function main() {
     // Потолок попыток. Если Steam открыт и держит сессию — он будет выбивать
     // бесконечно, и лучше остановиться с внятной причиной, чем крутиться.
     if (attempt >= 6) {
+      console.log('EVENT exhausted');
       console.error();
       console.error('шесть попыток входа подряд отбиты. Скорее всего открыт Steam —');
       console.error('он периодически подтверждает свою сессию и выбивает бота.');

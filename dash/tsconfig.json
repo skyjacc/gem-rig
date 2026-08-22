@@ -7,6 +7,10 @@
     "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "strict": true,
+    // Мёртвый код виден компилятору раньше, чем человеку: неиспользуемый
+    // импорт — первый признак того, что кусок отрезали, а хвост забыли.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noEmit": true,
     "skipLibCheck": true,
     "types": ["vite/client"]

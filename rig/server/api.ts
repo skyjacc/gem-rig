@@ -1,18 +1,17 @@
 // Обработчики, которые не про поток состояния: аккаунты, граф, очередь.
 // Держим отдельно от index.ts, чтобы тот остался про сборку сервера.
 
-import fs from 'node:fs'
 import path from 'node:path'
-import { GC, TOOLS, marketKey, readJson } from './paths.ts'
+import { TOOLS, marketKey, readJson } from './paths.ts'
 import { db } from './db.ts'
 import { ACCOUNT, active, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink } from './accounts.ts'
 import { buildGraph, type GraphEntity } from './graph.ts'
 import { queueFor } from './queue.ts'
-import { inv } from './steam.ts'
+import { invOf } from './steam.ts'
 import { picks } from './autopilot.ts'
 import { pieceKey } from './itemset.ts'
 import { settings } from './settings.ts'
-import { balance, buyOne, fetchPrices, gemName, impliedRate, nbuRate, rank, type Currency, type Offer } from './market.ts'
+import { balance, fetchPrices, gemName, impliedRate, nbuRate, rank, type Currency, type Offer } from './market.ts'
 
 const norm = (s: string) => String(s ?? '').replace(/^(Genuine\s+)?Spectator:\s*/, '').trim()
 
@@ -54,7 +53,7 @@ export function graph(scope: 'owned' | 'all' = 'owned') {
   }
 
   const owned = new Map<string, { items: number; max: number; icon: string }>()
-  for (const r of inv.rows) {
+  for (const r of invOf().rows) {
     if (!r.gem || r.gem === '—') continue
     const e = owned.get(r.gem) ?? { items: 0, max: 0, icon: r.icon }
     e.items++
@@ -104,15 +103,6 @@ export function queuePreview(limit = 200) {
   }
 }
 
-// Файлы очередей на диске — на случай разбора.
-export function queueFiles() {
-  if (!fs.existsSync(GC)) return []
-  return fs.readdirSync(GC).filter(f => f.endsWith('.csv')).map(f => ({
-    name: f,
-    size: fs.statSync(path.join(GC, f)).size,
-  }))
-}
-
 // ── дерево ──
 //
 // Аккаунт → гем → турниры, откуда у этой сущности матчи. Даёт то, чего
@@ -151,7 +141,7 @@ export function tree(top = 12): TreeNode {
   if (tCache && tKey === key) return tCache
 
   const owned = new Map<string, { items: number; max: number; icon: string }>()
-  for (const r of inv.rows) {
+  for (const r of invOf().rows) {
     if (!r.gem || r.gem === '—') continue
     const e = owned.get(r.gem) ?? { items: 0, max: 0, icon: r.icon }
     e.items++
@@ -292,7 +282,7 @@ export function itemPool() {
 
   const kits = new Map<string, Kit>()
 
-  for (const r of inv.rows) {
+  for (const r of invOf().rows) {
     // Голые самоцветы одного гема — одна строка, а не двенадцать одинаковых.
     const isBare = r.carrier === 'gem'
     const key = isBare ? 'самоцвет|' + r.gem : (r.set ? (r.hero || '—') + '|' + r.set : 'один|' + r.name)
@@ -392,6 +382,39 @@ async function prices(currency: Currency, force: boolean): Promise<Cache> {
   return next
 }
 
+// Матчи сущности из карты. Список нужен и для потолка, и для пересечения
+// с тем, что уже накручивается, поэтому он считается один раз на заход.
+function entityIds(kind: string, id: number): string[] {
+  const rows = kind === 'team'
+    ? db.prepare(`select match_id from vmatch where radiant = ? or dire = ?`).all(id, id)
+    : db.prepare(
+      `select distinct v.match_id from vmatch v join vplayer p on p.match_id = v.match_id where p.account_id = ?`,
+    ).all(id)
+  return (rows as any[]).map(r => String(r.match_id))
+}
+
+// Итог разбора площадки живёт минуту.
+//
+// Раньше он пересчитывался на каждый запрос, а панель запрашивала его
+// на каждый толчок состояния — то есть примерно раз в секунду во время
+// работы. Это сотни запросов к базе в секунду ради списка, который меняется
+// не чаще, чем обновляются цены.
+type ScanCache = { key: string; at: number; value: any }
+let scanCache: ScanCache | null = null
+
+// Баланс площадки — обращение по сети, и его нельзя дёргать на каждый
+// показ списка. Полминуты достаточно: деньги списываются только через
+// закупку, а она сама толкает состояние.
+let moneyCache: { at: number; value: any } = { at: 0, value: null }
+async function money(force: boolean) {
+  const key = marketKey()
+  if (!key) return null
+  if (!force && moneyCache.value && Date.now() - moneyCache.at < 30_000) return moneyCache.value
+  const r = await balance(key)
+  moneyCache = { at: Date.now(), value: r }
+  return r
+}
+
 export async function marketScan(force = false, currency: Currency = 'USD') {
   const s = settings()
   const goal = s.goal
@@ -401,57 +424,75 @@ export async function marketScan(force = false, currency: Currency = 'USD') {
   const rate = currency === 'UAH' ? await uah() : 1
   const sell = s.sellPrice * (currency === 'UAH' ? rate : await sellRate(currency, force))
 
+  // Что уже лежит и что уже накручивается — от этого зависит цена в отправках.
+  const owned = new Map<string, number>()
+  for (const r of invOf().rows) {
+    if (!r.gem || r.gem === '—') continue
+    owned.set(r.gem, (owned.get(r.gem) ?? 0) + 1)
+  }
+  const mine = picks()
+  const burning = new Set(mine.map(p => p.key))
+
+  const key = [currency, goal, s.sellPrice, s.perGem, cache.at, [...burning].sort().join(','), [...owned.keys()].sort().join(',')].join('|')
+  const acc: any = await money(force)
+  if (!force && scanCache && scanCache.key === key && Date.now() - scanCache.at < 60_000) {
+    return {
+      ...scanCache.value,
+      balance: acc?.success ? Number(acc.money) || 0 : null,
+      balanceCurrency: acc?.currency ?? null,
+      balanceError: marketKey() ? (acc?.success ? null : (acc?.error ?? 'площадка не ответила')) : 'нет ключа',
+    }
+  }
+
   const map = readJson<any[]>(path.join(TOOLS, 'gem-map.json'), [])
   const byName = new Map<string, any>()
   for (const g of map) byName.set(norm(g.name), g)
 
-  // Что уже лежит и что уже накручивается — от этого зависит цена в отправках.
-  const owned = new Map<string, number>()
-  for (const r of inv.rows) {
-    if (!r.gem || r.gem === '—') continue
-    owned.set(r.gem, (owned.get(r.gem) ?? 0) + 1)
-  }
-  const burning = new Set(picks().map(p => p.key))
+  // Матчи, которые уже уходят в работу. Пересечение с ними — это то, ради
+  // чего вообще стоит покупать вместе: общий матч поднимает обе сущности
+  // одной отправкой, значит новый гем получает свой счётчик бесплатно.
+  const mineIds = new Set<string>()
+  for (const p of mine) for (const m of entityIds(p.kind, p.id)) mineIds.add(m)
 
-  const offers: Offer[] = []
+  const offers: (Offer & { overlap: number })[] = []
   for (const it of cache.items) {
     const gem = gemName(it.market_hash_name ?? '')
     if (!gem) continue
     const g = byName.get(gem)
     if (!g?.entity_id || (g.kind !== 'team' && g.kind !== 'player')) continue
 
-    const pool = g.kind === 'team'
-      ? (db.prepare(`select count(*) c from vmatch where radiant = ? or dire = ?`).get(g.entity_id, g.entity_id) as any).c
-      : (db.prepare(
-        `select count(distinct v.match_id) c from vmatch v join vplayer p on p.match_id = v.match_id where p.account_id = ?`,
-      ).get(g.entity_id) as any).c
+    const ids = entityIds(g.kind, g.entity_id)
+    let overlap = 0
+    if (!burning.has(gem)) for (const m of ids) if (mineIds.has(m)) overlap++
 
     offers.push({
       gem,
       name: it.market_hash_name,
       price: (Number(it.price) || 0) * rate,
       volume: Number(it.volume) || 0,
-      pool,
+      pool: ids.length,
       owned: owned.get(gem) ?? 0,
+      overlap,
     })
   }
 
   const ranked = rank(offers, goal).map(o => {
+    const over = (o as any).overlap as number
     // Отправок на штуку: копия уже накручиваемого гема не стоит ни одной,
-    // новая команда — полный прогон до цели.
-    const sends = burning.has(o.gem) ? 0 : Math.min(o.pool, goal)
+    // новая команда — полный прогон до цели, но её общие с моими матчи
+    // поднимутся сами собой и в этот прогон не входят.
+    const sends = burning.has(o.gem) ? 0 : Math.max(0, Math.min(o.pool, goal) - Math.min(over, goal))
     return {
       ...o,
       burning: burning.has(o.gem),
+      overlap: over,
       sends,
       revenue: o.reaches ? sell : 0,
       profit: o.reaches ? sell - o.price : -o.price,
     }
   })
 
-  const acc = marketKey() ? await balance(marketKey()!) : null
-
-  return {
+  const value = {
     goal,
     sell,
     currency,
@@ -462,10 +503,15 @@ export async function marketScan(force = false, currency: Currency = 'USD') {
     updated: cache.at,
     error: cache.error,
     scanned: cache.items.length,
+    offers: ranked,
+  }
+  scanCache = { key, at: Date.now(), value }
+
+  return {
+    ...value,
     balance: acc?.success ? Number(acc.money) || 0 : null,
     balanceCurrency: acc?.currency ?? null,
     balanceError: marketKey() ? (acc?.success ? null : (acc?.error ?? 'площадка не ответила')) : 'нет ключа',
-    offers: ranked,
   }
 }
 

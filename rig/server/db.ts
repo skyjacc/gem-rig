@@ -52,18 +52,27 @@ db.exec(`
   );
 
   -- лента отправок
+  --
+  -- Ключ составной. По одной метке времени он быть не может: отправщик
+  -- закрывает молчания пачкой и выдаёт несколько записей с одной меткой,
+  -- а два работника шлют одновременно. С ключом по ts такие записи молча
+  -- затирали друг друга — лента и темп занижались.
   create table if not exists events (
-    ts        integer primary key,
+    ts        integer not null,
     n         integer,
     total     integer,
     match_id  text,
     league_id text,
     result    text,
-    bytes     integer
+    bytes     integer,
+    account   text,
+    primary key (ts, account, match_id)
   );
 
   create index if not exists idx_em on entity_matches (kind, entity_id);
   create index if not exists idx_counters_gem on counters (gem, ts);
+  create index if not exists idx_counters_ts on counters (ts);
+  create index if not exists idx_events_ts on events (ts desc);
 `)
 
 // Схема догоняется до текущей при каждом старте. Идемпотентно.
@@ -123,9 +132,6 @@ export function importLegacy() {
 }
 
 // ── операции ──
-export const isBurned = (id: string) =>
-  !!db.prepare(`select 1 from burned where account = ? and match_id = ?`).get(ACCOUNT(), id)
-
 export const burnedCount = (account = ACCOUNT()) =>
   (db.prepare(`select count(*) c from burned where account = ?`).get(String(account)) as { c: number }).c
 
@@ -143,37 +149,17 @@ export function entityMatchesFromDb(kind: string, id: number) {
     .all(kind, id) as { id: string; league: string }[]
 }
 
-export function entitySpent(kind: string, id: number) {
-  const r = db.prepare(`
-    select count(*) c from entity_matches em
-    join burned b on b.match_id = em.match_id and b.account = ?
-    where em.kind = ? and em.entity_id = ?`).get(ACCOUNT(), kind, id) as { c: number }
-  return r.c
-}
-
 export function saveSnapshot(rows: { gem: string; assetid: string; name: string; value: number }[]) {
   const ts = Date.now()
   const ins = db.prepare(`insert or ignore into counters (ts, gem, assetid, item, value) values (?,?,?,?,?)`)
   for (const r of rows) ins.run(ts, r.gem, r.assetid, r.name, r.value)
 }
 
-// Ряды для графика: максимум по гему на каждый срез.
-export function counterSeries() {
-  const rows = db.prepare(`
-    select ts, gem, max(value) v from counters group by ts, gem order by ts`).all() as { ts: number; gem: string; v: number }[]
-  const stamps = [...new Set(rows.map(r => r.ts))]
-  const gems = [...new Set(rows.map(r => r.gem))]
-  const byKey = new Map(rows.map(r => [r.ts + '|' + r.gem, r.v]))
-  return {
-    stamps,
-    series: gems.map(g => ({ gem: g, points: stamps.map(t => byKey.get(t + '|' + g) ?? null) }))
-      .filter(s => s.points.some(p => (p ?? 0) > 0)),
-  }
-}
-
+// Одно событие отправщика в ленту. Повтор безвреден: при перезапуске панели
+// отчёт разбирается заново с начала, и ignore делает это бесплатным.
 export function pushEvent(e: any, account = ACCOUNT()) {
-  db.prepare(`insert or replace into events (ts, n, total, match_id, league_id, result, bytes, account) values (?,?,?,?,?,?,?,?)`)
-    .run(e.ts, e.n ?? null, e.total ?? null, String(e.match), String(e.league ?? ''), e.result, e.bytes ?? 0, String(account))
+  db.prepare(`insert or ignore into events (ts, n, total, match_id, league_id, result, bytes, account) values (?,?,?,?,?,?,?,?)`)
+    .run(Math.trunc(Number(e.ts) || 0), e.n ?? null, e.total ?? null, String(e.match), String(e.league ?? ''), e.result, e.bytes ?? 0, String(account))
 }
 
 export function recentEvents(limit = 240) {
@@ -207,13 +193,23 @@ export function ratePerMinute(windowMs = 120_000) {
 // Сто двенадцать линий читать нельзя, поэтому одинаковые ветки сливаются
 // в одну с числом вещей: «BZZ ×70» вместо семидесяти совпадающих кривых.
 export function counterLines() {
+  // Двести ПОСЛЕДНИХ срезов, а не первых.
+  //
+  // Было `order by ts asc limit 200` — то есть самые старые. Срез пишется
+  // при каждом изменении счётчиков, значит за несколько часов работы их
+  // набирается больше двухсот, и график навсегда застывал на первом дне:
+  // он показывал начало истории и молчал про то, что происходит сейчас.
   const stamps = (db.prepare(
-    `select distinct ts from counters order by ts asc limit 200`).all() as any[]).map(r => r.ts as number)
+    `select ts from (select distinct ts from counters order by ts desc limit 200) order by ts asc`)
+    .all() as any[]).map(r => r.ts as number)
   if (!stamps.length) return { stamps: [], lines: [] as any[] }
 
   const at = new Map(stamps.map((t, i) => [t, i]))
+  // Берём только те срезы, что рисуем. Полный проход по таблице ради
+  // двухсот столбцов дорожал с каждым днём работы.
   const rows = db.prepare(
-    `select ts, gem, assetid, value from counters order by ts asc`).all() as any[]
+    `select ts, gem, assetid, value from counters where ts >= ? order by ts asc`)
+    .all(stamps[0]) as any[]
 
   const byAsset = new Map<string, { gem: string; points: (number | null)[] }>()
   for (const r of rows) {

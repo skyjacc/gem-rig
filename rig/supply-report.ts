@@ -7,6 +7,14 @@ const map = JSON.parse(fs.readFileSync('../tools/gem-map.json', 'utf8')) as any[
 const prev = JSON.parse(fs.readFileSync('../tools/gem-supply.json', 'utf8')) as Record<string, number>
 const leagues = JSON.parse(fs.readFileSync('../tools/leagues.json', 'utf8')) as any[]
 
+// Журнал расхода ведётся по аккаунту, и без него leftFor считает по строке
+// «undefined» — то есть всегда ноль сожжённых. Отчёт молча показывал полный
+// запас там, где половина уже потрачена. Берём активный аккаунт из реестра.
+const reg = JSON.parse(fs.readFileSync('../tools/accounts.json', 'utf8')) as
+  { active: string; list: { id: string; steamid: string }[] }
+const ACCOUNT = (reg.list.find(a => a.id === reg.active) ?? reg.list[0])?.steamid ?? ''
+if (!ACCOUNT) throw new Error('в tools/accounts.json нет ни одного аккаунта — некому приписать расход')
+
 const studioLeagues = (name: string) => {
   const key = name.replace(/^(Genuine )?Spectator: ?/, '').toLowerCase()
   const pat = key === 'beyond the summit' ? /beyond the summit|bts /i : /dota ?cinema/i
@@ -19,7 +27,7 @@ const ent = (g: any) => {
 }
 
 const rows = map.map(g => {
-  const r = leftFor(db, ent(g))
+  const r = leftFor(db, ent(g), ACCOUNT)
   return { name: g.name.replace(/^(Genuine )?Spectator: ?/, '') || 'без имени', kind: g.kind, ...r, was: prev[g.name] ?? 0 }
 }).sort((a, b) => b.supply - a.supply)
 

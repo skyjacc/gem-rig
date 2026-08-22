@@ -28,6 +28,46 @@ const ADD: [string, string, string][] = [
   ['events', 'account', `alter table events add column account text`],
 ]
 
+// Развязка ленты отправок по метке + аккаунту + матчу.
+//
+// Было: events.ts — первичный ключ. Одна метка времени, одна строка. Но
+// отправщик закрывает молчания пачкой и выдаёт несколько записей с ОДНОЙ
+// меткой, а два работника шлют одновременно. `insert or replace` в такой
+// схеме молча выбрасывал всё, кроме последнего: лента врала, темп
+// (ratePerMinute) занижался, и «сколько ушло молча» было неизвестно.
+//
+// SQLite не умеет менять первичный ключ — таблица пересобирается.
+export function splitEvents(target: DatabaseSync): boolean {
+  const info = target.prepare(`pragma table_info(events)`).all() as any[]
+  if (!info.length) return false
+  // Ключ уже составной, если ts не единственная колонка с pk = 1.
+  const pk = info.filter(c => Number(c.pk) > 0).map(c => c.name)
+  if (pk.length !== 1 || pk[0] !== 'ts') return false
+
+  target.exec(`
+    create table events_split (
+      ts        integer not null,
+      n         integer,
+      total     integer,
+      match_id  text,
+      league_id text,
+      result    text,
+      bytes     integer,
+      account   text,
+      primary key (ts, account, match_id)
+    );
+  `)
+  const has = new Set(info.map(c => c.name))
+  const account = has.has('account') ? 'account' : 'null'
+  target.exec(
+    `insert or ignore into events_split (ts, n, total, match_id, league_id, result, bytes, account)
+     select ts, n, total, match_id, league_id, result, bytes, ${account} from events`,
+  )
+  target.exec(`drop table events; alter table events_split rename to events;`)
+  target.exec(`create index if not exists idx_events_ts on events (ts desc)`)
+  return true
+}
+
 export function migrate(target: DatabaseSync): string[] {
   const applied: string[] = []
 
@@ -49,6 +89,8 @@ export function migrate(target: DatabaseSync): string[] {
     target.prepare(`update burned set ts = null where ts is not null and ts < ?`).run(MS_FLOOR)
     applied.push(`burned.ts: обнулено ${bad.c} испорченных меток`)
   }
+
+  if (splitEvents(target)) applied.push('events: ключ ts + аккаунт + матч')
 
   return applied
 }

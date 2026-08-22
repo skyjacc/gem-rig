@@ -1,6 +1,6 @@
 // Связь с сервером. Одна подписка на поток, ничего не опрашиваем.
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import snapshot from '../demo/snapshot.json'
 
 // Режим показа.
@@ -74,11 +74,23 @@ export type SendEvent = {
   account?: string | null
 }
 
+// Инвентарь одного аккаунта: возраст снимка и его беда, если она есть.
+// Одно общее поле врало бы про всех, кроме активного.
+export type InvState = {
+  error: string | null
+  private: boolean
+  truncated: boolean
+  age: number | null
+  items: number
+}
+
 export type Unit = {
   id: string
   label: string
   steamid: string
   enabled: boolean
+  // Когда работника включили. Нужно, чтобы полосу срока было чем заполнить.
+  startedAt?: number
   delay: number
   auto: boolean
   target: number | null
@@ -98,12 +110,17 @@ export type Unit = {
   lastTick: number
   rebuiltAt: number
   failures: number
+  // Сколько раз аккаунт выбило другой сессией Steam и почему возвращаться
+  // бессмысленно, если бессмысленно.
+  displaced?: number
+  fatal?: string | null
   running: boolean
   pid: number | null
   exit: string | null
   lines: string[]
   burned: number
   etaMinutes: number
+  inv?: InvState
   log: { ts: number; action: string; why: string }[]
   ordered?: number | null
   waves?: number
@@ -127,21 +144,39 @@ export type Autopilot = Unit & {
   pace: Pace | null
 }
 
+export type PurchaseRun = {
+  active: boolean
+  cancel: boolean
+  startedAt: number
+  finishedAt: number
+  currency: string
+  planned: number
+  done: number
+  ok: number
+  spent: number
+  current: string
+  pass: number
+  positions: { gem: string; asked: number; got: number; done: boolean; why: string }[]
+  error: string | null
+  log: { ts: number; gem: string; ok: boolean; price: number; planned?: number; reason: string; detail?: string }[]
+}
+
+// Ровно то, что собирает buildState на сервере, и ничего сверх.
+//
+// Раньше здесь было вдвое больше полей — chart, files, seam, bundles, delay,
+// current, steamid, sender, watched, — и ни одно из них фронт не читал.
+// Сервер считал их на каждый толчок состояния, то есть примерно раз в секунду.
 export type State = {
   ts: number
-  steamid: string
   events: SendEvent[]
   mine: Gem[]
   catalog: CatalogRow[]
-  bundles: { def: number; name: string; partner: string; hero: string; price_cents: number | null; pieces: number }[]
-  sender: { running: boolean; pid: number | null; exit: string | null; lines: string[] }
   autopilot: Autopilot
+  purchase: PurchaseRun
   confirmed: { ts: number; match_id: string; league_id: string; bytes: number } | null
   rate: number
-  chart: { stamps: number[]; series: { gem: string; points: (number | null)[] }[] }
-  inv: { error: string | null; age: number | null; items: number }
+  inv: InvState
   burned: number
-  watched: number
   keys: { opendota: boolean; steam: boolean }
 }
 
@@ -162,7 +197,10 @@ export type Settings = {
   startLimit: number
   maxFailures: number
   invTtl: number
+  invStale: number
   treeTop: number
+  sellPrice: number
+  perGem: number
   priceTolerance: number
   pace: { floor: number; ceil: number; enough: number; clean: number; down: number; up: number }
   spread: { band: number; jitter: number }
@@ -207,24 +245,52 @@ export type QueueData = {
   rows: { match: string; league: string; weight: number; entities: string[] }[]
 }
 
-export function useLive() {
+// Через сколько молчания поток считается оборванным.
+//
+// Сервер шлёт пульс раз в пятнадцать секунд даже когда ничего не меняется,
+// поэтому тишина дольше сорока — это обрыв, а не затишье. Без этого панель
+// показывала вчерашние числа так же уверенно, как сегодняшние: EventSource
+// молчит при разрыве по дороге, и onerror не приходит.
+const SILENCE = 40_000
+
+export type Live = {
+  state: State | null
+  online: boolean
+  // Данные на экране устарели: связь есть или нет, но свежего снимка нет.
+  stale: boolean
+  // Когда пришёл последний снимок.
+  at: number
+}
+
+export function useLive(): Live {
   const [state, setState] = useState<State | null>(DEMO ? (SNAP.state as State) : null)
   const [online, setOnline] = useState(DEMO)
-  const es = useRef<EventSource | null>(null)
+  const [at, setAt] = useState(() => Date.now())
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     if (DEMO) return
     const s = new EventSource('/api/stream')
-    es.current = s
-    s.onopen = () => setOnline(true)
+    const beat = () => { setOnline(true); setAt(Date.now()) }
+    s.onopen = beat
     s.onerror = () => setOnline(false)
     s.onmessage = e => {
-      try { setState(JSON.parse(e.data)); setOnline(true) } catch { }
+      try { setState(JSON.parse(e.data)) } catch { return }
+      beat()
     }
     return () => s.close()
   }, [])
 
-  return { state, online }
+  // Отдельные часы для протухания. Состояние обновляется от сервера, и без
+  // своих часов «данные устарели» появлялось бы ровно тогда, когда приходят
+  // свежие данные, то есть никогда.
+  useEffect(() => {
+    if (DEMO) return
+    const t = setInterval(() => setNow(Date.now()), 5000)
+    return () => clearInterval(t)
+  }, [])
+
+  return { state, online, at, stale: !DEMO && !!state && now - at > SILENCE }
 }
 
 // Запрос, который сам обновляется по тику потока состояния.
@@ -242,33 +308,103 @@ function canned(url: string) {
   return null
 }
 
-export function useJson<T>(url: string | null, dep: unknown): { data: T | null; loading: boolean } {
+export type Json<T> = {
+  data: T | null
+  loading: boolean
+  error: string | null
+  reload: () => void
+}
+
+// Вторичный экран, который обновляется по потоку — но не чаще, чем нужно.
+//
+// Зависимостью сюда приходит state.ts, а он меняется на КАЖДЫЙ толчок,
+// то есть примерно раз в секунду во время работы. От этого панель раз
+// в секунду перезапрашивала /api/market (сотни запросов к базе плюс поход
+// на площадку), /api/pool, /api/graph и /api/tree — и граф, у которого
+// раскладка живёт в ответе, дёргался без остановки.
+//
+// Метка огрубляется: десять секунд вместо секунды. Всё, что должно быть
+// мгновенным — ход закупки, состояние работника, — и так приходит потоком.
+export function useJson<T>(url: string | null, dep: unknown, everyMs = 10_000): Json<T> {
   const [data, setData] = useState<T | null>(DEMO && url ? (canned(url) as T) : null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [nonce, setNonce] = useState(0)
+
+  const coarse = typeof dep === 'number' && everyMs > 0 ? Math.floor(dep / everyMs) : dep
+
   useEffect(() => {
     if (!url || DEMO) return
     let alive = true
     setLoading(true)
     fetch(url)
-      .then(r => r.json())
-      .then(d => { if (alive) setData(d) })
-      .catch(() => { })
+      .then(async r => {
+        if (!r.ok) throw new Error('сервер ответил ' + r.status)
+        return r.json()
+      })
+      .then(d => {
+        if (!alive) return
+        // Ошибку сервер отдаёт полем, а не кодом: без этого экран показывал
+        // бы «пусто» там, где на самом деле поломка.
+        if (d && typeof d === 'object' && typeof d.error === 'string' && !Array.isArray(d)) setError(d.error)
+        else setError(null)
+        setData(d)
+      })
+      .catch(e => { if (alive) setError(e.message || 'нет связи с сервером') })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [url, dep])
-  return { data, loading }
+  }, [url, coarse, nonce])
+
+  const reload = useCallback(() => setNonce(n => n + 1), [])
+  return { data, loading, error, reload }
 }
 
 export async function post(url: string, body: unknown) {
   // В показе ничего не отправляется. Это не заглушка ради вида: за кнопкой
   // «запустить» стоят необратимые сообщения игровому координатору.
   if (DEMO) return { error: 'показ: панель без сервера, ничего не отправляется' }
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  return r.json().catch(() => ({}))
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok && !d?.error) return { error: 'сервер ответил ' + r.status }
+    return d
+  } catch (e: any) {
+    // Сеть отвалилась. Молчаливый провал у кнопки, за которой необратимое
+    // действие, — худшее из возможных поведений: человек думает, что нажал.
+    return { error: e?.message ? 'не дошло до сервера: ' + e.message : 'не дошло до сервера' }
+  }
+}
+
+// Кнопка, за которой запрос.
+//
+// Три состояния вместо одного: идёт, вышло, не вышло. Раньше post() звали
+// прямо из onClick и результат выбрасывали — нажатие на «остановить» при
+// упавшем сервере выглядело точно так же, как удачное.
+export function useAction() {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [ok, setOk] = useState(false)
+  const timer = useRef<number | null>(null)
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+
+  const run = useCallback(async (url: string, body: unknown) => {
+    setBusy(true)
+    setError(null)
+    const r: any = await post(url, body)
+    setBusy(false)
+    if (r?.error) { setError(String(r.error)); return r }
+    setOk(true)
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setOk(false), 1600)
+    return r
+  }, [])
+
+  return { run, busy, error, ok, clear: () => setError(null) }
 }
 
 // ── формат ──
@@ -292,6 +428,16 @@ export const span = (min: number) => {
 
 export const clock = (ts: number) =>
   new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
+// Склонение: «1 матч», «2 матча», «5 матчей».
+export const plural = (n: number, one: string, few: string, many: string) => {
+  const a = Math.abs(n) % 100
+  if (a > 10 && a < 20) return many
+  const b = a % 10
+  if (b === 1) return one
+  if (b >= 2 && b <= 4) return few
+  return many
+}
 
 // Настоящая картинка предмета из Steam. В инвентаре лежит только хеш.
 export const icon = (hash: string, size = 96) =>

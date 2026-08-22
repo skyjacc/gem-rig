@@ -1,0 +1,191 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]: Gemtrack
+    - generic [ref=f1e7]:
+      - button "основной 7656119800000000" [ref=f1e8]:
+        - generic [ref=f1e10]:
+          - generic [ref=f1e11]: основной
+          - generic [ref=f1e12]: "7656119800000000"
+      - button "привязать аккаунт" [ref=f1e15]
+    - navigation [ref=f1e18]:
+      - button "Пульт 7" [ref=f1e19]:
+        - generic [ref=f1e24]: Пульт
+        - generic [ref=f1e25]: "7"
+      - button "Скупка" [ref=f1e26]
+      - button "Граф" [ref=f1e33]
+      - button "Аккаунты 1" [ref=f1e41]:
+        - generic [ref=f1e48]: Аккаунты
+        - generic [ref=f1e49]: "1"
+      - button "Разбор" [ref=f1e50]
+    - generic [ref=f1e55]: выключен
+  - generic [ref=f1e59]:
+    - banner [ref=f1e60]:
+      - generic [ref=f1e61]: показ — снимок данных, ничего никуда не отправляется
+      - generic [ref=f1e63]:
+        - generic [ref=f1e64]: снимок 21 августа
+        - generic [ref=f1e65]: без сервера
+    - main [ref=f1e68]:
+      - generic [ref=f1e69]:
+        - generic [ref=f1e70]:
+          - generic [ref=f1e71]:
+            - heading "Пульт" [level=1] [ref=f1e72]
+            - paragraph [ref=f1e73]: 0 из 51 вещи готово · накрутка выключена, ничего не уходит
+          - generic [ref=f1e74]:
+            - button "настроить" [ref=f1e75]
+            - button "накрутить" [ref=f1e80]
+        - generic [ref=f1e85]:
+          - generic [ref=f1e89]:
+            - generic [ref=f1e90]: стоит
+            - generic [ref=f1e91]: работник выключен
+          - generic [ref=f1e92]:
+            - generic [ref=f1e93]:
+              - text: очередь
+              - generic [ref=f1e94]: "0"
+            - generic [ref=f1e95]:
+              - text: до конца
+              - generic [ref=f1e96]: —
+            - generic [ref=f1e97]:
+              - text: темп
+              - generic [ref=f1e98]: —
+            - generic [ref=f1e99]:
+              - text: пауза
+              - generic [ref=f1e100]: 1 000 мс сама
+            - generic [ref=f1e101]:
+              - text: подтверждение
+              - generic [ref=f1e102]: 40 ч назад
+        - generic [ref=f1e162]:
+          - generic [ref=f1e163]:
+            - generic [ref=f1e166]: Требует внимания
+            - generic [ref=f1e167]: 3 вопроса
+          - list [ref=f1e168]:
+            - listitem [ref=f1e169]:
+              - generic [ref=f1e172]:
+                - generic [ref=f1e173]: Ohaiyo — матчей всего 1 849, до цели 2 000 не дойдёт
+                - generic [ref=f1e174]: его вещи остановятся на 1 849; либо снизьте цель, либо не считайте их товаром
+            - listitem [ref=f1e175]:
+              - generic [ref=f1e178]:
+                - generic [ref=f1e179]: DD — матчей всего 568, до цели 2 000 не дойдёт
+                - generic [ref=f1e180]: его вещи остановятся на 568; либо снизьте цель, либо не считайте их товаром
+            - listitem [ref=f1e181]:
+              - generic [ref=f1e184]:
+                - generic [ref=f1e185]: CaspeRRR — непонятно, чьи матчи считать
+                - generic [ref=f1e186]: "этот гем в работу не пойдёт: его нет в карте гемов (tools/gem-map.json)"
+        - generic [ref=f1e187]:
+          - generic [ref=f1e188]:
+            - generic [ref=f1e189]:
+              - button "Инвентарь 7 гемов · 51 вещь" [expanded] [ref=f1e190]:
+                - generic [ref=f1e193]: Инвентарь
+                - generic [ref=f1e194]: 7 гемов · 51 вещь
+              - generic [ref=f1e196]:
+                - button "наборы" [ref=f1e197]
+                - button "гемы" [ref=f1e199]
+            - generic [ref=f1e201]: наборов пока нет
+          - generic [ref=f1e204]:
+            - generic [ref=f1e205]:
+              - generic [ref=f1e206]:
+                - text: готово к продаже
+                - generic [ref=f1e207]:
+                  - text: "0"
+                  - generic [ref=f1e208]: / 51
+              - generic [ref=f1e209]:
+                - text: счётчик товара
+                - generic [ref=f1e210]: 2 000
+            - generic [ref=f1e213]:
+              - generic [ref=f1e214]:
+                - generic [ref=f1e215]:
+                  - generic [ref=f1e216]: дойдут при этой работе
+                  - generic [ref=f1e217]: "39"
+                - generic [ref=f1e218]: матчей у их команд хватает
+              - generic [ref=f1e219]:
+                - generic [ref=f1e220]:
+                  - generic [ref=f1e221]: не дойдут никогда
+                  - generic [ref=f1e222]: "12"
+                - generic [ref=f1e223]: матчей у команды меньше цели — потолок ниже
+              - generic [ref=f1e225]:
+                - generic [ref=f1e226]: просмотров накоплено
+                - generic [ref=f1e227]: "406"
+              - generic [ref=f1e228]:
+                - generic [ref=f1e229]:
+                  - generic [ref=f1e230]: матчей израсходовано
+                  - generic [ref=f1e231]: "66"
+                - generic [ref=f1e232]: на этом аккаунте; на другом они свежие
+        - button "Рост счётчиков каждая вещь · 51 шт" [ref=f1e234]:
+          - generic [ref=f1e237]: Рост счётчиков
+          - generic [ref=f1e238]: каждая вещь · 51 шт
+        - generic [ref=f1e241]:
+          - generic [ref=f1e242]:
+            - heading "Магазин Steam" [level=2] [ref=f1e243]
+            - generic [ref=f1e244]: копия уже идущего гема стоит ноль отправок — только цену
+            - generic [ref=f1e245]:
+              - textbox "найти гем на рынке Steam" [ref=f1e250]:
+                - /placeholder: найти на рынке Steam
+              - generic [ref=f1e251]:
+                - button "что докупить" [ref=f1e252]
+                - button "весь каталог" [ref=f1e254]
+          - generic [ref=f1e256]:
+            - generic [ref=f1e257]:
+              - generic [ref=f1e258]: Копии — ноль отправоквторая вещь того же гема идёт следом за первой
+              - generic [ref=f1e259]:
+                - link "Team Empire потолок 2 594 · есть 5 $0.03" [ref=f1e260] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20Team%20Empire
+                  - generic [ref=f1e262]:
+                    - generic [ref=f1e263]: Team Empire
+                    - generic [ref=f1e264]: потолок 2 594 · есть 5
+                  - generic [ref=f1e265]: $0.03
+                - link "BZZ потолок 2 155 · есть 29 $0.03" [ref=f1e270] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20BZZ
+                  - generic [ref=f1e272]:
+                    - generic [ref=f1e273]: BZZ
+                    - generic [ref=f1e274]: потолок 2 155 · есть 29
+                  - generic [ref=f1e275]: $0.03
+                - link "Alliance потолок 2 483 · есть 4 $0.04" [ref=f1e280] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20Alliance
+                  - generic [ref=f1e282]:
+                    - generic [ref=f1e283]: Alliance
+                    - generic [ref=f1e284]: потолок 2 483 · есть 4
+                  - generic [ref=f1e285]: $0.04
+                - link "NaVi потолок 2 844 · есть 1 $0.06" [ref=f1e290] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20NaVi
+                  - generic [ref=f1e292]:
+                    - generic [ref=f1e293]: NaVi
+                    - generic [ref=f1e294]: потолок 2 844 · есть 1
+                  - generic [ref=f1e295]: $0.06
+            - generic [ref=f1e300]:
+              - generic [ref=f1e301]: Новые команды и игрокинакручивать с нуля, зато свои матчи
+              - generic [ref=f1e302]:
+                - link "Virtus.pro потолок 2 573 $0.03" [ref=f1e303] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20Virtus.pro
+                  - generic [ref=f1e305]:
+                    - generic [ref=f1e306]: Virtus.pro
+                    - generic [ref=f1e307]: потолок 2 573
+                  - generic [ref=f1e308]: $0.03
+                - link "Adrian 'Era' Kryeziu потолок 2 225 $0.03" [ref=f1e313] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20Adrian%20'Era'%20Kryeziu
+                  - generic [ref=f1e315]:
+                    - generic [ref=f1e316]: Adrian 'Era' Kryeziu
+                    - generic [ref=f1e317]: потолок 2 225
+                  - generic [ref=f1e318]: $0.03
+                - link "EternaLEnVy потолок 2 142 $0.03" [ref=f1e323] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20EternaLEnVy
+                  - generic [ref=f1e325]:
+                    - generic [ref=f1e326]: EternaLEnVy
+                    - generic [ref=f1e327]: потолок 2 142
+                  - generic [ref=f1e328]: $0.03
+                - 'link "Liquid`ixmike88 потолок 2 118 $0.03" [ref=f1e333] [cursor=pointer]':
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20Liquid%60ixmike88
+                  - generic [ref=f1e335]:
+                    - generic [ref=f1e336]: "Liquid`ixmike88"
+                    - generic [ref=f1e337]: потолок 2 118
+                  - generic [ref=f1e338]: $0.03
+                - link "iceiceice потолок 2 104 $0.03" [ref=f1e343] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20iceiceice
+                  - generic [ref=f1e345]:
+                    - generic [ref=f1e346]: iceiceice
+                    - generic [ref=f1e347]: потолок 2 104
+                  - generic [ref=f1e348]: $0.03
+                - link "Funn1k потолок 2 092 $0.03" [ref=f1e353] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/market/listings/570/Spectator%3A%20Funn1k
+                  - generic [ref=f1e355]:
+                    - generic [ref=f1e356]: Funn1k
+                    - generic [ref=f1e357]: потолок 2 092
+                  - generic [ref=f1e358]: $0.03

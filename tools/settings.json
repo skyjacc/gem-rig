@@ -4,8 +4,12 @@
   "silentLimit": 60000,
   "startLimit": 300000,
   "maxFailures": 5,
-  "invTtl": 60000,
+  "invTtl": 300000,
+  "invStale": 1800000,
   "treeTop": 12,
+  "sellPrice": 10,
+  "perGem": 25,
+  "priceTolerance": 0,
   "pace": {
     "floor": 300,
     "ceil": 30000,

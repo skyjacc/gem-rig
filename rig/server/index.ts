@@ -6,17 +6,16 @@ import fstatic from '@fastify/static'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { GC, TOOLS, readJson } from './paths.ts'
+import { GC, readJson } from './paths.ts'
 import { counterLines, db, importLegacy, pushEvent, supplyRows } from './db.ts'
 import { ingestOne } from './ledger.ts'
 import { refreshEquipped, refreshInventory } from './steam.ts'
 import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
-import { isBurned } from './db.ts'
-import { listFiles, senderState, start, statusFile, stop } from './sender.ts'
+import { statusFile, stop } from './sender.ts'
 import { accountList, accountsApi, burnedList, graph, itemPool, marketScan, queuePreview, tree } from './api.ts'
 import { purchaseState, startPurchase, stopPurchase } from './purchase.ts'
-import { ACCOUNT, activeId as activeAccountId } from './accounts.ts'
+import { ACCOUNT, activeId as activeAccountId, list as accountList2 } from './accounts.ts'
 import { roadmap } from './roadmap.ts'
 import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
 import { reset as resetSettings, settings, update as updateSettings } from './settings.ts'
@@ -27,22 +26,54 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.resolve(here, '..', '..', 'dash', 'dist')
 const PORT = Number(process.env.PORT ?? 4322)
 
-const app = Fastify({ logger: false })
+// Слушаем петлю, а не всю сеть.
+//
+// За этими адресами стоят необратимые действия: /api/autopilot запускает
+// отправку сообщений игровому координатору, /api/market/buy тратит деньги
+// с баланса площадки, /api/accounts/unlink удаляет сессию Steam. Ключа нет
+// ни у одного из них. Пока сервер отвечал на 0.0.0.0, всё это мог сделать
+// любой в той же сети — от соседа по вайфаю до заражённого устройства.
+// «Локальный проект» и «слушает всю сеть» — разные вещи.
+//
+// Нужен доступ с телефона — HOST=0.0.0.0 задаётся руками, осознанно.
+const HOST = process.env.HOST || '127.0.0.1'
+
+const app = Fastify({ logger: false, bodyLimit: 1_048_576 })
 
 const moved = importLegacy()
 if (!moved.skipped) console.log('перенёс из JSON:', moved)
 
 // ─────────────────────────────── SSE ───────────────────────────────
 const clients = new Set<any>()
-let pushing = false
 
-async function push() {
-  if (pushing || !clients.size) return
-  pushing = true
-  try {
-    const line = 'data: ' + JSON.stringify(buildState()) + '\n\n'
-    for (const res of clients) { try { res.raw.write(line) } catch { clients.delete(res) } }
-  } finally { pushing = false }
+// Толчок состояния — не чаще раза в 250 мс.
+//
+// Толкают все: отправщик пишет отчёт на каждую отправку, работник тикает,
+// каждый POST зовёт push. При паузе в полсекунды это два полных снимка
+// в секунду на каждого зрителя, и каждый снимок фронт принимает за повод
+// перезапросить вторичные экраны. Склейка ничего не теряет: последний
+// снимок всегда уходит.
+const PUSH_GAP = 250
+let pushAt = 0
+let pending: NodeJS.Timeout | null = null
+
+function flush() {
+  pushAt = Date.now()
+  pending = null
+  if (!clients.size) return
+  let line: string
+  try { line = 'data: ' + JSON.stringify(buildState()) + '\n\n' } catch (e: any) {
+    console.error('состояние не собралось:', e.message)
+    return
+  }
+  for (const res of clients) { try { res.raw.write(line) } catch { clients.delete(res) } }
+}
+
+function push() {
+  if (pending) return
+  const wait = Math.max(0, pushAt + PUSH_GAP - Date.now())
+  if (!wait) return flush()
+  pending = setTimeout(flush, wait)
 }
 
 app.get('/api/stream', (req, reply) => {
@@ -58,6 +89,14 @@ app.get('/api/stream', (req, reply) => {
   req.raw.on('close', () => clients.delete(reply))
 })
 
+// Пульс. Без него обрыв канала по дороге (сон машины, прокси, спящая
+// вкладка) выглядит для браузера как тишина: EventSource молчит, панель
+// показывает вчерашние числа как сегодняшние. Комментарий SSE не событие
+// и состояние не пересобирает.
+setInterval(() => {
+  for (const res of clients) { try { res.raw.write(': ping\n\n') } catch { clients.delete(res) } }
+}, 15_000)
+
 app.get('/api/state', async () => buildState())
 
 // Roadmap считается живьём и не дёшево — держим короткий кеш, чтобы
@@ -70,11 +109,14 @@ app.get('/api/roadmap', async () => {
 })
 
 // ───────────────────────── управление отправщиком ─────────────────────────
-app.post('/api/sender/start', async (req: any) => {
-  const { file, delay, id } = req.body ?? {}
-  const acc = accountList().list.find(a => a.id === String(id ?? activeAccountId()))
-  if (!acc) return { error: 'нет такого аккаунта' }
-  const r = start(acc.id, acc.token, String(file), Number(delay) || 30000, () => push())
+//
+// Запуска отправщика снаружи больше нет. Он принимал имя файла, склеивал
+// его с папкой отправщика без проверки и поднимал процесс, который шлёт
+// необратимые сообщения. Отправщиком владеет работник: он знает, что за
+// файл, чья сессия и сколько отправок заказано. Остановка оставлена —
+// она ничего не тратит и нужна при разборе.
+app.post('/api/sender/stop', async (req: any) => {
+  const r = stop(String(req.body?.id ?? activeAccountId()))
   push()
   return r
 })
@@ -107,6 +149,10 @@ app.get('/api/accounts', async () => accountList())
 
 app.post('/api/accounts/active', async (req: any) => {
   const r = accountsApi.setActive(String(req.body?.id ?? ''))
+  // Переключились — инвентарь нового аккаунта может быть ещё не прочитан.
+  // Не ждём ответа: снимок придёт следующим толчком, а панель пока честно
+  // покажет пустой инвентарь с возрастом «—», а не чужой.
+  void refreshInventory(ACCOUNT()).then(() => push())
   push()
   return r
 })
@@ -158,6 +204,7 @@ app.post('/api/settings/reset', async () => {
 // ── граф и очередь ──
 app.get('/api/graph', async (req: any) => graph(req.query?.scope === 'all' ? 'all' : 'owned'))
 app.get('/api/queue', async (req: any) => queuePreview(Number(req.query?.limit) || 200))
+
 // Закупка запускается и дальше живёт сама: панель смотрит на её состояние.
 app.post('/api/market/buy', async (req: any) => {
   const b = req.body ?? {}
@@ -179,38 +226,6 @@ app.get('/api/burned', async (req: any) => burnedList(Number(req.query?.limit) |
 app.get('/api/counters', async () => counterLines())
 app.get('/api/tree', async (req: any) => tree(Number(req.query?.top) || settings().treeTop))
 
-app.post('/api/sender/stop', async (req: any) => {
-  const r = stop(String(req.body?.id ?? activeAccountId()))
-  push()
-  return r
-})
-
-app.post('/api/delay', async (req: any) => {
-  const delay = Number(req.body?.delay)
-  if (Number.isFinite(delay) && delay >= 500) fs.writeFileSync(path.join(GC, 'delay.txt'), String(delay))
-  push()
-  return { ok: true }
-})
-
-// Собирает список ещё не сожжённых матчей сущности и кладёт файл для отправщика.
-app.post('/api/build', async (req: any) => {
-  const { kind, id, count, name } = req.body ?? {}
-  const rows = await entityMatches(kind as Kind, Number(id))
-  if (!rows.length) return { error: 'OpenDota не отдал матчи' }
-
-  const lines: string[] = []
-  for (const m of rows) {
-    if (isBurned(m.id)) continue
-    lines.push(m.id + ',' + m.league)
-    if (count && lines.length >= Number(count)) break
-  }
-  const safe = String(name ?? `${kind}-${id}`).replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
-  const file = path.join(GC, `build-${safe}.csv`)
-  fs.writeFileSync(file, lines.join('\n'), 'utf8')
-  push()
-  return { file: path.basename(file), total: rows.length, fresh: lines.length, burned: rows.length - lines.length }
-})
-
 // ───────────────────── файлы отправщика: ловим изменения ─────────────────────
 // Каждый аккаунт пишет свой отчёт: два отправщика в один файл затирали бы
 // друг друга. Разбираем все и приписываем расход тому, кто его сделал —
@@ -218,19 +233,23 @@ app.post('/api/build', async (req: any) => {
 const seenBy = new Map<string, number>()
 
 function ingestStatus() {
-  for (const a of accountList().list) {
+  for (const a of accountList2()) {
     const st = readJson<any>(path.join(GC, statusFile(a.id)), null)
-    if (!st?.recent) continue
+    if (!Array.isArray(st?.recent)) continue
     const seen = seenBy.get(a.id) ?? 0
+    let top = seen
     for (const e of st.recent) {
       if (!e?.ts || e.ts <= seen) continue
       pushEvent(e, a.steamid)
       // В ленту попадает всё, включая silent. В журнал — только то, что GC
       // подтвердил: silent означает «не знаем», а не «сожжён».
       if (e.match) ingestOne(db, e, a.steamid)
+      if (e.ts > top) top = e.ts
     }
-    const top = st.recent[0]?.ts
-    if (top) seenBy.set(a.id, Math.max(seen, top))
+    // Метка берётся по максимуму РАЗОБРАННЫХ, а не по первой строке отчёта:
+    // порядок в recent — дело отправщика, и один переставленный элемент
+    // отрезал бы всё, что легло после него.
+    if (top > seen) seenBy.set(a.id, top)
   }
 }
 
@@ -238,7 +257,7 @@ function watchSender() {
   if (!fs.existsSync(GC)) return
   let t: NodeJS.Timeout | null = null
   fs.watch(GC, (_ev, name) => {
-    if (!name || !/^(status.*\.json|delay\.txt|sent-.*\.json)$/.test(String(name))) return
+    if (!name || !/^status.*\.json$/.test(String(name))) return
     if (t) clearTimeout(t)
     t = setTimeout(() => { ingestStatus(); push() }, 120)
   })
@@ -254,8 +273,8 @@ if (fs.existsSync(DIST)) {
   })
 }
 
-await app.listen({ port: PORT, host: '0.0.0.0' })
-console.log('Gemtrack: http://localhost:' + PORT)
+await app.listen({ port: PORT, host: HOST })
+console.log('Gemtrack: http://localhost:' + PORT + (HOST === '127.0.0.1' ? '' : '  (слушает ' + HOST + ' — панель открыта всей сети)'))
 console.log('гемов в базе:', supplyRows().length)
 
 ingestStatus()
@@ -277,8 +296,10 @@ async function warmOwned() {
 }
 
 const cycle = async () => {
-  const changed = await refreshInventory()
-  await refreshEquipped()
+  // Активный аккаунт читается всегда: на него смотрит панель. Включённые
+  // читает работник в своём такте.
+  const changed = await refreshInventory(ACCOUNT())
+  await refreshEquipped(ACCOUNT())
   await warmOwned()
   if (changed || clients.size) push()
 }
@@ -288,10 +309,24 @@ const cycle = async () => {
 // Работник тикает по своему расписанию: оно меняется из настроек,
 // поэтому проверяем срок сами, а не полагаемся на фиксированный интервал.
 let lastTickAt = 0
+let ticking = false
 setInterval(() => {
-  if (Date.now() - lastTickAt < TICK()) return
+  if (ticking || Date.now() - lastTickAt < TICK()) return
   lastTickAt = Date.now()
-  tick(() => push()).catch(e => console.error('автопилот:', e.message))
+  ticking = true
+  // Такт ходит в Steam и может занять секунды. Без замка следующий заход
+  // начинался бы поверх предыдущего: два решения по одному снимку, два
+  // запуска отправщика, две пересборки очереди.
+  tick(() => push())
+    .catch(e => console.error('автопилот:', e.message))
+    .finally(() => { ticking = false })
 }, 5_000)
-cycle()
-setInterval(cycle, 20_000)
+
+let cycling = false
+const runCycle = () => {
+  if (cycling) return
+  cycling = true
+  cycle().catch(e => console.error('обновление:', e.message)).finally(() => { cycling = false })
+}
+runCycle()
+setInterval(runCycle, 20_000)

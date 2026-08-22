@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Minus, Plus, RefreshCw, ShoppingCart, SlidersHorizontal, Square, Wand2 } from 'lucide-react'
-import { nf, post, useJson, type State } from '../lib/api.ts'
-import { Bar, Button, Card, Dot, Empty, Field, ItemIcon, Label, PageHead, Segmented } from '../parts/ui.tsx'
+import { nf, plural, useAction, useJson, type PurchaseRun, type State } from '../lib/api.ts'
+import { Bar, Button, Card, Dot, Empty, Field, ItemIcon, Label, Note, PageHead, Segmented } from '../parts/ui.tsx'
 import { Modal } from '../parts/Modal.tsx'
 import { Reveal } from '../parts/Reveal.tsx'
 
@@ -27,27 +27,16 @@ type Offer = {
   owned: number
   reaches: boolean
   burning: boolean
+  // Сколько матчей этой сущности уже уходят в работу с моими гемами.
+  // Общий матч поднимает обе разом — значит эта часть счётчика бесплатна.
+  overlap: number
   sends: number
+  per1000: number
   revenue: number
   profit: number
 }
 
-type Run = {
-  active: boolean
-  cancel: boolean
-  startedAt: number
-  finishedAt: number
-  currency: string
-  planned: number
-  done: number
-  ok: number
-  spent: number
-  current: string
-  pass: number
-  positions: { gem: string; asked: number; got: number; done: boolean; why: string }[]
-  error: string | null
-  log: { ts: number; gem: string; ok: boolean; price: number; planned?: number; reason: string; detail?: string }[]
-}
+type Run = PurchaseRun
 
 type Cur = 'RUB' | 'USD' | 'EUR' | 'UAH'
 
@@ -82,18 +71,27 @@ const SPEED = 76   // отправок в минуту, замер 20 авгус
 
 // Столбцы: по любому можно отсортировать, по числовым — задать диапазон.
 // Порядок тот же, что в таблице, чтобы заголовки и фильтры не разъезжались.
-type SortKey = 'gem' | 'price' | 'pool' | 'volume' | 'sends' | 'take' | 'cost' | 'profit'
+type SortKey = 'gem' | 'price' | 'per1000' | 'pool' | 'overlap' | 'volume' | 'sends' | 'take' | 'cost' | 'profit'
 type RangeKey = 'price' | 'pool' | 'volume' | 'sends'
 
-const COLUMNS: { key: SortKey; title: string; align: string }[] = [
-  { key: 'gem', title: 'гем', align: '' },
-  { key: 'price', title: 'цена', align: 'text-right' },
-  { key: 'pool', title: 'потолок', align: 'text-right' },
-  { key: 'volume', title: 'в продаже', align: 'text-right' },
-  { key: 'sends', title: 'отправок', align: 'text-right' },
-  { key: 'take', title: 'взять', align: 'text-center' },
-  { key: 'cost', title: 'стоимость', align: 'text-right' },
-  { key: 'profit', title: 'прибыль', align: 'text-right' },
+// Столбцы отвечают на вопрос «что купить», а не описывают предмет.
+//
+//   цена       сколько стоит лот
+//   за 1000    цена тысячи счётчиков — этим позиции и сравниваются
+//   потолок    сколько матчей у команды: ниже цели — вещь не дойдёт
+//   общих      сколько её матчей уже уходят с моими гемами: эта часть даром
+//   отправок   чего эта покупка стоит во времени, а не в деньгах
+const COLUMNS: { key: SortKey; title: string; align: string; hint: string }[] = [
+  { key: 'gem', title: 'гем', align: '', hint: 'команда или игрок, чьи матчи поднимают счётчик' },
+  { key: 'price', title: 'цена', align: 'text-right', hint: 'за один лот на площадке' },
+  { key: 'per1000', title: 'за 1000', align: 'text-right', hint: 'цена тысячи просмотров — по ней позиции и сравниваются' },
+  { key: 'pool', title: 'потолок', align: 'text-right', hint: 'сколько матчей у сущности всего; ниже цели — вещь не дойдёт' },
+  { key: 'overlap', title: 'общих', align: 'text-right', hint: 'матчей, которые уже уходят с моими гемами — эта часть счётчика бесплатна' },
+  { key: 'volume', title: 'в продаже', align: 'text-right', hint: 'сколько лотов есть прямо сейчас' },
+  { key: 'sends', title: 'отправок', align: 'text-right', hint: 'сколько сообщений придётся потратить сверх того, что уже идёт' },
+  { key: 'take', title: 'взять', align: 'text-center', hint: 'сколько лотов положить в закупку' },
+  { key: 'cost', title: 'стоимость', align: 'text-right', hint: 'взять × цена' },
+  { key: 'profit', title: 'прибыль', align: 'text-right', hint: 'выручка минус стоимость, без учёта времени на отправки' },
 ]
 
 const RANGES: { key: RangeKey; title: string }[] = [
@@ -115,9 +113,12 @@ const used = (r: Record<RangeKey, [string, string]>) =>
 export function Buy({ state }: { state: State }) {
   // Ход закупки приходит тем же потоком, что и всё остальное: панель
   // не спрашивает, а видит.
-  const run = (state as any).purchase as Run | undefined
+  const run: Run | undefined = state.purchase
   const [cur, setCur] = useState<Cur>('USD')
-  const { data } = useJson<Scan>('/api/market?cur=' + cur, state.ts + '|' + cur)
+  // Ключ зависимости огрубляется в useJson: разбор площадки стоит сотен
+  // запросов к базе, а меняется он не чаще, чем цены.
+  const { data, loading, error, reload } = useJson<Scan>('/api/market?cur=' + cur, state.ts)
+  const stopping = useAction()
   const [take, setTake] = useState<Record<string, number>>({})
   const [only, setOnly] = useState<'fit' | 'free' | 'all'>('fit')
   const [q, setQ] = useState('')
@@ -149,6 +150,8 @@ export function Buy({ state }: { state: State }) {
       const n = take[o.gem] ?? 0
       if (sort.key === 'gem') return o.gem.toLowerCase()
       if (sort.key === 'price') return o.price
+      if (sort.key === 'per1000') return Number.isFinite(o.per1000) ? o.per1000 : Number.MAX_SAFE_INTEGER
+      if (sort.key === 'overlap') return o.overlap ?? 0
       if (sort.key === 'pool') return o.pool
       if (sort.key === 'volume') return o.volume
       if (sort.key === 'sends') return o.sends
@@ -180,6 +183,18 @@ export function Buy({ state }: { state: State }) {
     return { lines, units, cost, revenue, profit: revenue - cost, sends, minutes: Math.round(sends / SPEED) }
   }, [data, take])
 
+  if (error && !data) {
+    return (
+      <div className="view-in space-y-4">
+        <PageHead title="Скупка" sub="что докупить и почему" />
+        <Note title="площадка не отвечает" action={<Button onClick={reload} loading={loading}>ещё раз</Button>}>
+          {error}. Список цен открытый и не требует ключа — если он не приходит,
+          дело в связи или в самой площадке. Пока его нет, покупать нечего:
+          цена лота меняется каждые пару минут, и брать по старой значит переплатить.
+        </Note>
+      </div>
+    )
+  }
   if (!data) return <Card className="p-6 text-[13px] text-muted-foreground">опрашиваю площадку…</Card>
 
   const bump = (gem: string, n: number, max: number) =>
@@ -223,7 +238,16 @@ export function Buy({ state }: { state: State }) {
               items={(['RUB', 'USD', 'EUR', 'UAH'] as Cur[]).map(c => ({ id: c, label: SIGN[c] + ' ' + c }))}
               onPick={setCur}
             />
-            <Button onClick={() => fetch('/api/market?force=1&cur=' + cur)}>
+            <Button
+              loading={loading}
+              onClick={async () => {
+                // Сначала заставляем сервер сходить на площадку заново,
+                // и только потом перечитываем: иначе кнопка обновляла
+                // экран старым содержимым кеша.
+                await fetch('/api/market?force=1&cur=' + cur).catch(() => { })
+                reload()
+              }}
+            >
               <RefreshCw className="h-3.5 w-3.5" />
               <span>обновить</span>
             </Button>
@@ -270,7 +294,7 @@ export function Buy({ state }: { state: State }) {
         {cart.units ? <Button onClick={() => setTake({})}>сбросить</Button> : null}
       </div>
 
-      {run && (run.active || run.done > 0) ? <Progress run={run} cur={cur} /> : null}
+      {run && (run.active || run.done > 0) ? <Progress run={run} cur={cur} onStop={stopping} /> : null}
 
       <Reveal open={filters}>
         <Card className="mb-2 p-3.5">
@@ -308,10 +332,11 @@ export function Buy({ state }: { state: State }) {
             <thead className="sticky top-0 bg-[#0f0f0f]">
               <tr className="ui-label border-b border-white/[0.06] text-left text-muted-foreground/75">
                 {COLUMNS.map(c => (
-                  <th key={c.key} className={"px-3.5 py-2 font-medium " + c.align}>
+                  <th key={c.key} scope="col" className={"px-3.5 py-2 font-medium " + c.align} title={c.hint}>
                     <button
                       type="button"
                       onClick={() => setSort(prev => ({ key: c.key, down: prev.key === c.key ? !prev.down : true }))}
+                      aria-label={c.title + ' — ' + c.hint}
                       className={"inline-flex items-center gap-1 " +
                         (sort.key === c.key ? "text-foreground" : "hover:text-foreground")}
                     >
@@ -348,10 +373,19 @@ export function Buy({ state }: { state: State }) {
                       </span>
                     </td>
                     <td className="tnum px-3.5 py-1.5 text-right font-mono">{money(o.price, cur)}</td>
+                    <td className="tnum px-3.5 py-1.5 text-right font-mono text-muted-foreground">
+                      {Number.isFinite(o.per1000) ? money(o.per1000, cur) : '—'}
+                    </td>
                     <td
                       className="tnum px-3.5 py-1.5 text-right font-mono"
                       style={{ color: o.reaches ? undefined : 'var(--warn)' }}
+                      title={o.reaches ? undefined : 'матчей меньше цели — вещь остановится на этом числе'}
                     >{nf(o.pool)}</td>
+                    <td
+                      className="tnum px-3.5 py-1.5 text-right font-mono"
+                      style={{ color: o.overlap ? 'var(--ok)' : undefined }}
+                      title={o.overlap ? 'столько матчей уже уходят с моими гемами — этот счётчик достанется даром' : undefined}
+                    >{o.overlap ? nf(o.overlap) : <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="tnum px-3.5 py-1.5 text-right font-mono text-muted-foreground">{nf(o.volume)}</td>
                     <td className="tnum px-3.5 py-1.5 text-right font-mono">
                       {o.burning
@@ -484,7 +518,7 @@ const iconFor = (state: State, gem: string) =>
 // Три вопроса, на которые она отвечает без чтения логов: идёт ли, сколько
 // осталось и не начала ли отказывать. Отказ по цене отделён от прочих —
 // он означает, что список устарел, а не что что-то сломалось.
-function Progress({ run, cur }: { run: Run; cur: Cur }) {
+function Progress({ run, cur, onStop }: { run: Run; cur: Cur; onStop: ReturnType<typeof useAction> }) {
   const pct = run.planned ? (run.done / run.planned) * 100 : 0
   const failed = run.done - run.ok
   const stale = run.log.filter(l => /цена/.test(l.reason)).length
@@ -508,7 +542,7 @@ function Progress({ run, cur }: { run: Run; cur: Cur }) {
 
         <span className="ml-auto">
           {run.active ? (
-            <Button tone="danger" onClick={() => post('/api/market/stop', {})}>
+            <Button tone="danger" loading={onStop.busy} onClick={() => onStop.run('/api/market/stop', {})}>
               <Square className="h-3.5 w-3.5" />
               <span>остановить</span>
             </Button>

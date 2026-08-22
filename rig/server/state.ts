@@ -1,15 +1,27 @@
 // Сборка состояния, которое уходит в браузер по SSE.
+//
+// Это самая горячая функция панели: она считается на КАЖДОЕ изменение файлов
+// отправщика, то есть примерно раз в секунду во время работы. Поэтому здесь
+// нет ничего, чего не читает фронт.
+//
+// Раньше было наоборот. В каждый снимок клались:
+//   chart    — полный проход по таблице counters с group by
+//   files    — чтение и подсчёт строк ВСЕХ csv в папке отправщика
+//   seam     — join по журналу расхода
+//   bundles  — разбор json с диска
+//   current, delay, steamid, sender, watched
+// Ни одно из этих полей фронт не читал: график берёт /api/counters, состояние
+// отправщика приходит в autopilot.units. Панель раз в секунду перечитывала
+// мегабайты csv и сканировала историю счётчиков, чтобы выбросить результат.
 
-import fs from 'node:fs'
 import path from 'node:path'
-import { TOOLS, GC, readJson, odKey, steamKey, STEAMID } from './paths.ts'
-import { inv } from './steam.ts'
-import { burnedCount, counterSeries, entitySpent, lastConfirmed, ratePerMinute, recentEvents, supplyRows } from './db.ts'
-import { listFiles, senderState } from './sender.ts'
+import { TOOLS, readJson, odKey, steamKey } from './paths.ts'
+import { invOf } from './steam.ts'
+import { burnedCount, lastConfirmed, ratePerMinute, recentEvents, supplyRows } from './db.ts'
 import { db } from './db.ts'
 import { entityStat } from './queue.ts'
 import { classifySupply } from './supply.ts'
-import { ACCOUNT, active, list as accountList } from './accounts.ts'
+import { ACCOUNT } from './accounts.ts'
 import { autopilotState } from './autopilot.ts'
 import { purchaseState } from './purchase.ts'
 
@@ -41,21 +53,33 @@ function stat(kind: string, id: number) {
 
 const norm = (s: string) => String(s ?? '').replace(/^(Genuine\s+)?Spectator:\s*/, '').trim().toLowerCase()
 
+// Каталог гемов и наличие ключей меняются раз в никогда, а состояние уходит
+// раз в секунду. Читать json и три файла ключей на каждый снимок незачем.
+let slowAt = 0
+let slowCache: { catalog: any[]; keys: { opendota: boolean; steam: boolean } } | null = null
+function slow() {
+  if (!slowCache || Date.now() - slowAt > 60_000) {
+    slowCache = {
+      catalog: readJson<any[]>(path.join(TOOLS, 'gems.json'), []),
+      keys: { opendota: !!odKey(), steam: !!steamKey() },
+    }
+    slowAt = Date.now()
+  }
+  return slowCache
+}
+
 export type State = ReturnType<typeof buildState>
 
 export function buildState() {
-  const catalog = readJson<any[]>(path.join(TOOLS, 'gems.json'), [])
-  const bundles = readJson<any[]>(path.join(TOOLS, 'gem-bundles.json'), [])
+  const { catalog, keys } = slow()
   const supply = supplyRows()
   const supBy = new Map(supply.map(s => [norm(s.gem), s]))
-
-  let delay: number | null = null
-  try { delay = Number(fs.readFileSync(path.join(GC, 'delay.txt'), 'utf8').trim()) } catch { }
-  const status = readJson<any>(path.join(GC, 'status.json'), { current: null, recent: [] })
+  // Инвентарь активного аккаунта: панель показывает того, на кого переключились.
+  const box = invOf()
 
   // мои гемы
   const groups = new Map<string, any>()
-  for (const r of inv.rows) {
+  for (const r of box.rows) {
     const g = r.gem || '—'
     if (!groups.has(g)) groups.set(g, { gem: g, items: 0, equipped: 0, min: null as number | null, max: 0, icon: r.icon, heroes: new Set<string>(), rows: [] as any[], bare: 0 })
     const e = groups.get(g)
@@ -113,41 +137,25 @@ export function buildState() {
     }
   }).sort((a, b) => (b.supply ?? 0) - (a.supply ?? 0))
 
-  // жила: сущность, чьих предметов больше всего
-  const primary = mine.find(m => m.entityId && m.supply) ?? null
-  let seam = null
-  if (primary) {
-    const spent = primary.spent ?? entitySpent(primary.kind!, primary.entityId!)
-    seam = {
-      gem: primary.gem,
-      entity: primary.entityName ?? primary.gem,
-      total: primary.supply!,
-      spent,
-      left: primary.left ?? Math.max(0, primary.supply! - spent),
-      items: primary.items,
-    }
-  }
-
   return {
     ts: Date.now(),
-    steamid: STEAMID,
-    delay,
-    current: status.current ?? null,
     events: recentEvents(240),
-    seam,
     mine,
     catalog: cat,
-    bundles,
-    chart: counterSeries(),
-    sender: senderState(active()?.id ?? 'main'),
     autopilot: autopilotState(),
     purchase: purchaseState(),
     confirmed: lastConfirmed(),
     rate: ratePerMinute(),
-    files: listFiles(),
-    inv: { error: inv.error, age: inv.ts ? Math.round((Date.now() - inv.ts) / 1000) : null, items: inv.rows.length },
+    // Инвентарь активного аккаунта. У каждого работника есть свой такой же
+    // в autopilot.units[].inv — общее поле врало бы про всех, кроме активного.
+    inv: {
+      error: box.error,
+      private: box.private,
+      truncated: box.truncated,
+      age: box.ts ? Math.round((Date.now() - box.ts) / 1000) : null,
+      items: box.rows.length,
+    },
     burned: burnedCount(),
-    watched: mine.reduce((a, b) => a + b.max, 0),
-    keys: { opendota: !!odKey(), steam: !!steamKey() },
+    keys,
   }
 }

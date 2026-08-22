@@ -13,6 +13,10 @@
 //
 // Решение принимает worker.decide, здесь только исполнение и состояние.
 // По умолчанию всё выключено: каждая отправка необратима.
+//
+// Всё, что зависит от аккаунта, берётся ПО АККАУНТУ: инвентарь, счётчики,
+// состав, темп, отчёт. Общими они были ровно до тех пор, пока аккаунт был
+// один; со вторым каждое такое место — потраченные впустую матчи.
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -20,11 +24,11 @@ import { GC, TOOLS } from './paths.ts'
 import { burnedCount, db } from './db.ts'
 import { decide, freshSendAt, type Action } from './worker.ts'
 import { queueFor, sendsNeeded, type Pick } from './queue.ts'
-import { inv, refreshInventory } from './steam.ts'
-import { queueFile, senderState, start as startSender, statusFile, stop as stopSender } from './sender.ts'
+import { invOf, refreshInventory } from './steam.ts'
+import { queueFile, senderState, start as startSender, statusFile, stop as stopSender, writePace, forget } from './sender.ts'
 import { advise, creditRate, evenDelay, silenceLimit, type Sample } from './pace.ts'
 import { capFor, reached, spreadPlan, type Wave } from './spread.ts'
-import { active, list as accounts, type Account } from './accounts.ts'
+import { ACCOUNT, active, list as accounts, type Account } from './accounts.ts'
 import { settings } from './settings.ts'
 
 // Как часто смотреть и что считать товаром — из настроек.
@@ -55,7 +59,7 @@ type Unit = {
   startBurned: number      // журнал на момент старта — от него считаем сделанное
   queueLength: number
   fingerprint: string
-  failures: number
+  failures: number         // отказы запуска: нет файла, нет сессии
   lastAction: Action
   lastWhy: string
   lastTick: number
@@ -101,11 +105,12 @@ function gemMap(): any[] {
   return mapCache
 }
 
-// Наибольший счётчик по каждому гему: по нему видно, дошёл ли он
-// до своего потолка.
-function counters(): Map<string, number> {
+// Наибольший счётчик по каждому гему ЭТОГО аккаунта: по нему видно, дошёл ли
+// он до своего потолка. Чужие счётчики здесь были бы прямой ложью — потолок
+// решает, когда перестать тратить матчи.
+function counters(steamid: string): Map<string, number> {
   const by = new Map<string, number>()
-  for (const r of inv.rows) {
+  for (const r of invOf(steamid).rows) {
     if (!r.gem || r.gem === '—') continue
     by.set(r.gem, Math.max(by.get(r.gem) ?? 0, r.value))
   }
@@ -114,10 +119,10 @@ function counters(): Map<string, number> {
 
 // Кто уже добрался. Потолок у каждого гема свой и некруглый, поэтому
 // счётчики выходят разными сами собой.
-export function cappedGems(cap: number): string[] {
+export function cappedGems(cap: number, steamid: string = ACCOUNT()): string[] {
   if (!cap) return []
   const out: string[] = []
-  for (const [gem, value] of counters()) {
+  for (const [gem, value] of counters(steamid)) {
     if (reached(capFor(cap, gem), value)) out.push(gem)
   }
   return out.sort()
@@ -125,16 +130,16 @@ export function cappedGems(cap: number): string[] {
 
 // Отпечаток состава: считаем по assetid, а не по счётчикам. Счётчики
 // меняются каждую отправку, состав — только при покупке.
-const fingerprint = () => inv.rows.map(r => r.assetid).sort().join(',')
+const fingerprint = (steamid: string) => invOf(steamid).rows.map(r => r.assetid).sort().join(',')
 
-// Что жечь: всё, чьи гемы лежат в инвентаре и чья сущность известна.
-// Выбирать вручную не нужно — состав и есть выбор.
-export function picks(): (Pick & { objects: number })[] {
+// Что жечь: всё, чьи гемы лежат в инвентаре ЭТОГО аккаунта и чья сущность
+// известна. Выбирать вручную не нужно — состав и есть выбор.
+export function picks(steamid: string = ACCOUNT()): (Pick & { objects: number })[] {
   const map = gemMap()
   if (!map.length) return []
 
   const byGem = new Map<string, number>()
-  for (const r of inv.rows) {
+  for (const r of invOf(steamid).rows) {
     if (!r.gem || r.gem === '—') continue
     byGem.set(r.gem, (byGem.get(r.gem) ?? 0) + 1)
   }
@@ -148,24 +153,24 @@ export function picks(): (Pick & { objects: number })[] {
   return out
 }
 
-// Что жжёт именно этот аккаунт: либо всё из инвентаря, либо выбранное.
-export function picksFor(u: { only: string[] | null; cap?: number }) {
-  const all = picks()
+// Что жжёт именно этот аккаунт: либо всё из его инвентаря, либо выбранное.
+export function picksFor(u: { only: string[] | null; cap?: number }, steamid: string = ACCOUNT()) {
+  const all = picks(steamid)
   const chosen = u.only?.length ? all.filter(p => new Set(u.only).has(p.key)) : all
   if (!u.cap) return chosen
   // Добравшиеся до потолка выбывают: их матчи больше не жжём, запас
   // остаётся для тех гемов этой же команды, что купят позже.
-  const done = new Set(cappedGems(u.cap))
+  const done = new Set(cappedGems(u.cap, steamid))
   return chosen.filter(p => !done.has(p.key))
 }
 
 // Долг каждого гема: сколько отправок ему не хватает до потолка. Без
 // потолка долг равен всей очереди — растягивать тогда нечего, кроме неё.
-function debts(u: Unit): Map<string, number> {
+function debts(u: Unit, steamid: string): Map<string, number> {
   const out = new Map<string, number>()
   if (!u.cap) return out
-  const now = counters()
-  for (const p of picksFor(u)) {
+  const now = counters(steamid)
+  for (const p of picksFor(u, steamid)) {
     const left = capFor(u.cap, p.key) - (now.get(p.key) ?? 0)
     if (left > 0) out.set(p.key, left)
   }
@@ -173,7 +178,7 @@ function debts(u: Unit): Map<string, number> {
 }
 
 function rebuild(a: Account, u: Unit): number {
-  const list = picksFor(u)
+  const list = picksFor(u, a.steamid)
   if (!list.length) { u.queueLength = 0; return 0 }
 
   const queue = queueFor(db, list, a.steamid)
@@ -184,18 +189,15 @@ function rebuild(a: Account, u: Unit): number {
   try { fs.unlinkSync(path.join(GC, 'sent-' + file + '.json')) } catch { }
 
   u.queueLength = queue.length
-  u.fingerprint = fingerprint()
+  u.fingerprint = fingerprint(a.steamid)
   u.rebuiltAt = Date.now()
 
   // Сколько из этой очереди реально уйдёт: до потолков, а не до конца.
-  const need = debts(u)
+  const need = debts(u, a.steamid)
   u.needSends = need.size ? sendsNeeded(queue, need) : queue.length
   u.needFrom = made(a, u)
   return queue.length
 }
-
-// Темп читается отправщиком из файла перед каждой отправкой.
-const writeDelay = (ms: number) => fs.writeFileSync(path.join(GC, 'delay.txt'), String(ms))
 
 function status(id: string): any {
   try { return JSON.parse(fs.readFileSync(path.join(GC, statusFile(id)), 'utf8')) } catch { return null }
@@ -238,6 +240,15 @@ const nice = (ms: number) => {
   return m >= 60 ? Math.floor(m / 60) + ' ч ' + (m % 60) + ' мин' : m + ' мин'
 }
 
+// Остановка с причиной. Одна дверь, чтобы нельзя было выключить работника
+// и забыть погасить отправщик: он продолжал бы жечь очередь молча.
+function halt(a: Account, u: Unit, why: string, push: () => void) {
+  note(u, 'halt', why)
+  u.enabled = false
+  if (senderState(a.id).running) stopSender(a.id)
+  push()
+}
+
 async function tickOne(a: Account, push: () => void) {
   const u = unit(a.id)
   u.lastTick = Date.now()
@@ -245,6 +256,21 @@ async function tickOne(a: Account, push: () => void) {
 
   const sender = senderState(a.id)
   const count = made(a, u)
+  const box = invOf(a.steamid)
+
+  // Отправщик сказал, что возвращаться некуда: сессия протухла, Steam
+  // выбивает вход подряд. Перезапуск даст ровно то же самое.
+  if (sender.fatal && !sender.running) {
+    halt(a, u, sender.fatal, push)
+    return
+  }
+
+  // Инвентарь этого аккаунта не читается вовсе. Жечь по чужому или пустому
+  // составу нельзя: очередь соберётся не из тех матчей, а они необратимы.
+  if (box.private) {
+    halt(a, u, 'инвентарь аккаунта закрыт настройками Steam — состав не виден', push)
+    return
+  }
 
   // Гем добрался до потолка — состав работы изменился, даже если инвентарь
   // прежний. Счётчики растут каждую отправку, поэтому отпечаток состава
@@ -253,16 +279,13 @@ async function tickOne(a: Account, push: () => void) {
   // и держит отказ часами: 22 августа счётчики стояли с 02:25 до утра,
   // пока работник жёг дальше. Слепой потолок хуже отсутствующего — он
   // обещает остановку, которой не будет, а матчи тратятся необратимо.
-  const stale = Date.now() - (inv.ts || 0)
+  const stale = Date.now() - (box.ts || 0)
   if (u.cap && stale > settings().invStale) {
-    note(u, 'halt', 'счётчики не читаются ' + Math.round(stale / 60_000) + ' мин — потолок вслепую не считаю')
-    u.enabled = false
-    if (sender.running) stopSender(a.id)
-    push()
+    halt(a, u, 'счётчики не читаются ' + Math.round(stale / 60_000) + ' мин — потолок вслепую не считаю', push)
     return
   }
 
-  const capped = cappedGems(u.cap)
+  const capped = cappedGems(u.cap, a.steamid)
   const capsChanged = capped.join(',') !== u.capped.join(',')
   if (capsChanged) {
     u.capped = capped
@@ -274,11 +297,13 @@ async function tickOne(a: Account, push: () => void) {
     enabled: u.enabled,
     senderAlive: sender.running,
     queueLength: u.queueLength,
-    inventoryChanged: inv.rows.length > 0 && fingerprint() !== u.fingerprint,
+    inventoryChanged: box.rows.length > 0 && fingerprint(a.steamid) !== u.fingerprint,
     // Только своя метка: чужая заставила бы убивать живой отправщик.
     lastSendAt: freshSendAt(lastSendAt(a.id), sender.startedAt ?? 0),
     now: Date.now(),
-    failures: u.failures,
+    // Отказы запуска и падения на ходу — одна беда с точки зрения решения:
+    // отправщик не работает и сам не заработает.
+    failures: u.failures + (sender.crashes ?? 0),
     target: u.target,
     done: count,
     senderStartedAt: sender.startedAt ?? 0,
@@ -293,9 +318,7 @@ async function tickOne(a: Account, push: () => void) {
   note(u, d.action, d.why)
 
   if (d.action === 'halt') {
-    u.enabled = false
-    if (sender.running) stopSender(a.id)
-    push()
+    halt(a, u, d.why, push)
     return
   }
 
@@ -303,7 +326,7 @@ async function tickOne(a: Account, push: () => void) {
 
   if (d.action === 'watch') {
     // Пауза подбирается на ходу: пока GC отвечает на каждую отправку,
-    // темп можно поднимать. Отправщик перечитывает delay.txt сам.
+    // темп можно поднимать. Отправщик перечитывает свой delay-файл сам.
     if (u.even && u.until) {
       // Долг считается в начислениях, а отправок на него уйдёт больше:
       // часть отвечает пустым. Делим срок на отправки, а не на долг.
@@ -311,8 +334,7 @@ async function tickOne(a: Account, push: () => void) {
       const rate = creditRate(Number(t.update) || 0, Number(t.dup) || 0)
       const want = evenDelay(u.until - Date.now(), Math.round(sendsLeft(u, count) / rate), settings().pace.floor)
       if (want !== u.delay) {
-        u.delay = want
-        writeDelay(u.delay)
+        u.delay = writePace(a.id, want)
         note(u, 'watch', 'пауза ' + u.delay + ' мс — ' + nice(u.until - Date.now())
           + ' на ' + Math.round(sendsLeft(u, count) / rate) + ' отправок'
           + (rate < 0.95 ? ' (начисляет ' + Math.round(rate * 100) + '%)' : ''))
@@ -320,8 +342,7 @@ async function tickOne(a: Account, push: () => void) {
     } else if (u.auto) {
       const adv = advise(samples(a.id, u.delay), settings().pace)
       if (adv.suggest !== u.delay && adv.measured >= settings().pace.enough) {
-        u.delay = adv.suggest
-        writeDelay(u.delay)
+        u.delay = writePace(a.id, adv.suggest)
         note(u, 'watch', 'пауза ' + u.delay + ' мс — ' + adv.why)
       }
     }
@@ -348,6 +369,8 @@ async function tickOne(a: Account, push: () => void) {
       u.failures++
       note(u, 'start', 'не удалось запустить: ' + (r as any).error)
     } else {
+      // Отказы запуска обнуляются: файл нашёлся, сессия на месте. Падения
+      // на ходу считает сам отправщик — их этим не стереть.
       u.failures = 0
     }
     push()
@@ -355,19 +378,27 @@ async function tickOne(a: Account, push: () => void) {
 }
 
 export async function tick(push: () => void) {
-  const on = accounts().filter(a => unit(a.id).enabled)
-  if (on.length) await refreshInventory()
+  // Инвентарь читается по каждому включённому аккаунту отдельно. Один общий
+  // снимок означал бы, что второй работник жжёт по составу первого.
+  for (const a of accounts()) {
+    if (unit(a.id).enabled) await refreshInventory(a.steamid)
+  }
   for (const a of accounts()) await tickOne(a, push)
 }
 
 export function unitState(a: Account) {
   const u = unit(a.id)
   const s = senderState(a.id)
+  const mine = picks(a.steamid)
+  const box = invOf(a.steamid)
   return {
     id: a.id,
     label: a.label,
     steamid: a.steamid,
     enabled: u.enabled,
+    // Когда человек включил работника. Без этого полосу «сколько срока
+    // прошло» нечем заполнить: остаток известен, а начало — нет.
+    startedAt: u.startedAt,
     delay: u.delay,
     auto: u.auto,
     target: u.target,
@@ -376,15 +407,17 @@ export function unitState(a: Account) {
     even: u.even,
     needSends: u.needSends,
     sendsLeft: u.needSends ? sendsLeft(u, made(a, u)) : 0,
-    caps: u.cap ? picks().map(p => ({ gem: p.key, cap: capFor(u.cap, p.key) })) : [],
+    // Потолки показываем только по тем гемам, что реально пойдут в работу
+    // этого аккаунта: чужие числа в списке читались как обещание.
+    caps: u.cap ? picksFor({ only: u.only }, a.steamid).map(p => ({ gem: p.key, cap: capFor(u.cap, p.key) })) : [],
     capped: u.capped,
     ordered: u.ordered,
     waves: u.waves,
     plan: u.plan,
     only: u.only,
     // Что доступно для выбора и что реально пойдёт в очередь.
-    available: picks().map(p => ({ gem: p.key, objects: p.objects })),
-    picked: picksFor(u).map(p => p.key),
+    available: mine.map(p => ({ gem: p.key, objects: p.objects })),
+    picked: picksFor(u, a.steamid).map(p => p.key),
     // Следующая партия: работник сам скажет, когда её добавлять.
     nextWave: u.plan.find(w => w.addAt > made(a, u)) ?? null,
     done: made(a, u),
@@ -393,12 +426,23 @@ export function unitState(a: Account) {
     why: u.lastWhy,
     lastTick: u.lastTick,
     rebuiltAt: u.rebuiltAt,
-    failures: u.failures,
+    failures: u.failures + (s.crashes ?? 0),
+    displaced: s.displaced,
+    fatal: s.fatal,
     running: s.running,
     pid: s.pid,
     exit: s.exit,
     lines: s.lines.slice(-40),
     burned: burnedCount(a.steamid),
+    // Инвентарь этого аккаунта: возраст снимка и его беда, если она есть.
+    // Одно общее поле врало бы про всех, кроме активного.
+    inv: {
+      error: box.error,
+      private: box.private,
+      truncated: box.truncated,
+      age: box.ts ? Math.round((Date.now() - box.ts) / 1000) : null,
+      items: box.rows.length,
+    },
     // Сколько осталось на самом деле: до потолков, а не до конца очереди.
     // По длине очереди выходило 28 часов там, где работы на восемь.
     etaMinutes: u.queueLength
@@ -409,8 +453,8 @@ export function unitState(a: Account) {
 }
 
 export function autopilotState() {
-  const list = picks()
   const a = active()
+  const list = picks(a?.steamid ?? ACCOUNT())
   return {
     goal: GOAL(),
     objects: list.reduce((n, p) => n + p.objects, 0),
@@ -441,22 +485,36 @@ export function setAutopilot(
   if (!a) return { error: 'нет такого аккаунта' }
   const u = unit(id)
 
-  if (patch.delay && patch.delay >= settings().pace.floor) {
-    u.delay = patch.delay
+  if (patch.delay !== undefined) {
+    const want = Math.trunc(Number(patch.delay) || 0)
+    if (!Number.isFinite(want) || want < settings().pace.floor) {
+      return { error: 'пауза меньше пола ' + settings().pace.floor + ' мс — отправщик такую не примет' }
+    }
+    // Ручная пауза старше и подбора, и растяжки: человек сказал число.
+    // Иначе выбранное значение молча переписывалось бы на следующем такте.
     u.auto = false
+    u.even = false
     // Пауза пишется сразу, а не при следующем решении работника: на ручной
     // паузе он в темп не вмешивается вовсе, и выбранное число доходило до
     // отправщика только через остановку и запуск.
-    writeDelay(u.delay)
+    u.delay = writePace(id, want)
   }
-  if (patch.auto !== undefined) u.auto = !!patch.auto
+  if (patch.auto !== undefined) {
+    u.auto = !!patch.auto
+    // «Сама» и «к сроку» — два разных хозяина у одной ручки. Включая одного,
+    // выключаем другого, иначе они переписывали бы паузу по очереди.
+    if (u.auto) u.even = false
+  }
   if (patch.until !== undefined) {
     u.until = Math.max(0, Math.trunc(Number(patch.until) || 0))
     // Срок сам по себе означает «раздели работу на это время». Иначе
     // «до десяти утра» выжигало бы всё к четырём и стояло бы до десяти.
     if (patch.even === undefined) u.even = u.until > 0
   }
-  if (patch.even !== undefined) u.even = !!patch.even
+  if (patch.even !== undefined) {
+    u.even = !!patch.even
+    if (u.even) u.auto = false
+  }
   if (patch.cap !== undefined) {
     u.cap = Math.max(0, Math.trunc(Number(patch.cap) || 0))
     u.capped = []
@@ -490,6 +548,9 @@ export function setAutopilot(
       note(u, 'idle', 'выключен вручную')
     } else {
       u.failures = 0
+      // Падения и выбивания прошлого захода к этому не относятся: человек
+      // сказал «работай», значит он уже разобрался с тем, что мешало.
+      forget(id)
       u.fingerprint = ''
       u.startedAt = Date.now()
       u.startBurned = burnedCount(a.steamid)

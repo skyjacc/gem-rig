@@ -21,25 +21,90 @@ export function Label({ className = '', children }: { className?: string; childr
   return <span className={`ui-label text-muted-foreground/75 ${className}`}>{children}</span>
 }
 
+// Кнопка.
+//
+// Четыре вида, потому что действия у панели разной цены:
+//
+//   обычный   переключить вид, открыть настройки — отменяется само собой
+//   active    то, за чем сюда пришли
+//   danger    остановить, отвязать, удалить — заметно, но не страшно
+//   burn      необратимое: за ним уходят сообщения, которых не вернуть
+//
+// loading — не украшение. За кнопкой запрос, который может идти секунду
+// и не дойти вовсе; без него человек нажимает второй раз, и уходит две
+// закупки вместо одной.
 export function Button({
   active,
   tone,
+  loading,
   className = '',
   children,
   ...rest
 }: {
   active?: boolean
-  tone?: 'danger'
+  tone?: 'danger' | 'burn'
+  loading?: boolean
   children: ReactNode
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const base = 'ui-label inline-flex h-10 shrink-0 items-center justify-center gap-1.5 border bg-background/40 px-2.5 ' +
+  const base = 'ui-label relative inline-flex h-10 shrink-0 items-center justify-center gap-1.5 border bg-background/40 px-2.5 ' +
     'backdrop-blur transition-all duration-150 active:scale-95 touch-manipulation disabled:pointer-events-none disabled:opacity-40 '
   const look = tone === 'danger'
     ? 'border-white/[0.08] text-[color:var(--stop)] hover:border-[color:var(--stop)] '
-    : active
-      ? 'border-white/20 bg-white/[0.08] text-foreground '
-      : 'border-white/[0.08] text-muted-foreground hover:border-white/20 hover:text-foreground '
-  return <button type="button" {...rest} className={base + look + className}>{children}</button>
+    : tone === 'burn'
+      ? 'border-[color:var(--warn)]/60 text-[color:var(--warn)] hover:border-[color:var(--warn)] hover:bg-[color:var(--warn)]/10 '
+      : active
+        ? 'border-white/20 bg-white/[0.08] text-foreground '
+        : 'border-white/[0.08] text-muted-foreground hover:border-white/20 hover:text-foreground '
+  return (
+    <button
+      type="button"
+      {...rest}
+      aria-busy={loading || undefined}
+      disabled={rest.disabled || loading}
+      className={base + look + className}
+    >
+      {loading ? <Spinner /> : null}
+      {children}
+    </button>
+  )
+}
+
+export function Spinner({ className = '' }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={'inline-block h-3 w-3 shrink-0 animate-spin rounded-full border border-current border-t-transparent ' + className}
+    />
+  )
+}
+
+// Сообщение о том, что пошло не так, рядом с тем, что не вышло.
+//
+// Ошибка должна отвечать на четыре вопроса: что случилось, почему система
+// в таком виде, что делать и можно ли повторить. «Error 500» не отвечает
+// ни на один.
+export function Note({
+  tone = 'stop',
+  title,
+  children,
+  action,
+}: {
+  tone?: 'stop' | 'warn' | 'ok'
+  title: string
+  children?: ReactNode
+  action?: ReactNode
+}) {
+  const color = tone === 'ok' ? 'var(--ok)' : tone === 'warn' ? 'var(--warn)' : 'var(--stop)'
+  return (
+    <div className="flex flex-wrap items-start gap-3 border border-white/[0.08] px-3.5 py-2.5" role="status">
+      <span className="mt-[6px] h-[6px] w-[6px] shrink-0" style={{ background: color }} aria-hidden="true" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px]" style={{ color }}>{title}</span>
+        {children ? <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">{children}</span> : null}
+      </span>
+      {action ? <span className="shrink-0">{action}</span> : null}
+    </div>
+  )
 }
 
 // Переключатель с бегунком: выбранное не перепрыгивает, а переезжает.

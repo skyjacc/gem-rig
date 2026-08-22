@@ -20,6 +20,14 @@ const WANT = process.argv.slice(2).filter(a => !a.startsWith('--'))
 const db = new DatabaseSync(path.join(TOOLS, 'rig.db'), { readOnly: true })
 const map = JSON.parse(fs.readFileSync(path.join(TOOLS, 'gem-map.json'), 'utf8')) as any[]
 
+// Журнал расхода ведётся по аккаунту. Без него queueFor сверялся бы со
+// строкой «undefined» — то есть не вычитал бы НИЧЕГО, и в csv попадали бы
+// уже израсходованные матчи. Каждый такой — впустую потраченная отправка.
+const reg = JSON.parse(fs.readFileSync(path.join(TOOLS, 'accounts.json'), 'utf8')) as
+  { active: string; list: { id: string; label: string; steamid: string }[] }
+const acc = reg.list.find(a => a.id === reg.active) ?? reg.list[0]
+if (!acc) throw new Error('в tools/accounts.json нет ни одного аккаунта')
+
 const short = (n: string) => n.replace(/^(Genuine )?Spectator: ?/, '')
 
 const plural = (n: number, one: string, few: string, many: string) => {
@@ -50,7 +58,7 @@ if (!picks.length) {
   console.log(WANT.length ? 'проверьте фильтр: ' + WANT.join(', ') : '')
   process.exitCode = 1
 } else {
-  const queue = queueFor(db, picks)
+  const queue = queueFor(db, picks, acc.steamid)
 
   console.log('состав:')
   let sumPool = 0

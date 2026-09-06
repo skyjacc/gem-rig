@@ -61,17 +61,15 @@ func (s *Scanner) planDeal(f Finding) *economics.Deal {
 
 	gems := make([]economics.Leg, 0, len(f.Gems))
 	for _, gemName := range f.Gems {
-		gems = append(gems, economics.Leg{
-			Name:  gemName,
-			Exits: s.exitsFor(books, marketGemName(gemName), settings),
-		})
+		exits, why := s.exitsFor(books, marketGemName(gemName), settings)
+		gems = append(gems, economics.Leg{Name: gemName, Exits: exits, Reason: why})
 	}
 
 	var shell *economics.Leg
 	// The emptied item is sold under the same name, so the host order book
 	// applies to it unchanged.
-	if exits := s.exitsFor(books, f.ItemName, settings); len(exits) > 0 {
-		shell = &economics.Leg{Name: f.ItemName, Exits: exits}
+	if exits, why := s.exitsFor(books, f.ItemName, settings); len(exits) > 0 {
+		shell = &economics.Leg{Name: f.ItemName, Exits: exits, Reason: why}
 	}
 
 	deal := economics.Plan(f.Price, gems, shell, settings)
@@ -84,18 +82,22 @@ func (s *Scanner) planDeal(f Finding) *economics.Deal {
 // the other venues' prices were already gathered by the price collector. They
 // are not interchangeable, so each carries its own payout form and speed and
 // the plan picks between them by what the operator says the money is worth.
-func (s *Scanner) exitsFor(books *economics.BookCache, name string, settings economics.Settings) []economics.Exit {
+// exitsFor returns every way this name can be turned into money, and — when
+// there are none — why. The caller cannot tell an unsold name from an unasked
+// one without that second value.
+func (s *Scanner) exitsFor(books *economics.BookCache, name string, settings economics.Settings) ([]economics.Exit, string) {
 	var exits []economics.Exit
 
 	// The standing buy order on the market: cash, and it fills immediately.
-	if book, found := books.Lookup(name); found && book.Best > 0 {
+	book, bookRead := books.Lookup(name)
+	if bookRead && book.Best > 0 {
 		exits = append(exits, economics.NewExit(economics.VenueMarket, book.Best, settings,
 			economics.PayoutCash, economics.SpeedInstant, book.Orders))
 	}
 
-	priced, ok := s.book.Price(name)
-	if !ok {
-		return exits
+	priced, quoted := s.book.Price(name)
+	if !quoted {
+		return exits, whyNoExit(bookRead, book.Best > 0, false, len(exits))
 	}
 	for _, q := range priced.Quotes {
 		switch q.Source {
@@ -118,7 +120,26 @@ func (s *Scanner) exitsFor(books *economics.BookCache, name string, settings eco
 		// needs a deposit and an account, so they inform the valuation
 		// without being offered as an exit.
 	}
-	return exits
+	return exits, whyNoExit(bookRead, book.Best > 0, true, len(exits))
+}
+
+// whyNoExit puts the absence into words. Empty when there is no absence.
+func whyNoExit(bookRead, bookHasBid, quoted bool, exits int) string {
+	if exits > 0 {
+		return ""
+	}
+	switch {
+	case !bookRead && !quoted:
+		return "стакан не читали и цены нет ни на одной площадке — выход неизвестен"
+	case !bookRead:
+		return "стакан ордеров не прочитан: до этого имени не дошла очередь или запрос не удался"
+	case !bookHasBid && !quoted:
+		return "стакан пуст и ни одна площадка не котирует это имя"
+	case !bookHasBid:
+		return "встречных ордеров нет, а площадки, которые котируют это имя, продавать на себя не дают"
+	default:
+		return "выход не найден"
+	}
 }
 
 // marketGemName turns a socket name into the market's listing name.

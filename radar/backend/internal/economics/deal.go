@@ -148,6 +148,12 @@ type Leg struct {
 	Exits []Exit `json:"exits"`
 	// Best is the exit the plan assumes. Nil when nothing can be sold.
 	Best *Exit `json:"best,omitempty"`
+	// Reason explains an empty Exits list.
+	//
+	// "Nobody bids" and "we never asked" both produced no exits, and the panel
+	// printed the first for both — asserting an absence of demand it had not
+	// established. Set only when Exits is empty.
+	Reason string `json:"reason,omitempty"`
 }
 
 // pickBest chooses the exit the plan will assume.

@@ -91,3 +91,41 @@ func TestGemHistoryUnknownNameStaysEmpty(t *testing.T) {
 		t.Fatalf("expected no points, got %d", len(got.Points))
 	}
 }
+
+// A stale script URL must fail loudly. Serving index.html for a missing
+// /assets/*.js hands the browser HTML under a JavaScript content type: the
+// script never parses, the page renders blank, and every request in the
+// network tab reads 200.
+func TestMissingAssetIs404NotTheDashboard(t *testing.T) {
+	assets := fstest.MapFS{
+		"index.html":          &fstest.MapFile{Data: []byte("<!doctype html>")},
+		"assets/index-NEW.js": &fstest.MapFile{Data: []byte("console.log(1)")},
+	}
+	h := spaFallback(assets, http.FileServer(http.FS(assets)))
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/assets/index-OLD.js", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("a missing asset must be 404, got %d", rec.Code)
+	}
+	if strings.Contains(rec.Body.String(), "doctype") {
+		t.Fatal("the dashboard must never be served in place of a script")
+	}
+}
+
+// The asset that does exist still loads.
+func TestPresentAssetIsStillServed(t *testing.T) {
+	assets := fstest.MapFS{
+		"index.html":          &fstest.MapFile{Data: []byte("<!doctype html>")},
+		"assets/index-NEW.js": &fstest.MapFile{Data: []byte("console.log(1)")},
+	}
+	h := spaFallback(assets, http.FileServer(http.FS(assets)))
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/assets/index-NEW.js", nil))
+
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "console.log") {
+		t.Fatalf("expected the script, got %d %q", rec.Code, rec.Body.String())
+	}
+}

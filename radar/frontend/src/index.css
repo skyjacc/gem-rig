@@ -11,7 +11,10 @@
 
   --color-text: #e8eef6;
   --color-mute: #7f8da3;
-  --color-faint: #55627a;
+  /* Raised from #55627a to clear 4.5:1 on the darkest surface it lands on: it carries most of the panel's explanatory text and
+     failed contrast on every surface it appears on, so the sentences that say
+     what a number means were the hardest ones to read. */
+  --color-faint: #7c89a1;
 
   --color-accent: #2ee6a8;
   --color-warn: #f5a524;

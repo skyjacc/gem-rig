@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -136,14 +137,29 @@ func spaFallback(assets fs.FS, next http.Handler) http.Handler {
 			})
 			return
 		}
-		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "" {
-			path = "index.html"
+		name := strings.TrimPrefix(r.URL.Path, "/")
+		if name == "" {
+			name = "index.html"
 		}
-		if _, err := fs.Stat(assets, path); err != nil {
-			r = r.Clone(r.Context())
-			r.URL.Path = "/"
+		if _, err := fs.Stat(assets, name); err == nil {
+			next.ServeHTTP(w, r)
+			return
 		}
+
+		// A missing asset is a 404, not the dashboard. Serving index.html for
+		// /assets/index-OLD.js hands the browser HTML with a JavaScript content
+		// type: the script fails to parse, the page stays blank, and the network
+		// tab shows 200 everywhere. A stale cached index after a rebuild looked
+		// exactly like the app being broken.
+		if ext := path.Ext(name); ext != "" && ext != ".html" {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Anything without a file extension is a client route: reload it into
+		// the app rather than 404ing a page the router knows.
+		r = r.Clone(r.Context())
+		r.URL.Path = "/"
 		next.ServeHTTP(w, r)
 	})
 }

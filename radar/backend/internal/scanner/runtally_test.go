@@ -3,6 +3,7 @@ package scanner
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -101,5 +102,39 @@ func TestRunCountsOnlyItsOwnSteamCalls(t *testing.T) {
 	}
 	if got := s.Stats().SteamCalls; got != 504 {
 		t.Fatalf("the session total must be left alone, got %d", got)
+	}
+}
+
+// An empty exit list has two very different causes, and the panel printed the
+// harsher one for both: «Ни одна площадка не готова это купить» was shown for
+// a name whose order book the sweep simply never got to.
+func TestEmptyExitsSayWhichAbsenceItIs(t *testing.T) {
+	cases := []struct {
+		name       string
+		bookRead   bool
+		bookHasBid bool
+		quoted     bool
+		want       string
+	}{
+		{"стакан не читали, цены нет", false, false, false, "стакан не читали"},
+		{"стакан не читали, цена есть", false, false, true, "стакан ордеров не прочитан"},
+		{"стакан пуст, цены нет", true, false, false, "стакан пуст"},
+		{"стакан пуст, цена есть", true, false, true, "встречных ордеров нет"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := whyNoExit(c.bookRead, c.bookHasBid, c.quoted, 0)
+			if got == "" {
+				t.Fatal("an empty exit list must always carry a reason")
+			}
+			if !strings.Contains(got, c.want) {
+				t.Fatalf("expected a reason mentioning %q, got %q", c.want, got)
+			}
+		})
+	}
+
+	// A leg that can be sold says nothing: the reason field is for absences.
+	if got := whyNoExit(true, true, true, 2); got != "" {
+		t.Fatalf("a leg with exits must carry no reason, got %q", got)
 	}
 }

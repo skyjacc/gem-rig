@@ -61,7 +61,7 @@ function LegBlock({ leg, label }: { leg: Leg; label: string }) {
       </div>
       {exits.length === 0 ? (
         <p className="text-xs text-warn">
-          Ни одна площадка не готова это купить. В расчёт не попадает.
+          {leg.reason ?? 'Выход не найден.'} В расчёт не попадает.
         </p>
       ) : (
         <ul className="space-y-1.5">

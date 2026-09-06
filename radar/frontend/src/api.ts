@@ -104,6 +104,8 @@ export type Leg = {
   name: string
   exits: Exit[] | null
   best?: Exit
+  /** Why `exits` is empty — «никто не покупает» and «мы не спрашивали» differ. */
+  reason?: string
 }
 
 /** The full buy-extract-sell plan, priced from standing buy orders. */

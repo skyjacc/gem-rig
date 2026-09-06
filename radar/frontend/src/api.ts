@@ -35,6 +35,8 @@ export type Status = {
   steam_key_ok: boolean
   balance: number
   currency: string
+  /** Zero time means the balance has never been read successfully. */
+  balance_at: string
   balance_error?: string
   requests_last_second: number
   scanner: ScannerStats
@@ -46,6 +48,8 @@ export type Status = {
   gems_priced: number
   fx_rate: number
   fx_source: string
+  /** Zero time means the rate is the built-in constant, not a measurement. */
+  fx_updated: string
 }
 
 export type Finding = {

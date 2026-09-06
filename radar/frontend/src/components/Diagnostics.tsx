@@ -24,6 +24,11 @@ export function Diagnostics({
   onPick: (f: Finding) => void
 }) {
   const scanner = status?.scanner
+  // A rate that was never measured is a constant with a plausible value. The
+  // panel used to state «берётся из самого Steam» over it either way.
+  const fxMeasured = Boolean(
+    status?.fx_source && status.fx_source !== 'fallback' && Date.parse(status.fx_updated) > 0,
+  )
   const progress =
     scanner?.running && scanner.phase_total > 0
       ? Math.min(100, Math.round((scanner.phase_done / scanner.phase_total) * 100))
@@ -70,15 +75,32 @@ export function Diagnostics({
           )}
         </Panel>
 
-        <Panel title="Курс" subtitle="берётся из самого Steam, без сторонних валютных API">
-          <div className="font-mono text-2xl text-accent">
+        <Panel
+          title="Курс"
+          subtitle={
+            fxMeasured
+              ? 'берётся из самого Steam, без сторонних валютных API'
+              : 'запасная константа — у Steam курс ещё не спросился'
+          }
+        >
+          <div className={`font-mono text-2xl ${fxMeasured ? 'text-accent' : 'text-warn'}`}>
             1 $ = {(status?.fx_rate ?? 0).toFixed(2)} ₽
           </div>
-          <p className="mt-2 text-xs text-mute">{status?.fx_source || '—'}</p>
-          <p className="mt-3 text-xs text-faint">
-            Один и тот же гем запрашивается у Steam в долларах и в рублях, отношение и есть курс.
-            Это оценочный коэффициент Steam, не банковский курс и не гарантированный курс вывода.
+          <p className="mt-2 text-xs text-mute">
+            {fxMeasured ? `${status?.fx_source} · ${ago(status?.fx_updated ?? '')}` : 'источник: встроенное значение'}
           </p>
+          {fxMeasured ? (
+            <p className="mt-3 text-xs text-faint">
+              Один и тот же гем запрашивается у Steam в долларах и в рублях, отношение и есть курс.
+              Это оценочный коэффициент Steam, не банковский курс и не гарантированный курс вывода.
+            </p>
+          ) : (
+            <p className="mt-3 rounded-lg border border-warn/35 bg-warn/8 px-3 py-2 text-xs text-warn">
+              Это не измерение. Курс не спросился у Steam, поэтому взято зашитое значение, и всё,
+              что считается из долларовых цен — DMarket, Waxpeer — держится на нём. Повторная
+              попытка идёт раз в 30 минут.
+            </p>
+          )}
         </Panel>
       </div>
 

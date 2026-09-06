@@ -317,9 +317,23 @@ export default function App() {
           />
           <HeaderStat
             label="Баланс"
-            value={status ? rub(status.balance) : '—'}
-            tone={status?.market_key_ok ? 'text-text' : 'text-danger'}
-            title={status?.market_key_ok ? 'market.key подключён' : 'нет market.key'}
+            // A balance that failed to read is not a balance of zero. The poll
+            // keeps the last good value and only records the error beside it,
+            // so an unread wallet used to render as «0 ₽» in the ordinary tone
+            // — indistinguishable from an empty one.
+            value={
+              !status ? '—' : status.balance_error ? 'не прочитан' : rub(status.balance)
+            }
+            tone={
+              !status?.market_key_ok || status?.balance_error ? 'text-danger' : 'text-text'
+            }
+            title={
+              !status?.market_key_ok
+                ? 'нет market.key'
+                : status.balance_error
+                  ? `Баланс не прочитан: ${status.balance_error}`
+                  : `Прочитан ${ago(status.balance_at)}`
+            }
           />
           <HeaderStat
             label={scanner?.running ? 'Текущий этап' : 'В каталоге'}

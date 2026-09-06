@@ -173,6 +173,10 @@ func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 		Gems     int                    `json:"gems_priced"`
 		FXRate   float64                `json:"fx_rate"`
 		FXSource string                 `json:"fx_source"`
+		// FXUpdated lets the panel distinguish a rate measured minutes ago from
+		// the built-in constant the process started with. Both are numbers; only
+		// one of them was measured.
+		FXUpdated time.Time `json:"fx_updated"`
 	}
 	st := status{
 		MarketKeyOK:   s.Cfg.MarketKey() != "",
@@ -192,7 +196,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 		st.Gems = s.Book.Size()
 	}
 	if s.FX != nil {
-		st.FXRate, st.FXSource, _ = s.FX.Status()
+		st.FXRate, st.FXSource, st.FXUpdated = s.FX.Status()
 	}
 
 	s.balanceMu.RLock()

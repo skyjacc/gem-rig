@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CheckIcon, WalletIcon } from './animated'
-import { api, rub, type EconomicsSettings } from '../api'
+import { ago, api, rub, type EconomicsSettings } from '../api'
 import { Badge, Panel } from './ui'
 import { HammerMark } from './icons'
 
@@ -44,6 +44,11 @@ export function Economics({
       </Panel>
     )
   }
+
+  // Go serialises a zero time.Time as "0001-01-01T00:00:00Z", which is a
+  // truthy string. Only a parsed, positive timestamp proves the commission was
+  // ever actually read off the account.
+  const feeRead = !feeError && Date.parse(feeAt) > 0
 
   const patch = async (body: Record<string, number | boolean>, note: string) => {
     setSaving(true)
@@ -178,8 +183,10 @@ export function Economics({
             <tr className="border-b border-line-soft">
               <td className="py-2 text-mute">market.dota2.net</td>
               <td className="py-2 text-right font-mono">{settings.MarketFeePercent}%</td>
-              <td className="py-2 pl-4 text-xs text-accent">
-                прочитано с твоего аккаунта{feeAt ? '' : ''}
+              <td className={`py-2 pl-4 text-xs ${feeRead ? 'text-accent' : 'text-warn'}`}>
+                {feeRead
+                  ? `прочитано с аккаунта ${ago(feeAt)}`
+                  : `значение по умолчанию — прочитать не удалось${feeError ? `: ${feeError}` : ''}`}
               </td>
             </tr>
             <tr className="border-b border-line-soft">

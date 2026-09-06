@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"radar/internal/hub"
+	"radar/internal/journal"
 	"radar/internal/market"
 	"radar/internal/secrets"
 	"radar/internal/steam"
@@ -33,7 +34,14 @@ import (
 type Severity string
 
 const (
-	SeverityOK       Severity = "ok"
+	SeverityOK Severity = "ok"
+	// SeverityUnknown is the verdict when a check could not run at all.
+	//
+	// It exists because "ok" and "unknown" were the same value here, and the
+	// difference is the whole point of the guard: a green shield reading
+	// "Совпадает" over an offer whose purchase list never loaded is worse than
+	// no guard, because it invites the operator to accept a swap.
+	SeverityUnknown  Severity = "unknown"
 	SeverityWarn     Severity = "warn"
 	SeverityCritical Severity = "critical"
 )
@@ -45,8 +53,26 @@ type OfferItem struct {
 	InstanceID string   `json:"instanceid"`
 	Name       string   `json:"name"`
 	Gems       []string `json:"gems"`
-	Expected   bool     `json:"expected"`
-	Note       string   `json:"note"`
+	// SocketsRead says whether Steam actually described this item. Without it,
+	// an empty Gems list means both "no kinetic gem" and "we never got to
+	// look" — and the panel printed the first for both.
+	//
+	// Set per item, never from the batch error: Steam returns partial results,
+	// so one failed call can still carry half the descriptions.
+	SocketsRead bool   `json:"sockets_read"`
+	Expected    bool   `json:"expected"`
+	Note        string `json:"note"`
+}
+
+// Checked records which comparisons actually ran behind a verdict.
+type Checked struct {
+	// Purchases is true when the market's list of what this account paid for
+	// was read successfully.
+	Purchases bool `json:"purchases"`
+	// Sockets is true when Steam described every item in the offer.
+	Sockets bool `json:"sockets"`
+	// Blockers names what stopped a check, in the operator's language.
+	Blockers []string `json:"blockers,omitempty"`
 }
 
 // Alert is the guard's verdict on one incoming offer.
@@ -57,6 +83,7 @@ type Alert struct {
 	Headline  string      `json:"headline"`
 	Details   []string    `json:"details"`
 	Items     []OfferItem `json:"items"`
+	Checked   Checked     `json:"checked"`
 	CheckedAt time.Time   `json:"checked_at"`
 }
 
@@ -71,6 +98,13 @@ type Guard struct {
 	// errors are the ones most likely to be read and forwarded: they appear on
 	// the Обмены tab whenever a check fails.
 	hide *secrets.Redactor
+	// audit records what the guard decided and why. Named `audit` because the
+	// stdlib `log` package is already in scope here.
+	//
+	// Without it a critical mismatch existed only as one stdout line and a
+	// toast: after the fact nothing could answer "was the guard even running
+	// when that offer arrived, and what did it conclude?".
+	audit *journal.Journal
 
 	mu     sync.RWMutex
 	alerts map[string]Alert
@@ -78,7 +112,7 @@ type Guard struct {
 	err    string
 }
 
-func New(s *steam.Client, m *market.Client, h *hub.Hub, keyFunc func() string) *Guard {
+func New(s *steam.Client, m *market.Client, h *hub.Hub, j *journal.Journal, keyFunc func() string) *Guard {
 	return &Guard{
 		steam:   s,
 		market:  m,
@@ -86,6 +120,7 @@ func New(s *steam.Client, m *market.Client, h *hub.Hub, keyFunc func() string) *
 		http:    &http.Client{Timeout: 25 * time.Second},
 		keyFunc: keyFunc,
 		hide:    secrets.New(keyFunc),
+		audit:   j,
 		alerts:  make(map[string]Alert),
 	}
 }
@@ -143,6 +178,8 @@ func (g *Guard) check(ctx context.Context) {
 	g.mu.Unlock()
 	if err != nil {
 		log.Printf("[guard] %v", err)
+		g.note(journal.LevelWarn, "", "steam_unreachable",
+			"не удалось прочитать входящие обмены Steam", map[string]any{"error": err.Error()})
 		return
 	}
 	if len(offers) == 0 {
@@ -152,11 +189,26 @@ func (g *Guard) check(ctx context.Context) {
 		return
 	}
 
-	expected := g.expectedPurchases(ctx)
+	expected, expErr := g.expectedPurchases(ctx)
+	if expErr != nil {
+		// Without the purchase list there is nothing to compare against. It has
+		// to reach the operator: previously this failed silently and every item
+		// was then graded as an unremarkable non-purchase.
+		g.mu.Lock()
+		if g.err == "" {
+			g.err = "список покупок недоступен: " + expErr.Error()
+		} else {
+			g.err += "; список покупок недоступен: " + expErr.Error()
+		}
+		g.mu.Unlock()
+		g.note(journal.LevelWarn, "", "purchases_unreadable",
+			"список покупок с маркета не прочитан — сверять входящие обмены не с чем",
+			map[string]any{"error": expErr.Error()})
+	}
 
 	fresh := make(map[string]Alert, len(offers))
 	for _, offer := range offers {
-		alert := g.evaluate(ctx, offer, descs, expected)
+		alert := g.evaluate(ctx, offer, descs, expected, expErr)
 		fresh[alert.OfferID] = alert
 		g.mu.RLock()
 		prev, existed := g.alerts[alert.OfferID]
@@ -165,6 +217,7 @@ func (g *Guard) check(ctx context.Context) {
 			if alert.Severity != SeverityOK {
 				log.Printf("[guard] %s offer %s: %s", strings.ToUpper(string(alert.Severity)), alert.OfferID, alert.Headline)
 			}
+			g.noteVerdict(alert, existed)
 			g.hub.Publish("trade_alert", alert)
 		}
 	}
@@ -175,12 +228,15 @@ func (g *Guard) check(ctx context.Context) {
 
 // expectedPurchases maps classid to the instanceids the account actually
 // paid for on the market.
-func (g *Guard) expectedPurchases(ctx context.Context) map[string]map[string]string {
+// A failure here used to return an empty map, which every caller then read as
+// "this account bought nothing" — indistinguishable from a successful read of
+// an empty history, and the reason an unverifiable offer could show green.
+func (g *Guard) expectedPurchases(ctx context.Context) (map[string]map[string]string, error) {
 	out := make(map[string]map[string]string)
 	ops, err := g.market.Trades(ctx)
 	if err != nil {
 		log.Printf("[guard] market trades unavailable: %v", err)
-		return out
+		return nil, err
 	}
 	for _, op := range ops {
 		if op.ClassID == "" || op.InstanceID == "" {
@@ -191,10 +247,10 @@ func (g *Guard) expectedPurchases(ctx context.Context) map[string]map[string]str
 		}
 		out[op.ClassID][op.InstanceID] = op.MarketName
 	}
-	return out
+	return out, nil
 }
 
-func (g *Guard) evaluate(ctx context.Context, offer tradeOffer, descs map[string]tradeDescription, expected map[string]map[string]string) Alert {
+func (g *Guard) evaluate(ctx context.Context, offer tradeOffer, descs map[string]tradeDescription, expected map[string]map[string]string, expErr error) Alert {
 	alert := Alert{
 		OfferID:   offer.TradeOfferID,
 		Partner:   fmt.Sprintf("%d", offer.AccountIDOther),
@@ -202,10 +258,17 @@ func (g *Guard) evaluate(ctx context.Context, offer tradeOffer, descs map[string
 		CheckedAt: time.Now(),
 	}
 
+	alert.Checked = Checked{Purchases: expErr == nil, Sockets: true}
+	if expErr != nil {
+		alert.Checked.Blockers = append(alert.Checked.Blockers,
+			"список покупок с маркета не прочитан: "+expErr.Error())
+	}
+
 	if len(offer.ItemsToGive) > 0 && len(offer.ItemsToReceive) == 0 {
 		alert.Severity = SeverityWarn
-		alert.Headline = "Offer only takes items from you"
-		alert.Details = append(alert.Details, "This offer gives you nothing in return. Verify it is a sale you made.")
+		alert.Headline = "Обмен только забирает у тебя предметы"
+		alert.Details = append(alert.Details,
+			"Взамен не даётся ничего. Убедись, что это твоя собственная продажа.")
 	}
 
 	var keys []steam.AssetKey
@@ -214,10 +277,12 @@ func (g *Guard) evaluate(ctx context.Context, offer tradeOffer, descs map[string
 	}
 	assets, err := g.steam.AssetClassInfo(ctx, keys)
 	if err != nil {
-		alert.Details = append(alert.Details, "Could not read item sockets from Steam: "+err.Error())
+		alert.Details = append(alert.Details, "Сокеты у Steam прочитать не удалось: "+err.Error())
+		alert.Checked.Blockers = append(alert.Checked.Blockers, "Steam не ответил про сокеты: "+err.Error())
 	}
 
 	mismatch := false
+	unmatched := false
 	for _, it := range offer.ItemsToReceive {
 		key := it.ClassID + "_" + it.InstanceID
 		item := OfferItem{
@@ -228,18 +293,31 @@ func (g *Guard) evaluate(ctx context.Context, offer tradeOffer, descs map[string
 		if d, ok := descs[key]; ok {
 			item.Name = d.MarketHashName
 		}
+		// Per item, never from the batch error: Steam returns partial results,
+		// so a failed call can still carry some descriptions.
 		if a, ok := assets[key]; ok {
+			item.SocketsRead = true
 			item.Gems = a.KineticGems()
 			if item.Name == "" {
 				item.Name = a.MarketHashName
 			}
+		} else {
+			alert.Checked.Sockets = false
+		}
+
+		if expErr != nil {
+			// Nothing to compare against. Saying "не связан с покупкой" here
+			// would assert a fact the guard never established.
+			item.Note = "сверка не выполнена: список покупок не прочитан"
+			alert.Items = append(alert.Items, item)
+			continue
 		}
 
 		wanted, classBought := expected[it.ClassID]
 		switch {
 		case classBought && wanted[it.InstanceID] != "":
 			item.Expected = true
-			item.Note = "matches the exact item you paid for"
+			item.Note = "совпадает с тем, за что ты заплатил"
 		case classBought:
 			mismatch = true
 			paid := make([]string, 0, len(wanted))
@@ -247,23 +325,45 @@ func (g *Guard) evaluate(ctx context.Context, offer tradeOffer, descs map[string
 				paid = append(paid, inst)
 			}
 			sort.Strings(paid)
-			item.Note = fmt.Sprintf("instanceid %s was sent, but you paid for %s", it.InstanceID, strings.Join(paid, ", "))
+			item.Note = fmt.Sprintf("прислан instanceid %s, оплачен %s", it.InstanceID, strings.Join(paid, ", "))
 			alert.Details = append(alert.Details, fmt.Sprintf(
-				"%s: sent instanceid %s, purchased instanceid %s. A different instanceid on the same item means the sockets were changed after the sale.",
+				"%s: прислан instanceid %s, оплачен %s. Другой instanceid на том же предмете значит, что сокеты поменяли после продажи.",
 				item.Name, it.InstanceID, strings.Join(paid, ", ")))
 		default:
-			item.Note = "not linked to a market purchase on this account"
+			unmatched = true
+			item.Note = "не связан ни с одной покупкой на этом аккаунте"
 		}
 		alert.Items = append(alert.Items, item)
 	}
 
-	if mismatch {
+	// The verdict, strongest ground first. A check that did not run can never
+	// produce «Совпадает»: that badge is a statement about evidence, and
+	// missing evidence is not agreement.
+	switch {
+	case mismatch:
 		alert.Severity = SeverityCritical
-		alert.Headline = "Item sent does not match the item you bought"
+		alert.Headline = "Прислан не тот предмет, за который ты платил"
 		alert.Details = append(alert.Details,
-			"Do not accept this offer. Decline it in Steam and report the lot to market support.")
-	} else if alert.Headline == "" {
-		alert.Headline = "Incoming offer matches your purchases"
+			"Не принимай обмен. Отклони его в Steam и пожалуйся на лот в поддержку маркета.")
+	case expErr != nil:
+		alert.Severity = SeverityUnknown
+		alert.Headline = "Сверять не с чем — список покупок не прочитан"
+		alert.Details = append(alert.Details,
+			"Совпадение instanceid не проверялось. Это не значит, что обмен плохой; это значит, что о нём ничего не известно.")
+	case !alert.Checked.Sockets:
+		alert.Severity = SeverityUnknown
+		alert.Headline = "instanceid сверен, но сокеты не прочитаны"
+		alert.Details = append(alert.Details,
+			"Steam не описал часть предметов, поэтому какие в них гемы — неизвестно.")
+	case unmatched:
+		if alert.Severity == SeverityOK {
+			alert.Severity = SeverityWarn
+		}
+		if alert.Headline == "" {
+			alert.Headline = "Есть предметы, не связанные с покупками"
+		}
+	case alert.Headline == "":
+		alert.Headline = "Совпадает с твоими покупками"
 	}
 	return alert
 }
@@ -287,6 +387,43 @@ type tradeDescription struct {
 	ClassID        string `json:"classid"`
 	InstanceID     string `json:"instanceid"`
 	MarketHashName string `json:"market_hash_name"`
+}
+
+// note writes one guard entry, if a journal is attached.
+func (g *Guard) note(level journal.Level, subject, reason, message string, fields map[string]any) {
+	if g.audit == nil {
+		return
+	}
+	g.audit.Write(level, journal.KindGuard, subject, reason, message, fields)
+}
+
+// noteVerdict records a verdict the moment it changes, with the evidence it
+// rests on — so the journal can later show not just what the guard said, but
+// what it was able to check when it said it.
+func (g *Guard) noteVerdict(a Alert, existed bool) {
+	level := journal.LevelInfo
+	switch a.Severity {
+	case SeverityCritical:
+		level = journal.LevelError
+	case SeverityWarn, SeverityUnknown:
+		level = journal.LevelWarn
+	}
+	fields := map[string]any{
+		"offer":             a.OfferID,
+		"partner":           a.Partner,
+		"severity":          string(a.Severity),
+		"items":             len(a.Items),
+		"checked_purchases": a.Checked.Purchases,
+		"checked_sockets":   a.Checked.Sockets,
+		"first_seen":        !existed,
+	}
+	if len(a.Checked.Blockers) > 0 {
+		fields["blockers"] = a.Checked.Blockers
+	}
+	if len(a.Details) > 0 {
+		fields["details"] = a.Details
+	}
+	g.note(level, a.Partner, string(a.Severity), a.Headline, fields)
 }
 
 // safe is the only way an error leaves the guard.

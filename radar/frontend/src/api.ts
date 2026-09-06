@@ -277,17 +277,28 @@ export type OfferItem = {
   instanceid: string
   name: string
   gems: string[] | null
+  /** False means Steam never described this item — not that it has no gem. */
+  sockets_read: boolean
   expected: boolean
   note: string
+}
+
+/** What the guard was actually able to compare behind its verdict. */
+export type GuardChecked = {
+  purchases: boolean
+  sockets: boolean
+  blockers?: string[]
 }
 
 export type TradeAlert = {
   offer_id: string
   partner: string
-  severity: 'ok' | 'warn' | 'critical'
+  /** `unknown` means a check could not run — it is not a milder `ok`. */
+  severity: 'ok' | 'unknown' | 'warn' | 'critical'
   headline: string
   details: string[] | null
   items: OfferItem[] | null
+  checked: GuardChecked
   checked_at: string
 }
 

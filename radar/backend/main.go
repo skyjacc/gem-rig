@@ -99,7 +99,7 @@ func main() {
 	}
 	scan.ReportSource = collector.Report
 	dmScan := scanner.NewDMarketScanner(dmarket, book, events, scan)
-	tradeGuard := guard.New(steamClient, marketClient, events, cfg.SteamKey)
+	tradeGuard := guard.New(steamClient, marketClient, events, audit, cfg.SteamKey)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

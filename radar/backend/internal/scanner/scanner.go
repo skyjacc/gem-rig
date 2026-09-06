@@ -519,14 +519,10 @@ func (s *Scanner) sweep(ctx context.Context) {
 		s.stats.PhaseTotal = 0
 		s.mu.Unlock()
 		st := s.Stats()
-		s.note(journal.LevelInfo, journal.KindSweepDone, "", "", "обход завершён",
-			map[string]any{
-				"duration": st.LastSweepDur, "catalogue": st.CatalogueSize,
-				"candidates": st.Candidates, "resolved": st.Resolved,
-				"pending": st.PendingResolve, "gem_variants": st.GemVariants,
-				"findings": st.Findings, "steam_calls": st.SteamCalls,
-				"added": st.LastAdded, "removed": st.LastRemoved,
-			})
+		// The closing entry is written once, by noteRun, because only it knows
+		// how the sweep actually ended. This used to be a second, unconditional
+		// "обход завершён" that stamped success over a cancelled pass and
+		// produced the duplicate pairs in the journal.
 		books := 0
 		if s.books != nil {
 			books = s.books.Size()
@@ -546,8 +542,12 @@ func (s *Scanner) sweep(ctx context.Context) {
 		tally.set(func(r *Run) {
 			r.FinishedAt = finished
 			r.DurationMS = finished.Sub(start).Milliseconds()
-			r.CatalogueRows = st.CatalogueSize
-			r.Candidates = st.Candidates
+			// Only if the catalogue actually loaded: the error path above has
+			// already zeroed these deliberately.
+			if r.Error == "" {
+				r.CatalogueRows = st.CatalogueSize
+				r.Candidates = st.Candidates
+			}
 			r.OrderBooks = books
 			r.Findings = st.Findings
 			r.Priced = priced
@@ -577,7 +577,16 @@ func (s *Scanner) sweep(ctx context.Context) {
 	lots, stamp, err := s.market.ItemDB(ctx)
 	if err != nil {
 		s.setError(fmt.Errorf("itemdb: %w", err))
-		s.note(journal.LevelError, journal.KindSweepDone, "", "", "каталог не загрузился: "+err.Error(), nil)
+		// Nothing was examined, so the run must not inherit the previous
+		// sweep's catalogue size and candidate count from Stats.
+		s.tallyRun(func(r *Run) {
+			r.Outcome = "error"
+			r.Error = "каталог не загрузился: " + err.Error()
+			r.CatalogueRows = 0
+			r.Candidates = 0
+		})
+		s.note(journal.LevelError, journal.KindSweepStart, "", "catalogue_unavailable",
+			"каталог не загрузился, обход не состоялся: "+err.Error(), nil)
 		return
 	}
 	opts := s.Options()

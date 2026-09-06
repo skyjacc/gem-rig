@@ -2,6 +2,7 @@ package economics
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
@@ -31,11 +32,21 @@ type BookCache struct {
 	fetch BookFetcher
 	ttl   time.Duration
 
+	// OnMiss is told when a fetch fails, so the failure has somewhere to go.
+	//
+	// A dropped order book is not cosmetic: without it the deal for that name
+	// stays incomplete, the offer shows «ждёт стакан» and the operator has no
+	// way to learn whether the market refused, the key was rate-limited or the
+	// name was never registered. The error used to be discarded here entirely.
+	OnMiss func(name string, err error)
+
 	mu    sync.RWMutex
 	books map[string]Book
 	// probe remembers which variant answered for a given name.
 	probe map[string][2]string
 	miss  map[string]time.Time
+	// misses counts consecutive failures per name, for the diagnostics.
+	misses map[string]int
 }
 
 func NewBookCache(fetch BookFetcher, ttl time.Duration) *BookCache {
@@ -43,11 +54,12 @@ func NewBookCache(fetch BookFetcher, ttl time.Duration) *BookCache {
 		ttl = 15 * time.Minute
 	}
 	return &BookCache{
-		fetch: fetch,
-		ttl:   ttl,
-		books: make(map[string]Book),
-		probe: make(map[string][2]string),
-		miss:  make(map[string]time.Time),
+		fetch:  fetch,
+		ttl:    ttl,
+		books:  make(map[string]Book),
+		probe:  make(map[string][2]string),
+		miss:   make(map[string]time.Time),
+		misses: make(map[string]int),
 	}
 }
 
@@ -82,7 +94,13 @@ func (c *BookCache) Get(ctx context.Context, name string) (Book, bool) {
 	ids, known := c.probe[name]
 	lastMiss := c.miss[name]
 	c.mu.RUnlock()
-	if !known || time.Since(lastMiss) < c.ttl {
+	if !known {
+		c.report(name, errNoVariant)
+		return Book{}, false
+	}
+	if time.Since(lastMiss) < c.ttl {
+		// Backing off after a failure, deliberately. Not reported again: it is
+		// the same failure, and repeating it every sweep would bury the rest.
 		return Book{}, false
 	}
 
@@ -90,15 +108,39 @@ func (c *BookCache) Get(ctx context.Context, name string) (Book, bool) {
 	if err != nil {
 		c.mu.Lock()
 		c.miss[name] = time.Now()
+		c.misses[name]++
 		c.mu.Unlock()
+		c.report(name, err)
 		return Book{}, false
 	}
 	book.At = time.Now()
 	c.mu.Lock()
 	c.books[name] = book
 	delete(c.miss, name)
+	delete(c.misses, name)
 	c.mu.Unlock()
 	return book, true
+}
+
+// errNoVariant marks a name the cache was asked about but never told how to
+// query. It is a wiring fault, not a market failure, and reads differently.
+var errNoVariant = errors.New("не зарегистрирован вариант, по которому спрашивать стакан")
+
+func (c *BookCache) report(name string, err error) {
+	if c.OnMiss != nil {
+		c.OnMiss(name, err)
+	}
+}
+
+// Misses lists the names whose order book could not be read, worst first.
+func (c *BookCache) Misses() map[string]int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	out := make(map[string]int, len(c.misses))
+	for k, v := range c.misses {
+		out[k] = v
+	}
+	return out
 }
 
 // Warm fetches books for the given names, oldest first, up to a call budget.

@@ -98,7 +98,17 @@ func main() {
 		return b.Best, ok && b.Best > 0
 	}
 	scan.ReportSource = collector.Report
+	// An order book that fails to load leaves an offer permanently "awaiting
+	// calculation". Before this the error was dropped inside the cache, so the
+	// journal could not say whether the market refused, the key was throttled
+	// or the name was never registered.
+	books.OnMiss = func(name string, err error) {
+		audit.Warn(journal.KindOrderBookErr, name, journal.ReasonNoOrderBook,
+			"стакан ордеров не прочитан — выход по этому имени не оценить",
+			map[string]any{"name": name, "error": err.Error()})
+	}
 	dmScan := scanner.NewDMarketScanner(dmarket, book, events, scan)
+	dmScan.SetJournal(audit)
 	tradeGuard := guard.New(steamClient, marketClient, events, audit, cfg.SteamKey)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

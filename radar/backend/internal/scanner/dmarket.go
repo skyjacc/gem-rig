@@ -11,6 +11,7 @@ import (
 
 	"radar/internal/dota"
 	"radar/internal/hub"
+	"radar/internal/journal"
 	"radar/internal/pricing"
 	"radar/internal/sources"
 )
@@ -30,10 +31,37 @@ type DMarketScanner struct {
 	// to both marketplaces.
 	opts func() Options
 
+	// log records what this sweep did. Without it DMarket offers appeared in
+	// the table and vanished from it with no trace anywhere: the journal
+	// covered only the market.dota2.net pipeline, so half the offers on screen
+	// had no history at all.
+	log *journal.Journal
+
 	mu       sync.RWMutex
 	findings map[string]Finding
 	stats    DMarketStats
 }
+
+// SetJournal attaches the audit record. Optional: nil records nothing.
+func (d *DMarketScanner) SetJournal(j *journal.Journal) {
+	d.mu.Lock()
+	d.log = j
+	d.mu.Unlock()
+}
+
+func (d *DMarketScanner) note(level journal.Level, kind, subject, reason, message string, fields map[string]any) {
+	d.mu.RLock()
+	j := d.log
+	d.mu.RUnlock()
+	if j == nil {
+		return
+	}
+	j.WriteRun(dmarketRunID, level, kind, subject, reason, message, fields)
+}
+
+// dmarketRunID groups DMarket events under one run tag so the journal filter
+// can separate them from a market.dota2.net sweep.
+const dmarketRunID = "dmarket"
 
 // DMarketStats is a snapshot of the DMarket sweep for the dashboard.
 type DMarketStats struct {
@@ -137,19 +165,48 @@ func (d *DMarketScanner) sweep(ctx context.Context) {
 
 	if err != nil {
 		log.Printf("[dmarket] %v", err)
+		d.note(journal.LevelWarn, journal.KindSweepDone, "", "dmarket_unavailable",
+			"обход DMarket не удался: "+err.Error(),
+			map[string]any{"scanned": scanned, "with_gems": len(offers)})
 		if len(offers) == 0 {
 			return
 		}
 	}
 
 	opts := d.opts()
+	before := len(d.Findings())
 	fresh := d.rebuild(offers, opts)
 	for _, f := range fresh {
 		log.Printf("[find:dmarket] %s %.2f RUB -> %s (spread %.0f, %s)",
 			f.ItemName, f.Price, strings.Join(f.Gems, ", "), f.NetSpread, f.Confidence)
+		d.note(journal.LevelInfo, journal.KindFindingAdd, f.ItemName, journal.ReasonNewLot,
+			"новый лот с кинетиком на DMarket",
+			map[string]any{
+				"key": f.Key, "price": f.Price, "gems": f.Gems,
+				"gem_value": f.GemValue, "spread": f.NetSpread,
+				"confidence": string(f.Confidence), "source": DMarketSourceName,
+			})
 		d.hub.Publish("finding", f)
 	}
+
+	after := len(d.Findings())
+	// One closing line per sweep, so "просмотрено 2000, с кинетиком 32,
+	// в таблице 0" is answerable after the fact rather than only live.
+	d.note(journal.LevelInfo, journal.KindSweepDone, "", "",
+		fmt.Sprintf("обход DMarket: просмотрено %d офферов, с кинетиком %d, в таблице %d", scanned, len(offers), after),
+		map[string]any{
+			"scanned": scanned, "with_gems": len(offers),
+			"in_table": after, "added": len(fresh), "removed": maxInt(0, before+len(fresh)-after),
+			"max_pages": maxPages, "duration_ms": time.Since(start).Milliseconds(),
+		})
 	d.hub.Publish("dmarket_stats", d.Stats())
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // rebuild replaces the finding set with the current sweep and returns the ones

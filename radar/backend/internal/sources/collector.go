@@ -123,6 +123,12 @@ func (c *Collector) Refresh(ctx context.Context) {
 		}
 	}
 
+	// Sampled whatever happens below. recordHistory used to sit after the
+	// DMarket branch, so an unconfigured DMarket meant the gem price series was
+	// never written at all — and the popup's history chart was permanently
+	// empty while 51 gems had prices.
+	defer c.recordHistory()
+
 	free := []quoteFetcher{c.Waxpeer, c.LootFarm, c.LisSkins, c.Steam}
 	var wg sync.WaitGroup
 	for _, s := range free {
@@ -150,7 +156,6 @@ func (c *Collector) Refresh(ctx context.Context) {
 		c.Book.SetAll(c.DMarket.Name(), quotes)
 	}
 	c.record("dmarket", len(quotes), true, err)
-	c.recordHistory()
 }
 
 // recordHistory samples every priced gem after a refresh.

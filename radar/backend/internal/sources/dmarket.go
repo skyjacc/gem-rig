@@ -148,34 +148,33 @@ type dmOffersPage struct {
 	Cursor string `json:"cursor"`
 }
 
-// Offers walks the Dota catalogue within a price ceiling and returns only the
-// lots that physically hold a kinetic gem.
+// Offers walks the Dota catalogue within a price ceiling and returns every lot
+// that physically holds a kinetic gem.
 //
-// The ceiling is applied by DMarket, not by us, and that is the whole point.
-// This used to page through the catalogue ordered by price descending with no
-// bound: the first two thousand offers were the most expensive ones on the
-// platform, every gemmed lot among them cost far more than the scanning cap,
-// and the sweep therefore reported "просмотрено 2000, с кинетиком 30,
-// в таблице 0" every five minutes — structurally incapable of finding anything
-// buyable no matter how long it ran.
+// Two structural problems shaped this function.
 //
-// Ordering stays descending so that, inside the budget, the dearest lots come
-// first: those are the ones most likely to carry a gem worth extracting.
+// First, it used to page ordered by price descending with no bound: the first
+// two thousand offers were the most expensive on the platform, every gemmed lot
+// among them cost far more than the scanning cap, and the sweep reported
+// "просмотрено 2000, с кинетиком 30, в таблице 0" every five minutes —
+// incapable of finding anything buyable no matter how long it ran.
 //
-// maxRUB is the operator's price cap. Zero means unbounded, which is only
-// useful for diagnostics.
+// Second, DMarket caps any single result set at ten thousand offers. Bounding
+// the query by price fixed the first problem and exposed the second: the
+// bounded slice is itself larger than one query can return, so paging to the
+// ceiling still left offers unseen. The answer is to cut the price range into
+// bands and page each one separately — a band that comes back full is split in
+// half and retried, until every band ends before the ceiling or the request
+// budget runs out.
 //
-// maxPages bounds the work; DMarket caps a result set at 10 000 offers anyway.
-// The third return value is true when paging stopped at the budget rather than
-// at the end of the results: "просмотрено 2000" then means "первые 2000", and
-// the difference decides whether an empty table is evidence of anything.
+// maxRUB is the operator's price cap; zero means unbounded, which is only
+// useful for diagnostics. maxPages is the total page budget across all bands.
+//
+// The third return value reports incomplete coverage: true when some band was
+// still full when the budget ran out, so "просмотрено N" means "первые N" and
+// an empty table proves nothing.
 func (d *DMarket) Offers(ctx context.Context, maxPages int, maxRUB float64) ([]DMOffer, int, bool, error) {
 	rate := d.FX.Rate()
-	cursor := ""
-	scanned := 0
-	var out []DMOffer
-
-	// DMarket prices in USD cents; the cap arrives in roubles.
 	priceTo := 0
 	if maxRUB > 0 && rate > 0 {
 		priceTo = int(maxRUB / rate * 100)
@@ -183,12 +182,70 @@ func (d *DMarket) Offers(ctx context.Context, maxPages int, maxRUB float64) ([]D
 			priceTo = 1
 		}
 	}
+	if priceTo == 0 {
+		// Unbounded: one band, best effort.
+		return d.offersInBand(ctx, 0, 0, maxPages, rate)
+	}
+
+	seen := make(map[string]bool)
+	var out []DMOffer
+	scanned := 0
+	budget := maxPages
+	incomplete := false
+
+	// Bands are processed high-first so the dearest lots — the ones most likely
+	// to carry a gem worth extracting — are in hand even if the budget runs out.
+	type band struct{ from, to int }
+	queue := []band{{1, priceTo}}
+
+	for len(queue) > 0 && budget > 0 {
+		b := queue[0]
+		queue = queue[1:]
+
+		part, got, full, err := d.offersInBand(ctx, b.from, b.to, budget, rate)
+		scanned += got
+		budget -= (got + 99) / 100
+		for _, o := range part {
+			if !seen[o.OfferID] {
+				seen[o.OfferID] = true
+				out = append(out, o)
+			}
+		}
+		if err != nil {
+			return out, scanned, true, err
+		}
+		if !full {
+			continue
+		}
+		// The band filled its result set, so it hides more than it returned.
+		// Split it, unless it is already too narrow to divide meaningfully.
+		mid := b.from + (b.to-b.from)/2
+		if mid <= b.from || mid >= b.to {
+			incomplete = true
+			continue
+		}
+		queue = append(queue, band{mid + 1, b.to}, band{b.from, mid})
+	}
+
+	return out, scanned, incomplete || len(queue) > 0, nil
+}
+
+// offersInBand pages one price band. `full` is true when paging stopped because
+// the budget or DMarket's own ceiling was reached rather than because the band
+// was exhausted.
+func (d *DMarket) offersInBand(ctx context.Context, fromCents, toCents, maxPages int, rate float64) ([]DMOffer, int, bool, error) {
+	cursor := ""
+	scanned := 0
+	var out []DMOffer
 
 	for page := 0; page < maxPages; page++ {
 		path := "/marketplace-api/v2/offers?gameId=" + DotaGameID +
 			"&limit=100&currency=USD&orderBy=price&orderDir=desc"
-		if priceTo > 0 {
-			path += "&priceTo=" + strconv.Itoa(priceTo)
+		if toCents > 0 {
+			path += "&priceTo=" + strconv.Itoa(toCents)
+		}
+		if fromCents > 0 {
+			path += "&priceFrom=" + strconv.Itoa(fromCents)
 		}
 		if cursor != "" {
 			path += "&cursor=" + cursor
@@ -198,7 +255,7 @@ func (d *DMarket) Offers(ctx context.Context, maxPages int, maxRUB float64) ([]D
 			return out, scanned, true, err
 		}
 		if len(body.Items) == 0 {
-			break
+			return out, scanned, false, nil
 		}
 		scanned += len(body.Items)
 
@@ -239,15 +296,11 @@ func (d *DMarket) Offers(ctx context.Context, maxPages int, maxRUB float64) ([]D
 			out = append(out, offer)
 		}
 		if body.Cursor == "" {
-			// Reached the end of the result set within the budget: what was
-			// scanned is everything there is under the cap.
 			return out, scanned, false, nil
 		}
 		cursor = body.Cursor
 	}
-	// Fell out of the page loop with a cursor still in hand: more offers exist
-	// that this sweep did not look at.
-	return out, scanned, cursor != "", nil
+	return out, scanned, true, nil
 }
 
 // LastSale returns the most recent completed sale price for a gem, in roubles.

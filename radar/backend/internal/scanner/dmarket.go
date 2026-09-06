@@ -87,7 +87,12 @@ func NewDMarketScanner(client *sources.DMarket, book *pricing.Book, h *hub.Hub, 
 		hub:      h,
 		opts:     opts.Options,
 		findings: make(map[string]Finding),
-		stats:    DMarketStats{MaxPages: 20},
+		// Total page budget across every price band. DMarket caps one result
+		// set at 10 000 offers, and the slice under the buying ceiling is
+		// larger than that, so coverage comes from splitting the price range
+		// rather than from paging deeper into a single query. At the client's
+		// 4 requests a second this is about two minutes per sweep.
+		stats: DMarketStats{MaxPages: 500},
 	}
 }
 

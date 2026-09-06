@@ -138,3 +138,27 @@ func TestEmptyExitsSayWhichAbsenceItIs(t *testing.T) {
 		t.Fatalf("a leg with exits must carry no reason, got %q", got)
 	}
 }
+
+// DMarket sells loose gems alongside the items that carry them. Buying a gem
+// in order to extract a gem is circular: the "spread" is the gem measured
+// against its own listing. The market.dota2.net sweep has always excluded
+// these; the DMarket sweep did not, and they were the only two lots it ever
+// contributed to the table.
+func TestLooseGemsAreNotCarriers(t *testing.T) {
+	carriers := []string{"Diffusal Lance", "Eye of Omoz", "Sufferwood Sapling"}
+	gems := []string{
+		"Kinetic: Free to Fear",
+		"Kinetic: Obeisance of the Keeper",
+		"Кинетический: Serene Honor",
+	}
+	for _, name := range gems {
+		if !isLooseGem(name) {
+			t.Fatalf("%q is a gem being sold as a gem and must never be a candidate", name)
+		}
+	}
+	for _, name := range carriers {
+		if isLooseGem(name) {
+			t.Fatalf("%q carries a gem and must stay a candidate", name)
+		}
+	}
+}

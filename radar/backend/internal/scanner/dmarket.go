@@ -150,7 +150,7 @@ func (d *DMarketScanner) sweep(ctx context.Context) {
 	maxPages := d.stats.MaxPages
 	d.mu.Unlock()
 
-	offers, scanned, err := d.client.Offers(ctx, maxPages)
+	offers, scanned, truncated, err := d.client.Offers(ctx, maxPages, d.opts().MaxItemPrice)
 
 	d.mu.Lock()
 	d.stats.Running = false
@@ -175,7 +175,7 @@ func (d *DMarketScanner) sweep(ctx context.Context) {
 
 	opts := d.opts()
 	before := len(d.Findings())
-	fresh := d.rebuild(offers, opts)
+	fresh, excluded := d.rebuild(offers, opts)
 	for _, f := range fresh {
 		log.Printf("[find:dmarket] %s %.2f RUB -> %s (spread %.0f, %s)",
 			f.ItemName, f.Price, strings.Join(f.Gems, ", "), f.NetSpread, f.Confidence)
@@ -193,12 +193,21 @@ func (d *DMarketScanner) sweep(ctx context.Context) {
 	// One closing line per sweep, so "просмотрено 2000, с кинетиком 32,
 	// в таблице 0" is answerable after the fact rather than only live.
 	d.note(journal.LevelInfo, journal.KindSweepDone, "", "",
-		fmt.Sprintf("обход DMarket: просмотрено %d офферов, с кинетиком %d, в таблице %d", scanned, len(offers), after),
-		map[string]any{
-			"scanned": scanned, "with_gems": len(offers),
-			"in_table": after, "added": len(fresh), "removed": maxInt(0, before+len(fresh)-after),
-			"max_pages": maxPages, "duration_ms": time.Since(start).Milliseconds(),
-		})
+		fmt.Sprintf("обход DMarket: просмотрено %d офферов%s, с кинетиком %d, в таблице %d",
+			scanned, map[bool]string{true: " (упёрлись в бюджет страниц, дальше не смотрели)", false: " — это весь список под потолком цены"}[truncated],
+			len(offers), after),
+		func() map[string]any {
+			f := map[string]any{
+				"scanned": scanned, "with_gems": len(offers),
+				"in_table": after, "added": len(fresh), "removed": maxInt(0, before+len(fresh)-after),
+				"max_pages": maxPages, "truncated": truncated,
+				"duration_ms": time.Since(start).Milliseconds(),
+			}
+			for reason, n := range excluded {
+				f["excl_"+reason] = n
+			}
+			return f
+		}())
 	d.hub.Publish("dmarket_stats", d.Stats())
 }
 
@@ -211,12 +220,30 @@ func maxInt(a, b int) int {
 
 // rebuild replaces the finding set with the current sweep and returns the ones
 // that were not there before.
-func (d *DMarketScanner) rebuild(offers []sources.DMOffer, opts Options) []Finding {
+// rebuild also reports why offers were dropped. "2000 просмотрено, 30
+// с кинетиком, 0 в таблице" is not an answer, and it was the only thing the
+// panel could say about the second marketplace.
+func (d *DMarketScanner) rebuild(offers []sources.DMOffer, opts Options) ([]Finding, map[string]int) {
 	next := make(map[string]Finding, len(offers))
 	var fresh []Finding
+	excluded := map[string]int{}
 
 	for _, o := range offers {
-		if o.PriceRUB <= 0 || o.PriceRUB > opts.MaxItemPrice {
+		// A loose gem prices itself. Buying one in order to extract a gem is
+		// circular, and the resulting "spread" is the gem measured against its
+		// own listing. The market.dota2.net sweep has always excluded these;
+		// this one did not, so the only two lots DMarket ever contributed were
+		// gems sold as gems.
+		if isLooseGem(o.Title) {
+			excluded[ExcludedLooseGem]++
+			continue
+		}
+		if o.PriceRUB <= 0 {
+			excluded["no_price"]++
+			continue
+		}
+		if o.PriceRUB > opts.MaxItemPrice {
+			excluded[ExcludedPriceCap]++
 			continue
 		}
 		var value float64
@@ -232,8 +259,12 @@ func (d *DMarketScanner) rebuild(offers []sources.DMOffer, opts Options) []Findi
 			}
 			prices = append(prices, p)
 		}
+		if !priced {
+			excluded[ExcludedGemUnpriced]++
+		}
 		net := value*(1-opts.SaleFee) - o.PriceRUB
 		if priced && net < opts.MinSpread {
+			excluded[ExcludedBelowSpread]++
 			continue
 		}
 
@@ -284,7 +315,7 @@ func (d *DMarketScanner) rebuild(offers []sources.DMOffer, opts Options) []Findi
 	d.mu.Lock()
 	d.findings = next
 	d.mu.Unlock()
-	return fresh
+	return fresh, excluded
 }
 
 // titleCase upper-cases the first letter of each word in DMarket's lowercase

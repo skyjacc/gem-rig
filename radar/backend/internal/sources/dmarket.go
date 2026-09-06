@@ -148,25 +148,54 @@ type dmOffersPage struct {
 	Cursor string `json:"cursor"`
 }
 
-// Offers walks the Dota catalogue, newest-and-dearest first, and returns only
-// the lots that physically hold a kinetic gem.
+// Offers walks the Dota catalogue within a price ceiling and returns only the
+// lots that physically hold a kinetic gem.
+//
+// The ceiling is applied by DMarket, not by us, and that is the whole point.
+// This used to page through the catalogue ordered by price descending with no
+// bound: the first two thousand offers were the most expensive ones on the
+// platform, every gemmed lot among them cost far more than the scanning cap,
+// and the sweep therefore reported "просмотрено 2000, с кинетиком 30,
+// в таблице 0" every five minutes — structurally incapable of finding anything
+// buyable no matter how long it ran.
+//
+// Ordering stays descending so that, inside the budget, the dearest lots come
+// first: those are the ones most likely to carry a gem worth extracting.
+//
+// maxRUB is the operator's price cap. Zero means unbounded, which is only
+// useful for diagnostics.
 //
 // maxPages bounds the work; DMarket caps a result set at 10 000 offers anyway.
-func (d *DMarket) Offers(ctx context.Context, maxPages int) ([]DMOffer, int, error) {
+// The third return value is true when paging stopped at the budget rather than
+// at the end of the results: "просмотрено 2000" then means "первые 2000", and
+// the difference decides whether an empty table is evidence of anything.
+func (d *DMarket) Offers(ctx context.Context, maxPages int, maxRUB float64) ([]DMOffer, int, bool, error) {
 	rate := d.FX.Rate()
 	cursor := ""
 	scanned := 0
 	var out []DMOffer
 
+	// DMarket prices in USD cents; the cap arrives in roubles.
+	priceTo := 0
+	if maxRUB > 0 && rate > 0 {
+		priceTo = int(maxRUB / rate * 100)
+		if priceTo < 1 {
+			priceTo = 1
+		}
+	}
+
 	for page := 0; page < maxPages; page++ {
 		path := "/marketplace-api/v2/offers?gameId=" + DotaGameID +
 			"&limit=100&currency=USD&orderBy=price&orderDir=desc"
+		if priceTo > 0 {
+			path += "&priceTo=" + strconv.Itoa(priceTo)
+		}
 		if cursor != "" {
 			path += "&cursor=" + cursor
 		}
 		var body dmOffersPage
 		if err := d.get(ctx, path, &body); err != nil {
-			return out, scanned, err
+			return out, scanned, true, err
 		}
 		if len(body.Items) == 0 {
 			break
@@ -210,11 +239,15 @@ func (d *DMarket) Offers(ctx context.Context, maxPages int) ([]DMOffer, int, err
 			out = append(out, offer)
 		}
 		if body.Cursor == "" {
-			break
+			// Reached the end of the result set within the budget: what was
+			// scanned is everything there is under the cap.
+			return out, scanned, false, nil
 		}
 		cursor = body.Cursor
 	}
-	return out, scanned, nil
+	// Fell out of the page loop with a cursor still in hand: more offers exist
+	// that this sweep did not look at.
+	return out, scanned, cursor != "", nil
 }
 
 // LastSale returns the most recent completed sale price for a gem, in roubles.

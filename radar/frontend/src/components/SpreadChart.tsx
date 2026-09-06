@@ -35,11 +35,15 @@ export function SpreadChart({
 
               <span className="relative h-4 flex-1 overflow-hidden rounded bg-panel-3">
                 <span
-                  className="bar-grow absolute inset-y-0 left-0 rounded bg-accent/25"
+                  className="bar-grow absolute inset-y-0 left-0 rounded bg-accent/45"
                   style={{ width: `${valuePct}%` }}
                 />
+                {/* Opaque, with a hard right edge. The profit gap is the whole
+                    point of this chart, and a translucent price bar over the
+                    gem bar left a 1.7:1 luminance step where its boundary
+                    should be — the gap read as one continuous bar. */}
                 <span
-                  className="bar-grow absolute inset-y-0 left-0 rounded bg-danger/60"
+                  className="bar-grow absolute inset-y-0 left-0 rounded border-r-2 border-ink bg-danger"
                   style={{ width: `${pricePct}%` }}
                 />
               </span>
@@ -53,10 +57,10 @@ export function SpreadChart({
       })}
       <li className="flex items-center gap-4 pt-1 text-[11px] text-faint">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-3 rounded-sm bg-danger/60" /> цена лота
+          <span className="inline-block h-2 w-3 rounded-sm bg-danger" /> цена лота
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-3 rounded-sm bg-accent/25" /> цена гема
+          <span className="inline-block h-2 w-3 rounded-sm bg-accent/45" /> цена гема
         </span>
       </li>
     </ul>

@@ -68,13 +68,22 @@ const unitOf = (name: string) => roleOf[name]?.unit ?? 'цен'
 export function Coverage() {
   const [data, setData] = useState<CoverageData | null>(null)
   const [error, setError] = useState('')
+  // Once one load succeeds `data` is never null again, so a permanently
+  // failing endpoint used to leave frozen numbers on screen under a panel
+  // titled "Что радар вообще видит" with nothing saying they had stopped
+  // moving.
+  const [lastOk, setLastOk] = useState('')
   const [showUnlisted, setShowUnlisted] = useState(false)
 
   useEffect(() => {
     const load = () =>
       api
         .coverage()
-        .then((value) => { setData(value); setError('') })
+        .then((value) => {
+          setData(value)
+          setLastOk(new Date().toISOString())
+          setError('')
+        })
         .catch((e: Error) => setError(e.message))
     load()
     const id = window.setInterval(load, 20000)
@@ -99,6 +108,12 @@ export function Coverage() {
 
   return (
     <div className="space-y-5">
+      {error && (
+        <p className="rounded-xl border border-warn/40 bg-warn/8 px-4 py-3 text-sm text-warn">
+          Покрытие не обновляется: {error}. Цифры ниже — последние удавшиеся
+          {lastOk ? `, снятые ${ago(lastOk)}` : ''}, и они уже не отражают текущее состояние.
+        </p>
+      )}
       <Panel
         title="Что радар вообще видит"
         subtitle="цифры без знаменателя ничего не значат — вот знаменатели"

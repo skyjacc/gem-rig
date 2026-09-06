@@ -43,6 +43,16 @@ function ExitLine({ exit, chosen }: { exit: Exit; chosen: boolean }) {
 
 function LegBlock({ leg, label }: { leg: Leg; label: string }) {
   const exits = leg.exits ?? []
+  // A leg routinely carries two exits from the same venue — the order book and
+  // the listing — so matching on venue alone highlighted both as "the chosen
+  // one", including the listed price the ranking had deliberately refused.
+  // The backend re-encodes `best`, so identity comparison is out.
+  const isChosen = (e: Exit) =>
+    !!leg.best &&
+    leg.best.venue === e.venue &&
+    leg.best.speed === e.speed &&
+    leg.best.payout === e.payout &&
+    leg.best.gross === e.gross
   return (
     <div className="rounded-xl border border-line bg-panel-2/40 px-3.5 py-3">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -56,7 +66,7 @@ function LegBlock({ leg, label }: { leg: Leg; label: string }) {
       ) : (
         <ul className="space-y-1.5">
           {exits.map((e, i) => (
-            <ExitLine key={`${e.venue}-${i}`} exit={e} chosen={leg.best?.venue === e.venue} />
+            <ExitLine key={`${e.venue}-${e.speed}-${i}`} exit={e} chosen={isChosen(e)} />
           ))}
         </ul>
       )}

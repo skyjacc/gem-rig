@@ -309,7 +309,22 @@ export function Offers({
                 return (
                   <tr
                     key={f.key}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`${f.item_name} — открыть расчёт`}
                     onClick={() => onOpen(f, rows)}
+                    // The whole deal breakdown was mouse-only: the sole tab
+                    // stop in a row was the «Открыть оффер» link, which leaves
+                    // the app. The guard keeps Enter on that link from doing
+                    // both things at once — it stops click propagation but not
+                    // keydown.
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onOpen(f, rows)
+                      }
+                    }}
                     className={`cursor-pointer border-b border-line-soft/60 align-middle transition-colors last:border-0 hover:bg-panel-2/50 ${
                       freshKeys.has(f.key) ? 'row-fresh' : ''
                     }`}

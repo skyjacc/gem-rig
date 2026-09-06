@@ -163,7 +163,13 @@ export function LineChart({
 
       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
         {withPoints.map((serie) => {
-          const value = hover !== null ? serie.points[hover]?.y : serie.points[serie.points.length - 1]?.y
+          // Look the value up by timestamp, not by index. Series here are not
+          // parallel: "верхний ордер" only has points where an order existed,
+          // so indexing it with the median series' position printed a value
+          // from a different moment — or a stale last value for a gap.
+          const value = hoverPoint
+            ? serie.points.find((p) => p.x === hoverPoint.x)?.y
+            : serie.points[serie.points.length - 1]?.y
           return (
             <span key={serie.name} className="inline-flex items-center gap-1.5 text-faint">
               <span

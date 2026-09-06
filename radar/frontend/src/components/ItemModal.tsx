@@ -312,6 +312,17 @@ export function ItemModal({
   )
 
   const dialogRef = useRef<HTMLDivElement>(null)
+  // The handler reads these through refs so the effect below can depend on
+  // nothing. `onClose` and `onNavigate` are inline arrows in App, recreated on
+  // every poll and every SSE event, and the dialog stays open across dozens of
+  // those: with them in the dep array the effect tore down and re-ran, calling
+  // dialogRef.focus() and yanking the caret out of whatever the user was on,
+  // while `opener` was re-captured as an element inside the dialog — so focus
+  // restore on close pointed at something that no longer existed.
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+  const stepRef = useRef(step)
+  stepRef.current = step
 
   useEffect(() => {
     // Keyboard focus has to live inside the dialog while it is open, and go back
@@ -330,7 +341,7 @@ export function ItemModal({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (e.key === 'Tab') {
@@ -353,8 +364,8 @@ export function ItemModal({
       const target = e.target as HTMLElement | null
       const tag = target?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return
-      if (e.key === 'ArrowLeft') step(-1)
-      else if (e.key === 'ArrowRight') step(1)
+      if (e.key === 'ArrowLeft') stepRef.current(-1)
+      else if (e.key === 'ArrowRight') stepRef.current(1)
     }
 
     window.addEventListener('keydown', onKey)
@@ -367,7 +378,10 @@ export function ItemModal({
       document.body.style.overflow = previous
       opener?.focus?.()
     }
-  }, [onClose, step])
+    // Deliberately empty: this runs once per open dialog. Everything mutable
+    // it needs is read through a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -500,19 +514,16 @@ export function ItemModal({
         <div className="max-h-[58vh] overflow-y-auto">
           {error && (
             <div className="m-5 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
-              {error}
+              Steam не ответил про этот предмет: {error}. Сокеты и стакан ниже недоступны;
+              расчёт сделки от этого запроса не зависит и показан как есть.
             </div>
           )}
 
-          {!detail && !error && (
-            <div className="flex items-center gap-2 p-8 text-sm text-mute">
-              <Loader2 size={16} className="animate-spin" />
-              Спрашиваем Steam о сокетах…
-            </div>
-          )}
-
-          {detail && (
-            <div key={tab} className="pane-in space-y-5 p-5">
+          {/* The body is no longer gated on `detail`. The deal arithmetic, the
+              gem history and this lot's journal all come from data the popup
+              already holds, and hiding them because one Steam call failed
+              removed exactly the numbers the operator opened the popup for. */}
+          <div key={tab} className="pane-in space-y-5 p-5">
               {tab === 'deal' &&
                 (finding?.deal ? (
                   <DealBreakdown deal={finding.deal} />
@@ -523,7 +534,13 @@ export function ItemModal({
                   </p>
                 ))}
 
-              {tab === 'sockets' && (
+              {tab === 'sockets' && !detail && !error && (
+                <p className="flex items-center gap-2 text-sm text-mute">
+                  <Loader2 size={16} className="animate-spin" /> Спрашиваем Steam о сокетах…
+                </p>
+              )}
+
+              {tab === 'sockets' && detail && (
                 <section>
                   {detail.sockets && detail.sockets.length > 0 ? (
                     <ul className="grid gap-2 sm:grid-cols-2">
@@ -591,7 +608,13 @@ export function ItemModal({
                 </section>
               )}
 
-              {tab === 'prices' && (
+              {tab === 'prices' && !detail && !error && (
+                <p className="flex items-center gap-2 text-sm text-mute">
+                  <Loader2 size={16} className="animate-spin" /> Читаем предложения и стакан…
+                </p>
+              )}
+
+              {tab === 'prices' && detail && (
                 <>
                   {finding?.gem_prices && finding.gem_prices.length > 0 && (
                     <section>
@@ -693,8 +716,7 @@ export function ItemModal({
                 ))}
 
               {tab === 'log' && <ItemLog subject={finding?.item_name ?? target.name} />}
-            </div>
-          )}
+          </div>
         </div>
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft bg-panel-2/40 px-5 py-3">

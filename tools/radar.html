@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dota 2 Arbitrage & Kinetic Radar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js for interactive graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #07090e;
+      --card: #0f141d;
+      --card-inner: #151b27;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(16, 185, 129, 0.35);
+      --text: #f8fafc;
+      --text-muted: #8896ab;
+      --accent: #10b981;
+      --accent-soft: rgba(16, 185, 129, 0.12);
+      --gold: #f59e0b;
+      --gold-soft: rgba(245, 158, 11, 0.12);
+      --cyan: #06b6d4;
+      --cyan-soft: rgba(6, 182, 212, 0.12);
+      --purple: #c084fc;
+      --purple-soft: rgba(192, 132, 252, 0.12);
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+    code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Animated SVG Icon Classes (inspired by lucide-animated & animateicons) */
+    .icon-svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .anim-spin:hover .icon-svg, .spinning .icon-svg {
+      animation: spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    .anim-pulse:hover .icon-svg {
+      transform: scale(1.2);
+    }
+    .anim-bounce:hover .icon-svg {
+      transform: translateY(-3px);
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes radarSweep {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Header */
+    header {
+      background: rgba(15, 20, 29, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+    .brand-badge {
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+      color: #000;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .status-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 16px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.85rem;
+      transition: border-color 0.2s;
+    }
+    .status-chip:hover { border-color: rgba(255,255,255,0.18); }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+    .dot.warn { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Main Container */
+    .app-body {
+      display: flex;
+      flex: 1;
+    }
+    nav.sidebar {
+      width: 260px;
+      background: #0a0d14;
+      border-right: 1px solid var(--border);
+      padding: 24px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 18px;
+      border-radius: 12px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.18s ease;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-item:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.035);
+      border-color: rgba(255, 255, 255, 0.05);
+    }
+    .nav-item.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: var(--border-glow);
+    }
+    .nav-item.active .icon-svg { stroke: var(--accent); }
+
+    main.content {
+      flex: 1;
+      padding: 32px 40px;
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-view { display: none; }
+    .tab-view.active { display: block; animation: viewIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes viewIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .header-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .view-title { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.025em; }
+    .view-desc { color: var(--text-muted); font-size: 0.92rem; margin-top: 4px; }
+
+    /* Action Buttons */
+    .btn-glow {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #000;
+      padding: 11px 24px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+    }
+    .btn-glow:hover { filter: brightness(1.15); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+    .btn-glow:active { transform: translateY(0); }
+    .btn-glow:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+    .btn-outline:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255,255,255,0.18); }
+
+    /* Match Alerts (Detected Lots) */
+    .alert-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 18px;
+      margin-bottom: 32px;
+    }
+    .alert-card {
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.07), rgba(6, 182, 212, 0.03));
+      border: 1px solid var(--accent);
+      border-radius: 14px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.12);
+      position: relative;
+      overflow: hidden;
+      animation: alertPulse 3s infinite alternate;
+    }
+    @keyframes alertPulse {
+      0% { box-shadow: 0 0 16px rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.6); }
+      100% { box-shadow: 0 0 32px rgba(16, 185, 129, 0.28); border-color: rgba(16, 185, 129, 1); }
+    }
+    .hero-avatar {
+      width: 44px;
+      height: 25px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .badge-profit {
+      background: var(--accent);
+      color: #000;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      letter-spacing: -0.01em;
+    }
+
+    /* Cards & Glass Containers */
+    .glass-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      transition: border-color 0.2s;
+    }
+    .glass-card:hover { border-color: rgba(255, 255, 255, 0.14); }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      padding: 14px 20px;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+    td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.92rem;
+      vertical-align: middle;
+    }
+    tr:hover td { background: var(--card-inner); }
+    tr:last-child td { border-bottom: none; }
+
+    .tag-kinetic {
+      color: var(--purple);
+      background: var(--purple-soft);
+      border: 1px solid rgba(192, 132, 252, 0.25);
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Graphs Row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    .chart-container {
+      position: relative;
+      height: 260px;
+      width: 100%;
+    }
+
+    /* Radar Scanning Animation */
+    .radar-scanner-box {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .radar-sweep {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: conic-gradient(from 0deg, rgba(16, 185, 129, 0.5) 0deg, transparent 60deg);
+      animation: radarSweep 2s linear infinite;
+    }
+
+    pre.code-viewer {
+      background: #05070a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #94a3b8;
+      max-height: 550px;
+    /* Toast Notifications */
+    #toast-container {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 99999;
+      pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto;
+      background: rgba(15, 20, 29, 0.95);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 14px 20px;
+      border-radius: 12px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: 440px;
+      animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.3s ease;
+    }
+    .toast.info { border-color: rgba(6, 182, 212, 0.5); }
+    .toast.success { border-color: rgba(16, 185, 129, 0.6); }
+    .toast.warning { border-color: rgba(245, 158, 11, 0.6); }
+    .toast.error { border-color: rgba(239, 68, 68, 0.6); }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(16px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Top Bar -->
+  <header>
+    <div class="brand">
+      <div class="radar-scanner-box">
+        <div class="radar-sweep"></div>
+        <svg class="icon-svg" style="width:16px; height:16px; stroke:var(--accent);" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </div>
+      <span>DOTA 2 ARBITRAGE</span>
+      <span class="brand-badge">PRO RIG</span>
+    </div>
+
+    <div class="status-group">
+      <div class="status-chip">
+        <div class="dot" id="market-dot"></div>
+        <span>Market.dota2.net: <strong id="balance-val" class="mono">...</strong></span>
+      </div>
+      <div class="status-chip">
+        <div class="dot" id="steam-dot"></div>
+        <span>Steam Economy API: <strong id="steam-val">Подключен</strong></span>
+      </div>
+      <div class="status-chip mono" id="clock">00:00:00</div>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <button class="nav-item active anim-bounce" onclick="showTab('tab-radar', this)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+        <span>Кинетик-Радар</span>
+      </button>
+
+      <button class="nav-item anim-pulse" onclick="showTab('tab-stats', this)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        <span>Графика и Спреды</span>
+      </button>
+
+      <button class="nav-item anim-bounce" onclick="showTab('tab-spectator', this)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9Z"/><path d="M11 3 8 9l4 12 4-12-3-6"/></svg>
+        <span>Спектатор-Ферма</span>
+      </button>
+
+      <button class="nav-item anim-spin" onclick="showTab('tab-gc', this)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="m13 2-2 2.5V8l3 1-3 1v3.5L13 16l-3 6"/><path d="M18 10h4"/><path d="M2 14h4"/></svg>
+        <span>GC-Протоколы</span>
+      </button>
+
+      <button class="nav-item anim-bounce" onclick="showTab('tab-docs', this)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+        <span>База знаний</span>
+      </button>
+    </nav>
+
+    <!-- Main Views -->
+    <main class="content">
+
+      <!-- TAB 1: KINETIC RADAR -->
+      <section id="tab-radar" class="tab-view active">
+        <div class="header-row">
+          <div>
+            <h1 class="view-title">Радар Кинетических Гемов</h1>
+            <p class="view-desc">Мониторинг лотов с реальными физическими сокетами <code>gem_animation</code></p>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:0.88rem; color:var(--text-muted); cursor:pointer;">
+              <input type="checkbox" id="autoscan-chk" onchange="toggleAutoScan(this.checked)">
+              Авто-скан (30с)
+            </label>
+            <button class="btn-glow anim-pulse" id="btn-scan-all" onclick="scanAllTargets()">
+              <svg class="icon-svg" style="width:18px; height:18px; stroke:#000;" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <span>Сканировать все цели</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Matches Detected -->
+        <div id="live-matches-wrap" style="display:none; margin-bottom:28px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+            <h3 style="font-size:1.1rem; color:var(--accent); display:flex; align-items:center; gap:8px;">
+              <span class="dot"></span> Найдено в реальном времени на маркете:
+            </h3>
+            <span style="font-size:0.8rem; color:var(--text-muted);">Строгая валидация сокетов включена</span>
+          </div>
+          <div class="alert-grid" id="matches-grid"></div>
+        </div>
+
+        <!-- Targets Table -->
+        <div class="glass-card" style="padding:0; overflow:hidden;">
+          <table>
+            <thead>
+              <tr>
+                <th>Герой</th>
+                <th>Целевой предмет</th>
+                <th>Кинетический гем</th>
+                <th>Цена вещи</th>
+                <th>Цена гема</th>
+                <th>Спред (Профит)</th>
+                <th style="text-align:right;">Проверка</th>
+              </tr>
+            </thead>
+            <tbody id="targets-table-body">
+              <tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Загрузка целей...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 2: GRAPHS & SPREADS -->
+      <section id="tab-stats" class="tab-view">
+        <div class="header-row">
+          <div>
+            <h1 class="view-title">Аналитика и Графики Спредов</h1>
+            <p class="view-desc">Визуальное сравнение себестоимости и маржинальности кинетических гемов</p>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <!-- Main Spread Bar Chart -->
+          <div class="glass-card">
+            <h3 style="font-size:1.05rem; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+              <svg class="icon-svg" style="stroke:var(--accent);" viewBox="0 0 24 24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+              Топ Спредов: Цена гема vs Цена вещи (₽)
+            </h3>
+            <div class="chart-container">
+              <canvas id="spreadChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Profitability ROI Doughnut Chart -->
+          <div class="glass-card">
+            <h3 style="font-size:1.05rem; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+              <svg class="icon-svg" style="stroke:var(--gold);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              Доходность (ROI)
+            </h3>
+            <div class="chart-container">
+              <canvas id="roiChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: SPECTATOR FARM -->
+      <section id="tab-spectator" class="tab-view">
+        <div class="header-row">
+          <div>
+            <h1 class="view-title">Спектатор-Ферма (Games Watched)</h1>
+            <p class="view-desc">Управление накруткой просмотров турнирных гемов и вымпелов через <code>k_EMsgUpgradeLeagueItem (7203)</code></p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; margin-bottom:28px;">
+          <div class="glass-card">
+            <div style="color:var(--text-muted); font-size:0.85rem;">Всего прокачано</div>
+            <div style="font-size:2.4rem; font-weight:800; color:var(--accent); margin-top:8px;">600+ гемов</div>
+            <div style="font-size:0.82rem; color:var(--text-muted); margin-top:6px;">успешно продаются на ТП Steam</div>
+          </div>
+          <div class="glass-card">
+            <div style="color:var(--text-muted); font-size:0.85rem;">Топ фанатский спрос</div>
+            <div style="font-size:1.4rem; font-weight:700; color:#fff; margin-top:8px;">Dendi, Arteezy, BurNIng</div>
+            <div style="font-size:0.82rem; color:var(--text-muted); margin-top:6px;">высокий оверпей за 1000+ просмотров</div>
+          </div>
+          <div class="glass-card">
+            <div style="color:var(--text-muted); font-size:0.85rem;">Параллельный фарм</div>
+            <div style="font-size:1.4rem; font-weight:700; color:var(--gold); margin-top:8px;">Вымпелы команд</div>
+            <div style="font-size:0.82rem; color:var(--text-muted); margin-top:6px;">качаются вместе с командными гемами</div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <h3 style="margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+            <svg class="icon-svg" style="stroke:var(--cyan);" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            Генерация списков матчей для игроков (OpenDota API)
+          </h3>
+          <pre class="code-viewer mono"># Генерация баз матчей под игроков:
+node tools/gcwatch/ids.js player 70388657 --out dendi.csv      # Danil 'Dendi' Ishutin
+node tools/gcwatch/ids.js player 86745912 --out rtz.csv        # Artour 'Arteezy' Babaev
+node tools/gcwatch/ids.js player 90892734 --out burning.csv    # Xu 'BurNIng' Zhilei
+node tools/gcwatch/ids.js player 82262664 --out kuroky.csv     # Kuro 'KuroKy' Salehi Takhasomi
+
+# Запуск накрутки в Game Coordinator:
+node tools/gcwatch/index.js --ids dendi.csv --send --delay 3000</pre>
+        </div>
+      </section>
+
+      <!-- TAB 4: GC PROTOCOLS -->
+      <section id="tab-gc" class="tab-view">
+        <div class="header-row">
+          <div>
+            <h1 class="view-title">Аудит GC Protobuf-сообщений</h1>
+            <p class="view-desc">1 203 сообщения извлечены из <code>client.dll</code>: скрытая статистика, порядочность, комбайнер</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+          <div class="glass-card">
+            <h3 style="color:var(--cyan); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+              <svg class="icon-svg" style="stroke:var(--cyan);" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              k_EMsgClientToGCTeammateStatsRequest (8124)
+            </h3>
+            <p style="font-size:0.86rem; color:var(--text-muted); margin-bottom:14px;">Скрытый рейтинг и статистика всех тиммейтов:</p>
+            <pre class="code-viewer mono" style="font-size:0.75rem;">message TeammateStat {
+  uint32 account_id = 1;
+  uint32 games = 2;
+  uint32 wins = 3;
+  uint32 most_recent_game_timestamp = 4;
+  uint64 most_recent_game_match_id = 5;
+  float  performance = 6; // СКРЫТЫЙ СКИЛЛ-РЕЙТИНГ!
+}</pre>
+          </div>
+
+          <div class="glass-card">
+            <h3 style="color:var(--gold); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+              <svg class="icon-svg" style="stroke:var(--gold);" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              k_EMsgClientToGCLatestConductScorecard (8095)
+            </h3>
+            <p style="font-size:0.86rem; color:var(--text-muted); margin-bottom:14px;">Реальная порядочность и точное число скрытых жалоб:</p>
+            <pre class="code-viewer mono" style="font-size:0.75rem;">message CMsgPlayerConductScorecard {
+  uint32 raw_behavior_score = 1; // 0 - 12000
+  uint32 reports_count = 2;      // точное число (не <3)
+  uint32 reports_parties = 3;    // уникальные пати
+  uint32 comms_reports = 4;      // жалобы на войс/чат
+  uint32 commend_count = 5;      // лайки
+}</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: DOCS -->
+      <section id="tab-docs" class="tab-view">
+        <div class="header-row">
+          <div>
+            <h1 class="view-title">База знаний и технические отчёты</h1>
+            <p class="view-desc">Документация по багам, протоколам и исследованию движка Source 2</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn-outline" onclick="loadDoc('readme')">
+              <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>README.md (Багнутые гемы)</span>
+            </button>
+            <button class="btn-outline" onclick="loadDoc('combiner')">
+              <svg class="icon-svg" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>COMBINER.md (Слияние гемов)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding:0; overflow:hidden;">
+          <pre id="doc-content" class="code-viewer" style="border:none; border-radius:0; max-height:750px;">Загрузка документа...</pre>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // Hero CDN Mapping
+    const HERO_IMG_MAP = {
+      'Juggernaut': 'juggernaut',
+      'Wraith King': 'skeleton_king',
+      'Keeper of the Light': 'keeper_of_the_light',
+      'Phantom Lancer': 'phantom_lancer',
+      'Doom': 'doom_bringer',
+      'Windranger': 'windrunner',
+      'Kunkka': 'kunkka',
+      'Pudge': 'pudge',
+      'Timbersaw': 'shredder'
+    };
+
+    function getHeroImg(hero) {
+      const slug = HERO_IMG_MAP[hero] || 'juggernaut';
+      return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/${slug}.png`;
+    }
+
+    // Audio chime on profit found (Web Audio API)
+    function playChime() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      } catch (e) {}
+    }
+
+    // Tab Navigation
+    function showTab(tabId, el) {
+      document.querySelectorAll('.tab-view').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      el.classList.add('active');
+      if (tabId === 'tab-stats') {
+        initCharts();
+      }
+    }
+
+    // Clock
+    setInterval(() => {
+      document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+    }, 1000);
+
+    // Initial Status Check
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        document.getElementById('balance-val').innerText = data.balance + ' ' + data.currency;
+        document.getElementById('steam-val').innerText = data.steam_key_ok ? 'Подключен' : 'Нет ключа';
+        document.getElementById('market-dot').className = data.market_key_ok ? 'dot' : 'dot warn';
+        document.getElementById('steam-dot').className = data.steam_key_ok ? 'dot' : 'dot warn';
+      } catch (e) {
+        document.getElementById('balance-val').innerText = 'Ошибка связи';
+      }
+    }
+
+    let globalTargets = [];
+
+    // Load Targets
+    async function loadTargets() {
+      try {
+        const res = await fetch('/api/targets');
+        globalTargets = await res.json();
+        const tbody = document.getElementById('targets-table-body');
+        tbody.innerHTML = globalTargets.map(t => {
+          const spread = Math.round(t.gem_price - t.item_price);
+          const heroImg = getHeroImg(t.hero);
+          return `
+            <tr>
+              <td>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <img class="hero-avatar" src="${heroImg}" alt="${t.hero}">
+                  <span style="font-weight:600;">${t.hero}</span>
+                </div>
+              </td>
+              <td><strong>${t.item}</strong></td>
+              <td><span class="tag-kinetic">💎 ${t.gem}</span></td>
+              <td class="mono">~${t.item_price} ₽</td>
+              <td class="mono" style="color:var(--gold); font-weight:700;">${t.gem_price} ₽</td>
+              <td class="mono" style="color:var(--accent); font-weight:700;">+${spread} ₽</td>
+              <td style="text-align:right;">
+                <button class="btn-outline" style="padding:6px 14px; font-size:0.8rem;" onclick="scanTargetItem('${t.item}', this)">
+                  Проверить
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Smooth Toast Notifications (No annoying browser alert dialogs)
+    function showToast(msg, type = 'info', duration = 3500) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      const icon = type === 'success' ? '💎' : type === 'warning' ? '⚠️' : type === 'error' ? '❌' : 'ℹ️';
+      toast.innerHTML = `<span style="font-size:1.2rem;">${icon}</span><div style="flex:1; line-height:1.4;">${msg}</div>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(12px) scale(0.95)';
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    // Scan one item
+    async function scanTargetItem(item, btn) {
+      const origText = btn.innerHTML;
+      btn.innerHTML = '<span>⏳</span> Сканирую...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/api/scan-one?item=${encodeURIComponent(item)}`);
+        const data = await res.json();
+        if (data.results && data.results.length) {
+          renderAlerts(data.results);
+          playChime();
+          showToast(`Найдено ${data.results.length} лот(а) "${item}" с подтвержденным гемом!`, 'success');
+        } else {
+          showToast(`Все лоты "${item}" пустые (гем вытащен). Ложные описания отсеяны.`, 'warning');
+        }
+      } catch (e) {
+        showToast('Ошибка при сканировании: ' + e.message, 'error');
+      } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+      }
+    }
+
+    // Scan all targets
+    async function scanAllTargets() {
+      const btn = document.getElementById('btn-scan-all');
+      const origHTML = btn.innerHTML;
+      btn.innerHTML = '<span class="icon-svg anim-spin">⏳</span> Сканирую маркет...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/scan-all');
+        const data = await res.json();
+        if (data.results && data.results.length) {
+          renderAlerts(data.results);
+          playChime();
+          showToast(`Радар обнаружил ${data.results.length} прибыльных лотов с гемами!`, 'success', 5000);
+        } else {
+          showToast('Сканирование завершено. Активных лотов с невыбитыми гемами сейчас нет.', 'info');
+        }
+      } catch (e) {
+        showToast('Ошибка при общем сканировании: ' + e.message, 'error');
+      } finally {
+        btn.innerHTML = origHTML;
+        btn.disabled = false;
+      }
+    }
+
+    function renderAlerts(results) {
+      const wrap = document.getElementById('live-matches-wrap');
+      const grid = document.getElementById('matches-grid');
+      wrap.style.display = 'block';
+
+      grid.innerHTML = results.map(r => `
+        <div class="alert-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img class="hero-avatar" src="${getHeroImg(r.hero)}" alt="${r.hero}">
+              <div>
+                <div style="font-weight:800; font-size:1.1rem; color:#fff;">${r.item}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">${r.hero}</div>
+              </div>
+            </div>
+            <div class="badge-profit">+${r.profit} ₽ Профит</div>
+          </div>
+
+          <div class="tag-kinetic" style="font-size:0.9rem; padding:8px 12px;">
+            <span>💎 Физический сокет:</span> <strong>${r.detected_gems.join(', ')}</strong>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; padding:12px; background:rgba(0,0,0,0.3); border-radius:10px; font-size:0.88rem;">
+            <span>Цена лота: <strong class="mono" style="color:#fff;">${r.lot_price} ₽</strong></span>
+            <span>Гем на ТП: <strong class="mono" style="color:var(--gold);">${r.gem_price} ₽</strong></span>
+          </div>
+
+          <div style="display:flex; gap:10px;">
+            <a href="${r.inspect_url || ('/inspect?class=' + r.classid + '&instance=' + r.instanceid)}" target="_blank" class="btn-outline anim-pulse" style="flex:1; justify-content:center; text-decoration:none; font-size:0.84rem; padding:10px;">
+              🔍 Инспектор Steam
+            </a>
+            <a href="${r.market_url}" target="_blank" class="btn-glow" style="flex:1.4; justify-content:center; text-decoration:none; background:linear-gradient(135deg, #06b6d4, #0284c7); color:#fff; box-shadow:none; font-size:0.86rem; padding:10px;">
+              <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+              Купить (${r.lot_price} ₽)
+            </a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Auto scan loop
+    let autoInterval = null;
+    function toggleAutoScan(enabled) {
+      if (enabled) {
+        scanAllTargets();
+        autoInterval = setInterval(scanAllTargets, 30000);
+      } else {
+        clearInterval(autoInterval);
+      }
+    }
+
+    // Docs loader
+    async function loadDoc(type) {
+      const viewer = document.getElementById('doc-content');
+      viewer.innerText = 'Загрузка...';
+      const res = await fetch(`/api/doc/${type}`);
+      viewer.innerText = await res.text();
+    }
+
+    // Chart.js Graphs initialization
+    let spreadChartInstance = null;
+    let roiChartInstance = null;
+
+    function initCharts() {
+      if (!globalTargets.length || spreadChartInstance) return;
+
+      const labels = globalTargets.slice(0, 8).map(t => t.item);
+      const itemPrices = globalTargets.slice(0, 8).map(t => t.item_price);
+      const gemPrices = globalTargets.slice(0, 8).map(t => t.gem_price);
+      const profits = globalTargets.slice(0, 8).map(t => t.gem_price - t.item_price);
+
+      // Bar Chart
+      const ctxSpread = document.getElementById('spreadChart').getContext('2d');
+      spreadChartInstance = new Chart(ctxSpread, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Цена предмета (₽)',
+              data: itemPrices,
+              backgroundColor: 'rgba(148, 163, 184, 0.4)',
+              borderRadius: 6
+            },
+            {
+              label: 'Цена гема (₽)',
+              data: gemPrices,
+              backgroundColor: 'rgba(245, 158, 11, 0.65)',
+              borderRadius: 6
+            },
+            {
+              label: 'Чистая прибыль (₽)',
+              data: profits,
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans' } } }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.06)' } }
+          }
+        }
+      });
+
+      // ROI Doughnut
+      const ctxRoi = document.getElementById('roiChart').getContext('2d');
+      roiChartInstance = new Chart(ctxRoi, {
+        type: 'doughnut',
+        data: {
+          labels: globalTargets.slice(0, 5).map(t => t.item),
+          datasets: [{
+            data: profits.slice(0, 5),
+            backgroundColor: [
+              '#10b981',
+              '#06b6d4',
+              '#f59e0b',
+              '#a855f7',
+              '#ec4899'
+            ],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    loadStatus();
+    loadTargets();
+    loadDoc('readme');
+  </script>
+</body>
+</html>

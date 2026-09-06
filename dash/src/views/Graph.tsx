@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Crosshair, GitBranch, Minus, Network, Plus, Search } from 'lucide-react'
 import { icon as steamIcon, nf, useJson, type GraphData, type State } from '../lib/api.ts'
 import { seed, step, type Link, type Sim } from '../lib/force.ts'
+import { RowsSkeleton } from '../parts/ui.tsx'
 
 // Граф.
 //
@@ -18,6 +19,21 @@ import { seed, step, type Link, type Sim } from '../lib/force.ts'
 //
 // Их граф — дерево. Наше дерево сделано так же. Сеть — то, чего у них нет,
 // потому что у них нет пересечений.
+
+// Уважает ли человек «уменьшить движение». Хук, а не константа: настройку
+// меняют на ходу, и панель открыта часами.
+function useCalm() {
+  const [calm, setCalm] = useState(
+    () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return
+    const m = matchMedia('(prefers-reduced-motion: reduce)')
+    const on = () => setCalm(m.matches)
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return calm
+}
 
 const FG = '#f4f4f5'
 const DIM = '#d4d4d8'
@@ -186,7 +202,7 @@ const ROW = 26
 type Placed = { node: TreeNode; x: number; y: number; depth: number; parent: Placed | null }
 
 function Tree({ state, size }: { state: State; size: { w: number; h: number } }) {
-  const { data } = useJson<TreeNode>('/api/tree?top=12', state.ts)
+  const { data, loading, error, reload } = useJson<TreeNode>('/api/tree?top=12', state.ts)
   const [open, setOpen] = useState<Set<string>>(new Set(['root']))
   const [hot, setHot] = useState<string | null>(null)
 
@@ -235,6 +251,15 @@ function Tree({ state, size }: { state: State; size: { w: number; h: number } })
 
   const goal = state.autopilot.goal || 2000
 
+  if (error) return <Fail title="дерево не собралось" text={error} onRetry={reload} busy={loading} />
+  if (!data) {
+    return (
+      <div className="h-full overflow-auto p-6">
+        <RowsSkeleton rows={9} cols={[190, 80, 120, 90]} />
+      </div>
+    )
+  }
+
   return (
     <>
       <svg
@@ -279,12 +304,23 @@ function Tree({ state, size }: { state: State; size: { w: number; h: number } })
               <g
                 key={n.id}
                 data-node
+                tabIndex={kids ? 0 : -1}
+                role={kids ? 'button' : undefined}
+                aria-expanded={kids ? isOpen : undefined}
+                aria-label={kids ? label + ', раскрыть' : undefined}
                 transform={`translate(${p.x} ${p.y})`}
                 opacity={dim ? 0.32 : 1}
                 style={{ cursor: kids ? 'pointer' : 'default' }}
                 onMouseEnter={() => setHot(n.id)}
                 onMouseLeave={() => setHot(null)}
+                onFocus={() => setHot(n.id)}
+                onBlur={() => setHot(null)}
                 onClick={() => kids && toggle(n.id)}
+                onKeyDown={e => {
+                  if (!kids || (e.key !== 'Enter' && e.key !== ' ')) return
+                  e.preventDefault()
+                  toggle(n.id)
+                }}
               >
                 <rect x={root ? -140 : -10} y={-13} width={root ? 150 : 260} height={26} fill="transparent" />
                 {gem && n.icon ? (
@@ -327,44 +363,116 @@ function Tree({ state, size }: { state: State; size: { w: number; h: number } })
 // ── сеть ──
 
 function Net({ state, size }: { state: State; size: { w: number; h: number } }) {
+  const calm = useCalm()
   const [scope, setScope] = useState<'owned' | 'all'>('owned')
   const [q, setQ] = useState('')
-  const { data } = useJson<GraphData>('/api/graph?scope=' + scope, state.ts)
-  const [, force] = useState(0)
-  const sims = useRef<Sim[]>([])
+  const { data, loading, error, reload } = useJson<GraphData>('/api/graph?scope=' + scope, state.ts)
   const [hot, setHot] = useState<string | null>(null)
   const [pick, setPick] = useState<string | null>(null)
   const alpha = useRef(1)
   const grab = useRef<{ key: string; dx: number; dy: number } | null>(null)
+  const sims = useRef<Sim[]>([])
 
+  const shape = useMemo(() => (data?.nodes ?? []).map(n => n.key).join('|'), [data])
+
+  // Стартовая раскладка — при первом рендере, чтобы узлы не мелькали
+  // в левом верхнем углу до первого кадра. Идемпотентно: эффект ниже
+  // перезасеет теми же числами.
+  if (!sims.current.length && shape) {
+    sims.current = seed(shape.split('|'), size.w, size.h)
+    alpha.current = 1
+  }
+
+  // Раскладка пересобирается, когда меняется СОСТАВ узлов, а не когда
+  // приходит новый ответ. Зависимость от самого ответа означала, что каждый
+  // перезапрос — а он шёл на каждый толчок состояния, то есть примерно раз
+  // в секунду — сбрасывал раскладку в исходное и разгонял её заново: граф
+  // дёргался всё время, пока идёт работа, и рассмотреть его было нельзя.
+  useEffect(() => {
+    if (!shape) return
+    sims.current = seed(shape.split('|'), size.w, size.h)
+    alpha.current = 1
+  }, [shape, size.w, size.h])
+
+  // Ширина ребра и сила связи живут на одном максимуме. Считать максимум
+  // внутри карты по всем рёбрам значило пересчитывать его 896 раз за проход
+  // — и так на каждый кадр, пока шла укладка.
+  const maxShared = useMemo(
+    () => Math.max(...(data?.edges ?? []).map(e => e.shared), 1), [data])
   const links: Link[] = useMemo(() => {
     if (!data?.edges?.length) return []
-    const max = Math.max(...data.edges.map(e => e.shared), 1)
-    return data.edges.map(e => ({ a: e.a, b: e.b, w: e.shared / max }))
-  }, [data])
+    return data.edges.map(e => ({ a: e.a, b: e.b, w: e.shared / maxShared }))
+  }, [data, maxShared])
 
-  useEffect(() => {
-    if (!data?.nodes?.length) return
-    sims.current = seed(data.nodes.map(n => n.key), size.w, size.h)
-    alpha.current = 1
-  }, [data, size.w, size.h])
+  // Кадр пишется прямо в атрибуты, мимо примирения React.
+  //
+  // На полном каталоге это 896 путей рёбер и 47 групп узлов. Прежний кадр
+  // гнал их через setState: React пересобирал и сверял около тысячи
+  // элементов шестьдесят раз в секунду восемь секунд укладки — и столько же
+  // при каждом перетаскивании узла. Теперь структура монтируется один раз,
+  // а кадр — это только setAttribute, без виртуального дерева.
+  const edgeEls = useRef<(SVGPathElement | null)[]>([])
+  const nodeEls = useRef(new Map<string, SVGGElement>())
+  const linksRef = useRef<Link[]>(links)
+  linksRef.current = links
+
+  const paint = useCallback(() => {
+    const by = new Map(sims.current.map(s => [s.key, s]))
+    const edges = data?.edges ?? []
+    for (let i = 0; i < edges.length; i++) {
+      const el = edgeEls.current[i]
+      if (!el) continue
+      const a = by.get(edges[i].a)
+      const b = by.get(edges[i].b)
+      if (!a || !b) continue
+      const mx = (a.x + b.x) / 2
+      const my = (a.y + b.y) / 2
+      const off = Math.hypot(b.x - a.x, b.y - a.y) * 0.12
+      el.setAttribute('d', `M ${a.x} ${a.y} Q ${mx + off * 0.2} ${my - off} ${b.x} ${b.y}`)
+    }
+    for (const s of sims.current) {
+      nodeEls.current.get(s.key)?.setAttribute('transform', `translate(${s.x} ${s.y})`)
+    }
+  }, [data])
 
   // Считаем, пока раскладка не устоялась. Устоялась — засыпаем: держать
   // шестьдесят кадров в секунду ради неподвижной картинки незачем.
+  //
+  // При «уменьшить движение» цикла нет вовсе. Это самая большая анимация
+  // в панели — полсотни узлов, которые расходятся полминуты, — и оба
+  // правила prefers-reduced-motion в index.css её не касаются: она живёт
+  // в requestAnimationFrame, а не в CSS. Раскладка досчитывается разом
+  // и рисуется один раз, уже стоящей.
   useEffect(() => {
+    if (calm) {
+      if (!sims.current.length) return
+      let a = 1
+      for (let i = 0; i < 400 && a > 0.03; i++) {
+        step(sims.current, linksRef.current, a, size.w, size.h)
+        a *= 0.97
+      }
+      alpha.current = 0
+      paint()
+      return
+    }
     let raf = 0
     const loop = () => {
       const busy = alpha.current > 0.03 || grab.current
       if (sims.current.length && busy) {
-        step(sims.current, links, alpha.current, size.w, size.h)
+        step(sims.current, linksRef.current, alpha.current, size.w, size.h)
         if (!grab.current) alpha.current *= 0.992
-        force(n => n + 1)
+        paint()
       }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [links, size.w, size.h])
+  }, [paint, size.w, size.h, calm, shape])
+
+  // Любой повторный рендер возвращает управляемые атрибуты к значениям
+  // из JSX — positions из снимка на момент рендера. Возвращаем реальные
+  // сразу после фиксации, до боли.
+  useLayoutEffect(() => { paint() })
 
   const extent = useCallback(() => {
     if (!sims.current.length) return null
@@ -397,16 +505,36 @@ function Net({ state, size }: { state: State; size: { w: number; h: number } }) 
     const p = toWorld(e)
     s.x = p.x + grab.current.dx
     s.y = p.y + grab.current.dy
+    paint()
   }
   const onNodeUp = () => { grab.current = null }
 
+  if (error) {
+    return (
+      <Fail
+        title="сеть пересечений не собралась"
+        text={error}
+        onRetry={reload}
+        busy={loading}
+      />
+    )
+  }
   if (!data) return <Hint text="считаю пересечения…" />
 
   const goal = state.autopilot.goal || 2000
   const byKey = new Map(data.nodes.map(n => [n.key, n]))
   const pos = new Map(sims.current.map(s => [s.key, s]))
-  const near = (k: string) => hot === k || data.edges.some(e =>
-    (e.a === hot && e.b === k) || (e.b === hot && e.a === k))
+  // Соседи подсвеченного: один проход по рёбрам на рендер. Рендеры здесь
+  // редкие — наведение и выбор, — поэтому без хука: он стоял после ранних
+  // выходов и менял число хуков между рендерами, от чего экран падал.
+  const near = new Set<string>()
+  if (hot) {
+    near.add(hot)
+    for (const e of data.edges) {
+      if (e.a === hot) near.add(e.b)
+      if (e.b === hot) near.add(e.a)
+    }
+  }
   const chosen = pick ? byKey.get(pick) : null
   const match = (k: string) => !q || k.toLowerCase().includes(q.toLowerCase())
 
@@ -422,7 +550,7 @@ function Net({ state, size }: { state: State; size: { w: number; h: number } }) 
               value={q}
               onChange={e => setQ(e.target.value)}
               placeholder="найти"
-              className="ui-label w-28 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/50"
+              className="ui-label w-28 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/75"
             />
           </span>
         </div>
@@ -436,11 +564,11 @@ function Net({ state, size }: { state: State; size: { w: number; h: number } }) 
         style={{ cursor: 'grab' }}
       >
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
-          {data.edges.map(e => {
+          {data.edges.map((e, i) => {
             const a = pos.get(e.a)
             const b = pos.get(e.b)
             if (!a || !b) return null
-            const w = 0.75 + (e.shared / Math.max(...data.edges.map(x => x.shared), 1)) * 2.6
+            const w = 0.75 + (e.shared / maxShared) * 2.6
             const dim = hot ? !(e.a === hot || e.b === hot) : false
             const mx = (a.x + b.x) / 2
             const my = (a.y + b.y) / 2
@@ -448,6 +576,7 @@ function Net({ state, size }: { state: State; size: { w: number; h: number } }) 
             return (
               <path
                 key={e.a + e.b}
+                ref={el => { edgeEls.current[i] = el }}
                 d={`M ${a.x} ${a.y} Q ${mx + off * 0.2} ${my - off} ${b.x} ${b.y}`}
                 fill="none"
                 stroke={DIM}
@@ -461,7 +590,7 @@ function Net({ state, size }: { state: State; size: { w: number; h: number } }) 
           {data.nodes.map(n => {
             const p = pos.get(n.key)
             if (!p) return null
-            const dim = (hot && !near(n.key)) || !match(n.key)
+            const dim = (hot && !near.has(n.key)) || !match(n.key)
             const done = n.counter >= goal
             const spent = n.pool ? n.burned / n.pool : 0
             const R = n.owned ? 13 + Math.min(9, Math.sqrt(n.owned) * 2.2) : 8
@@ -469,6 +598,10 @@ function Net({ state, size }: { state: State; size: { w: number; h: number } }) 
               <g
                 key={n.key}
                 data-node
+                ref={el => {
+                  if (el) nodeEls.current.set(n.key, el)
+                  else nodeEls.current.delete(n.key)
+                }}
                 transform={`translate(${p.x} ${p.y})`}
                 opacity={dim ? 0.22 : 1}
                 style={{ cursor: 'pointer', transition: 'opacity .18s' }}
@@ -552,9 +685,34 @@ function Row({ k, v }: { k: string; v: string }) {
   )
 }
 
+// Полотно во весь экран не может показать ошибку строчкой внизу: её там
+// никто не увидит. Поэтому поломка занимает середину и говорит, что делать.
+function Fail({ title, text, onRetry, busy }: { title: string; text: string; onRetry: () => void; busy: boolean }) {
+  return (
+    <div className="grid h-full place-items-center p-6">
+      <div className="max-w-[420px] text-center">
+        <div className="text-[15px]" style={{ color: 'var(--stop)' }}>{title}</div>
+        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{text}</p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground/70">
+          Граф считается по локальной карте матчей. Если её ещё не строили,
+          считать нечего: запустите обход — node rig/crawl.ts.
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={busy}
+          className="floating ui-label mt-4 inline-flex h-9 items-center px-3 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          {busy ? 'считаю…' : 'ещё раз'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function Hint({ text }: { text: string }) {
   return (
-    <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 text-[11px] text-muted-foreground/45">
+    <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 text-[11px] text-muted-foreground/75">
       {text}
     </div>
   )

@@ -1,0 +1,73 @@
+:root{
+  color-scheme:dark;
+  --canvas:oklch(16.2% .003 150);
+  --paper:oklch(20.5% .003 150);
+  --raised:oklch(24% .004 150);
+  --line:oklch(30% .004 150);
+  --muted:oklch(70% .006 150);
+  --accent:oklch(83% .18 151);
+  --soft:oklch(24% .026 151);
+  --amber:oklch(81% .12 80);
+  --danger:oklch(76% .145 28);
+  --text:oklch(92% .004 150);
+  color:var(--text);
+  background:var(--canvas);
+}
+body{background:var(--canvas)}
+.sidebar{background:oklch(18% .003 150);border-color:var(--line)}
+.brand{color:var(--text)}
+.brand-symbol{background:var(--accent);color:var(--canvas);border-radius:8px}
+.workspace-label,.version{color:var(--muted)}
+.nav-item{color:var(--muted);border-radius:8px}
+.nav-item:hover{background:var(--raised);color:var(--text)}
+.nav-item.active{background:var(--soft);color:var(--accent)}
+.nav-count{border-color:oklch(40% .015 150);color:var(--text)}
+.topbar{background:oklch(18% .003 150)}
+.breadcrumb strong{color:var(--text)}
+.demo-badge{background:oklch(25% .022 80);color:var(--amber)}
+h1{font-weight:650;letter-spacing:-.9px}
+h2,h3{color:var(--text)}
+.button{background:var(--raised);border-color:oklch(35% .005 150);border-radius:8px;color:var(--text)}
+.button:hover:not(:disabled){background:oklch(29% .008 150);border-color:oklch(45% .01 150)}
+.button.primary{background:var(--accent);border-color:var(--accent);color:var(--canvas);font-weight:700}
+.button.primary:hover:not(:disabled){background:oklch(88% .16 151);border-color:oklch(88% .16 151)}
+.button:disabled{opacity:1;color:oklch(56% .005 150);background:oklch(23% .003 150);border-color:var(--line)}
+.run-strip{background:oklch(19% .004 150);border-radius:8px}
+select,.search-field,.form-field input{background:oklch(19% .003 150);color:var(--text);border-color:var(--line);border-radius:8px}
+input::placeholder{color:oklch(64% .006 150)}
+.section-heading h2 span{background:oklch(28% .009 150);color:var(--muted)}
+.candidate-row{border-color:var(--line)}
+.candidate-row:hover{background:oklch(22% .008 150)}
+.candidate-row.selected{background:oklch(23% .03 151);box-shadow:inset 0 0 0 1px oklch(44% .055 151);border-radius:8px}
+.item-art{background:oklch(28% .027 151);color:oklch(78% .1 151);border:1px solid oklch(36% .032 151);border-radius:8px}
+.art-1{background:oklch(28% .025 60);color:oklch(79% .08 60);border-color:oklch(38% .04 60)}
+.art-2{background:oklch(28% .032 285);color:oklch(79% .08 285);border-color:oklch(38% .045 285)}
+.art-3{background:oklch(28% .026 230);color:oklch(79% .06 230);border-color:oklch(38% .037 230)}
+.detail-panel{background:oklch(20% .003 150);border-radius:10px}
+.detail-kicker{background:oklch(19% .003 150)}
+.tag{background:oklch(29% .008 150);color:oklch(79% .013 150);border-radius:4px}
+.tag.warning{background:oklch(29% .037 80);color:var(--amber)}
+.tag.danger{background:oklch(29% .045 28);color:var(--danger)}
+.detail-art{background:oklch(26% .027 151);border-color:oklch(42% .046 151);color:var(--accent);border-radius:8px}
+.verdict{background:oklch(24% .025 151);border-color:oklch(36% .035 151);border-radius:8px}
+.verdict.caution{background:oklch(25% .025 80);border-color:oklch(39% .04 80)}
+.verdict p{color:oklch(77% .009 150)}
+.socket-icon{background:oklch(28% .035 285);border-color:oklch(42% .055 285);color:oklch(80% .095 285);border-radius:7px}
+.detail-footer{background:oklch(18.5% .003 150)}
+.notice{background:oklch(25% .035 151);color:var(--text);border-color:oklch(40% .04 151)}
+.warning-inline{background:oklch(25% .025 80);color:var(--amber);border-color:oklch(40% .045 80)}
+.info-banner{background:oklch(22% .005 150);color:oklch(77% .006 150)}
+.empty-state h3,.diagnostic-summary strong{color:var(--text)}
+.event-list{background:oklch(19% .003 150);border-radius:8px}
+.event-summary:hover{background:var(--raised)}
+.event-summary[aria-expanded=true]{background:oklch(23% .004 150)}
+.event-detail{background:oklch(20.5% .004 150);padding-top:15px}
+.source-row{background:oklch(19% .003 150)}
+.source-monogram{background:oklch(26% .007 150);color:var(--accent);border-radius:8px}
+.trade-comparison{background:var(--paper);border-radius:8px}
+.trade-verdict{background:var(--soft);color:var(--text);border-color:oklch(40% .04 151);border-radius:8px}
+.trade-verdict.caution{background:oklch(25% .025 80);color:var(--amber);border-color:oklch(40% .045 80)}
+.settings-note{color:var(--text)}
+:focus-visible{outline-color:var(--accent)}
+::selection{background:oklch(40% .09 151);color:var(--text)}
+@media(max-width:620px){.demo-badge{background:transparent}.sidebar{background:oklch(18% .003 150)}}

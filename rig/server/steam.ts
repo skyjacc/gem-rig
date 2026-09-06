@@ -14,7 +14,8 @@ import { steamKey } from './paths.ts'
 import { ACCOUNT } from './accounts.ts'
 import { settings } from './settings.ts'
 import { parseSet } from './itemset.ts'
-import { saveSnapshot } from './db.ts'
+import { db, saveSnapshot } from './db.ts'
+import { ingestArrivals } from './arrival.ts'
 
 const GAP = 2500
 let queue: Promise<any> = Promise.resolve()
@@ -198,6 +199,10 @@ export async function refreshInventory(steamid: string = ACCOUNT(), force = fals
     b.error = null
     b.private = false
     b.truncated = truncated
+    // Сканер прихода — до снимка счётчиков или после, неважно: он смотрит
+    // состав, а не числа. Важно, что по этим же rows: первый взгляд на вещь
+    // и её первое число в истории — один и тот же снимок.
+    ingestArrivals(db, b.steamid, rows)
     if (changed) saveSnapshot(rows.map(r => ({ gem: r.gem, assetid: r.assetid, name: r.name, value: r.value })))
     return changed
   } catch (e: any) {

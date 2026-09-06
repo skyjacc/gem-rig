@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { nf, post, useJson, type Settings, type State, type Unit } from '../lib/api.ts'
-import { Button, Field, ItemIcon, Label, Segmented } from './ui.tsx'
+import { Button, Field, ItemIcon, Label, Note, Segmented } from './ui.tsx'
 import { Modal } from './Modal.tsx'
+import { Reveal } from './Reveal.tsx'
 
 // Настройка накрутки — всё в одном окне.
 //
@@ -238,6 +239,14 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
           />
           <span className="tnum font-mono text-[12px] text-muted-foreground">{nf(unit.delay)} мс</span>
         </span>
+        {/* У паузы один хозяин за раз, и порядок старшинства такой:
+            пол из общих правил → выбор здесь → подбор на ходу.
+            Раньше «сама» и «к сроку» могли быть включены одновременно
+            и переписывали друг друга каждый такт. */}
+        <p className="text-[11px] leading-snug text-muted-foreground/75">
+          ниже пола из общих правил не опустится никогда · выбранное здесь отменяет
+          подбор на ходу · «к сроку» и «сама» не работают вместе
+        </p>
         {unit.even && !unit.until ? (
           <p className="text-[12px]" style={{ color: 'var(--warn)' }}>
             делить не на что — задайте срок выше
@@ -280,7 +289,7 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
                     <ItemIcon hash={icons.get(g.gem) ?? ''} size={16} />
                   </span>
                   <span>{g.gem}</span>
-                  <span className="tnum font-mono text-[11px] text-muted-foreground/60">{g.objects}</span>
+                  <span className="tnum font-mono text-[11px] text-muted-foreground/75">{g.objects}</span>
                 </button>
               )
             })}
@@ -292,73 +301,122 @@ function Run({ state, unit }: { state: State; unit: Unit }) {
   )
 }
 
-// Общие пороги. Крутят редко, поэтому лежат вторым слоем.
-const RULES: { path: string; label: string; hint: string; unit?: string; scale?: number }[] = [
+// Общие пороги.
+//
+// Делятся надвое, и это не про экономию места. Показывать «долю молчаний,
+// ниже которой темп считается чистым» рядом с ценой продажи — значит
+// утверждать, что это одинаково понятные вещи. Первое трогают, когда знают
+// последствия; второе меняют, потому что цена на рынке изменилась.
+type Rule = { path: string; label: string; hint: string; unit?: string; scale?: number }
+
+const BASIC: Rule[] = [
   { path: 'goal', label: 'цель счётчика', hint: 'сколько просмотров делает вещь товаром' },
-  { path: 'tick', label: 'как часто проверять', hint: 'через сколько заглядывать в инвентарь', unit: 'с', scale: 1000 },
+  { path: 'sellPrice', label: 'цена готовой вещи', hint: 'за сколько уходит вещь со счётчиком — от этого числа считается вся выгода в скупке', unit: '$' },
+  { path: 'perGem', label: 'сколько брать одного гема', hint: 'потолок на позицию в «собрать лучшее»: двадцать шестая копия продаётся не лучше двадцать пятой' },
+  { path: 'priceTolerance', label: 'допуск по цене', hint: 'на сколько цена может вырасти между планом и покупкой; ноль — только по своей или дешевле', unit: '%', scale: 0.01 },
+  { path: 'tick', label: 'как часто проверять', hint: 'через сколько заглядывать в инвентарь и состояние отправщика', unit: 'с', scale: 1000 },
   { path: 'invTtl', label: 'когда перечитывать Steam', hint: 'через сколько запрашивать инвентарь заново', unit: 'с', scale: 1000 },
-  { path: 'silentLimit', label: 'сколько ждать молча', hint: 'после этого отправка перезапускается', unit: 'с', scale: 1000 },
-  { path: 'startLimit', label: 'сколько ждать первой отправки', hint: 'у отправщика своя лестница отходов при обрывах связи', unit: 'с', scale: 1000 },
-  { path: 'maxFailures', label: 'сколько сбоев терпеть', hint: 'после этого остановиться и сказать почему' },
-  { path: 'pace.floor', label: 'пол паузы', hint: 'ниже не опускаться никогда', unit: 'мс' },
+]
+
+const DEEP: Rule[] = [
+  { path: 'silentLimit', label: 'сколько ждать молча', hint: 'после этого отправщик перезапускается; на растяжке предел растёт вместе с паузой', unit: 'с', scale: 1000 },
+  { path: 'startLimit', label: 'сколько ждать первой отправки', hint: 'у отправщика своя лестница отходов при обрывах связи — 15, 30, 60, 120 секунд', unit: 'с', scale: 1000 },
+  { path: 'maxFailures', label: 'сколько падений терпеть', hint: 'после этого встать и сказать почему' },
+  { path: 'invStale', label: 'когда счётчикам больше не верить', hint: 'при работе с потолком: старее этого — работник останавливается, чтобы не жечь вслепую', unit: 'мин', scale: 60000 },
+  { path: 'pace.floor', label: 'пол паузы', hint: 'ниже не опускаться никогда; отправщик значение меньше 500 мс не принимает вовсе', unit: 'мс' },
   { path: 'pace.ceil', label: 'потолок паузы', hint: 'выше не подниматься', unit: 'мс' },
   { path: 'pace.enough', label: 'сколько отправок для замера', hint: 'по меньшему числу судить о темпе нельзя' },
-  { path: 'pace.clean', label: 'сколько тишины терпеть', hint: 'доля отправок без ответа, которая ещё нормальна', unit: '%', scale: 0.01 },
-  { path: 'spread.band', label: 'насколько разные числа', hint: 'на сколько процентов расходятся партии', unit: '%', scale: 0.01 },
+  { path: 'pace.clean', label: 'сколько тишины терпеть', hint: 'доля отправок без ответа, которая ещё считается нормой', unit: '%', scale: 0.01 },
+  { path: 'pace.down', label: 'шаг ускорения', hint: 'на сколько умножается пауза, когда GC отвечает на каждую отправку' },
+  { path: 'pace.up', label: 'шаг отхода', hint: 'на сколько умножается пауза, когда появились молчания' },
+  { path: 'spread.band', label: 'насколько разные числа', hint: 'на сколько процентов расходятся партии разброса', unit: '%', scale: 0.01 },
+  { path: 'spread.jitter', label: 'дрожание', hint: 'случайная добавка поверх ровного шага, чтобы партии не легли по линейке', unit: '%', scale: 0.01 },
   { path: 'treeTop', label: 'турниров в дереве', hint: 'сколько самых больших показывать под гемом' },
-  { path: 'priceTolerance', label: 'допуск по цене', hint: 'на сколько цена может вырасти между планом и покупкой; ноль — только по своей или дешевле', unit: '%', scale: 0.01 },
 ]
 
 const get = (o: any, p: string) => p.split('.').reduce((a, k) => a?.[k], o)
 
 function Rules({ state }: { state: State }) {
-  const { data } = useJson<Settings>('/api/settings', state.ts)
+  const { data, loading, error, reload } = useJson<Settings>('/api/settings', state.ts)
   const [draft, setDraft] = useState<Record<string, string>>({})
+  const [deep, setDeep] = useState(false)
+  const [failed, setFailed] = useState<string | null>(null)
+
+  if (error) {
+    return (
+      <Note title="настройки не прочитались" action={<Button onClick={reload} loading={loading}>ещё раз</Button>}>
+        {error}
+      </Note>
+    )
+  }
   if (!data) return <p className="text-[13px] text-muted-foreground">читаю…</p>
 
-  const apply = async (r: typeof RULES[number]) => {
+  const apply = async (r: Rule) => {
     const raw = draft[r.path]
     if (raw === undefined) return
     const n = Number(raw.replace(',', '.'))
-    if (!Number.isFinite(n)) return
+    if (!Number.isFinite(n)) { setFailed(r.label + ': это не число'); return }
     const [a, b] = r.path.split('.')
     const v = r.scale ? n * r.scale : n
-    await post('/api/settings', b ? { [a]: { [b]: v } } : { [a]: v })
+    const res: any = await post('/api/settings', b ? { [a]: { [b]: v } } : { [a]: v })
+    setFailed(res?.error ? r.label + ': ' + res.error : null)
     setDraft(d => { const x = { ...d }; delete x[r.path]; return x })
+  }
+
+  // Пороги зажимаются на сервере: панель — не место, где можно случайно
+  // выставить паузу в ноль. Поэтому введённое число может отличаться от
+  // сохранённого, и поле после «ок» показывает то, что приняли, а не то,
+  // что набрали.
+  const row = (r: Rule) => {
+    const raw = Number(get(data, r.path))
+    const shown = draft[r.path] ?? String(Math.round((r.scale ? raw / r.scale : raw) * 1000) / 1000)
+    return (
+      <div key={r.path} className="flex flex-wrap items-center gap-3 py-2.5">
+        <span className="min-w-[180px] flex-1">
+          <span className="block text-[13px]">{r.label}</span>
+          <span className="block text-[12px] leading-snug text-muted-foreground">{r.hint}</span>
+        </span>
+        <Field
+          value={shown}
+          onChange={v => setDraft(d => ({ ...d, [r.path]: v }))}
+          width="w-20 text-right"
+          inputMode="decimal"
+          aria-label={r.label}
+          onKeyDown={e => { if (e.key === 'Enter') apply(r) }}
+        />
+        <span className="ui-label w-6 shrink-0 text-muted-foreground/70">{r.unit ?? ''}</span>
+        <Button disabled={draft[r.path] === undefined} active={draft[r.path] !== undefined} onClick={() => apply(r)}>
+          ок
+        </Button>
+      </div>
+    )
   }
 
   return (
     <div>
-      <div className="divide-y divide-white/[0.06]">
-        {RULES.map(r => {
-          const raw = Number(get(data, r.path))
-          const shown = draft[r.path] ?? String(Math.round((r.scale ? raw / r.scale : raw) * 1000) / 1000)
-          return (
-            <div key={r.path} className="flex items-center gap-3 py-2.5">
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px]">{r.label}</span>
-                <span className="block text-[12px] leading-snug text-muted-foreground">{r.hint}</span>
-              </span>
-              <Field
-                value={shown}
-                onChange={v => setDraft(d => ({ ...d, [r.path]: v }))}
-                width="w-20 text-right"
-                inputMode="decimal"
-                onKeyDown={e => { if (e.key === 'Enter') apply(r) }}
-              />
-              <span className="ui-label w-5 shrink-0 text-muted-foreground/70">{r.unit ?? ''}</span>
-              <Button disabled={draft[r.path] === undefined} active={draft[r.path] !== undefined} onClick={() => apply(r)}>
-                ок
-              </Button>
-            </div>
-          )
-        })}
-      </div>
-      <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-3">
-        <span className="text-[12px] text-muted-foreground">
-          значения по умолчанию — замер 20 августа: 76 отправок в минуту при паузе в секунду
+      {failed ? <div className="mb-3"><Note title="не принято">{failed}</Note></div> : null}
+
+      <div className="divide-y divide-white/[0.06]">{BASIC.map(row)}</div>
+
+      <button
+        type="button"
+        onClick={() => setDeep(!deep)}
+        aria-expanded={deep}
+        className="ui-label mt-3 flex w-full items-center gap-2 border-t border-white/[0.06] pt-3 text-left text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <span>{deep ? 'скрыть' : 'показать'} пороги работника и темпа</span>
+        <span className="ml-auto text-muted-foreground/75">{DEEP.length}</span>
+      </button>
+      <Reveal open={deep}>
+        <div className="divide-y divide-white/[0.06] pt-1">{DEEP.map(row)}</div>
+      </Reveal>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+        <span className="max-w-[380px] text-[12px] leading-relaxed text-muted-foreground">
+          значения по умолчанию — замер 20 августа: 76 отправок в минуту при паузе
+          в секунду, отклик GC 340 мс по медиане
         </span>
-        <Button onClick={() => post('/api/settings/reset', {})}>сбросить</Button>
+        <Button onClick={() => post('/api/settings/reset', {})}>сбросить всё</Button>
       </div>
     </div>
   )
@@ -369,7 +427,7 @@ function Line({ k, hint, children }: { k: string; hint?: string; children: React
     <div className="space-y-1.5 border-b border-white/[0.06] pb-4 last:border-0 last:pb-0">
       <div>
         <Label>{k}</Label>
-        {hint ? <div className="text-[11px] text-muted-foreground/60">{hint}</div> : null}
+        {hint ? <div className="text-[11px] text-muted-foreground/75">{hint}</div> : null}
       </div>
       {children}
     </div>

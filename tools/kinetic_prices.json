@@ -1,0 +1,793 @@
+[
+  {
+    "id": "3",
+    "code": "odachi",
+    "name": "Kinetic: Fireborn Assault",
+    "price": 2350,
+    "listings": null
+  },
+  {
+    "id": "41",
+    "code": "burning_fiend",
+    "name": "Kinetic: Dominator's Stance",
+    "price": 1100,
+    "listings": null
+  },
+  {
+    "id": "25",
+    "code": "fear",
+    "name": "Kinetic: Free to Fear",
+    "price": 899,
+    "listings": null
+  },
+  {
+    "id": "14",
+    "code": "obeisance_of_the_keeper",
+    "name": "Kinetic: Obeisance of the Keeper",
+    "price": 835.86,
+    "listings": null
+  },
+  {
+    "id": "9",
+    "code": "serene_honor",
+    "name": "Kinetic: Serene Honor",
+    "price": 508.76,
+    "listings": null
+  },
+  {
+    "id": "1",
+    "code": "pyre",
+    "name": "Kinetic: Flames of the Pyre",
+    "price": 355,
+    "listings": null
+  },
+  {
+    "id": "16",
+    "code": "twister",
+    "name": "Kinetic: Twister",
+    "price": 272,
+    "listings": null
+  },
+  {
+    "id": "4",
+    "code": "bladebiter",
+    "name": "Kinetic: Bladebiter's Strike",
+    "price": 230,
+    "listings": null
+  },
+  {
+    "id": "2",
+    "code": "eyeoffetizu",
+    "name": "Kinetic: Pits of Omoz",
+    "price": 224.17,
+    "listings": null
+  },
+  {
+    "id": "15",
+    "code": "when_nature_attacks",
+    "name": "Kinetic: When Nature Attacks",
+    "price": 219.99,
+    "listings": null
+  },
+  {
+    "id": "21",
+    "code": "swordonshoulder",
+    "name": "Kinetic: The Knight's Repose",
+    "price": 200,
+    "listings": null
+  },
+  {
+    "id": "27",
+    "code": "ftp_dendi_back",
+    "name": "Kinetic: Crow's Feet",
+    "price": 159.99,
+    "listings": null
+  },
+  {
+    "id": "6",
+    "code": "death_protest",
+    "name": "Kinetic: Twin Deaths' Haunting",
+    "price": 150,
+    "listings": null
+  },
+  {
+    "id": "7",
+    "code": "dizzying_punch",
+    "name": "Kinetic: Dizzying Punch!",
+    "price": 140.99,
+    "listings": null
+  },
+  {
+    "id": "87",
+    "code": "dc_bladekeeper_crit",
+    "name": "Kinetic: Bladekeeper's Blade Dance",
+    "price": 130.55,
+    "listings": null
+  },
+  {
+    "id": "8",
+    "code": "wraith_spin",
+    "name": "Kinetic: Wraith Spin",
+    "price": 123.88,
+    "listings": null
+  },
+  {
+    "id": "0",
+    "code": "silent_ripper",
+    "name": "Kinetic: Pounce of the Silent Ripper",
+    "price": 116.94,
+    "listings": null
+  },
+  {
+    "id": "10",
+    "code": "red_moon",
+    "name": "Kinetic: Red Moon",
+    "price": 99.92,
+    "listings": null
+  },
+  {
+    "id": "111",
+    "code": "trapper",
+    "name": "Kinetic: Trapper's Treachery",
+    "price": 89.13,
+    "listings": null
+  },
+  {
+    "id": "17",
+    "code": "salvaged_sword",
+    "name": "Kinetic: Salvaged Sword",
+    "price": 88,
+    "listings": null
+  },
+  {
+    "id": "40",
+    "code": "emp",
+    "name": "Kinetic: Empyrean",
+    "price": 79.99,
+    "listings": null
+  },
+  {
+    "id": "50",
+    "code": "reminiscence_ambient",
+    "name": "Kinetic: Ambience of Reminiscence",
+    "price": 76,
+    "listings": null
+  },
+  {
+    "id": "23",
+    "code": "lucentyr",
+    "name": "Kinetic: Liveliness of Lucentyr",
+    "price": 70,
+    "listings": null
+  },
+  {
+    "id": "11",
+    "code": "turbulent_teleport",
+    "name": "Kinetic: Turbulent Teleport",
+    "price": 69.55,
+    "listings": null
+  },
+  {
+    "id": "83",
+    "code": "dc_bladekeeper_omnislash",
+    "name": "Kinetic: Bladekeeper's Omnislash",
+    "price": 63,
+    "listings": null
+  },
+  {
+    "id": "28",
+    "code": "telebolt",
+    "name": "Kinetic: Teleboltin'!",
+    "price": 54,
+    "listings": null
+  },
+  {
+    "id": "84",
+    "code": "dc_bladekeeper_bladefury",
+    "name": "Kinetic: Bladekeeper's Bladefury",
+    "price": 43.79,
+    "listings": null
+  },
+  {
+    "id": "51",
+    "code": "reminiscence_rift",
+    "name": "Kinetic: Rift of Reminiscence",
+    "price": 37.8,
+    "listings": null
+  },
+  {
+    "id": "45",
+    "code": "torrent_divine_anchor",
+    "name": "Kinetic: Torrent of the Divine Anchor",
+    "price": 36.99,
+    "listings": null
+  },
+  {
+    "id": "30",
+    "code": "MGC",
+    "name": "Kinetic: Muh Keen Gun",
+    "price": 34.98,
+    "listings": null
+  },
+  {
+    "id": "46",
+    "code": "tidebringer_divine_anchor",
+    "name": "Kinetic: Tidebringer of the Divine Anchor",
+    "price": 31,
+    "listings": null
+  },
+  {
+    "id": "19",
+    "code": "ss_fortune",
+    "name": "Kinetic: Good Fortune Remnants",
+    "price": 26.99,
+    "listings": null
+  },
+  {
+    "id": "13",
+    "code": "impatient_maiden",
+    "name": "Kinetic: Impatient Maiden",
+    "price": 23.72,
+    "listings": null
+  },
+  {
+    "id": "24",
+    "code": "f2p_doom",
+    "name": "Kinetic: Crown of Hells!",
+    "price": 23,
+    "listings": null
+  },
+  {
+    "id": "12",
+    "code": "dagger_twirl",
+    "name": "Kinetic: Allure of the Succubus",
+    "price": 20.97,
+    "listings": null
+  },
+  {
+    "id": "20",
+    "code": "es_prosperity",
+    "name": "Kinetic: Prosperity Remnants",
+    "price": 14.49,
+    "listings": null
+  },
+  {
+    "id": "49",
+    "code": "reminiscence_orb",
+    "name": "Kinetic: Orb of Reminiscence",
+    "price": 14,
+    "listings": null
+  },
+  {
+    "id": "52",
+    "code": "reminiscence_dreamcoil",
+    "name": "Kinetic: Dreamcoil of Reminiscence",
+    "price": 12.53,
+    "listings": null
+  },
+  {
+    "id": "26",
+    "code": "bot",
+    "name": "Kinetic: Booties of Travel!",
+    "price": 11.24,
+    "listings": null
+  },
+  {
+    "id": "32",
+    "code": "windy",
+    "name": "Kinetic: Sylvan Cascade!",
+    "price": 11.19,
+    "listings": null
+  },
+  {
+    "id": "34",
+    "code": "everlasting_array",
+    "name": "Kinetic: Everlasting Array",
+    "price": 11,
+    "listings": null
+  },
+  {
+    "id": "47",
+    "code": "epitaphic_bonds_trap",
+    "name": "Kinetic: Epitaphic Trap",
+    "price": 11,
+    "listings": null
+  },
+  {
+    "id": "5",
+    "code": "deadwinter_soul",
+    "name": "Kinetic: Deadwinter's Soul",
+    "price": 8,
+    "listings": null
+  },
+  {
+    "id": "18",
+    "code": "triumphant_timelord",
+    "name": "Kinetic: Triumphant Timelord",
+    "price": 7.55,
+    "listings": null
+  },
+  {
+    "id": "86",
+    "code": "dc_centaur_double_edge",
+    "name": "Kinetic: Stallion's Double Edge",
+    "price": 5.29,
+    "listings": null
+  },
+  {
+    "id": "48",
+    "code": "timberthaw_chakram",
+    "name": "Kinetic: Timberthaw Chakram",
+    "price": 4.06,
+    "listings": null
+  },
+  {
+    "id": "31",
+    "code": "moth",
+    "name": "Kinetic: Krobelus",
+    "price": 3.25,
+    "listings": null
+  },
+  {
+    "id": "36",
+    "code": "glacier",
+    "name": "Kinetic: Yulsaria's Glacier",
+    "price": 3.16,
+    "listings": null
+  },
+  {
+    "id": "22",
+    "code": "abysm",
+    "name": "Kinetic: Horns of Inner Abysm",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "29",
+    "code": "glory",
+    "name": "Kinetic: Glorious!",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "33",
+    "code": "iron",
+    "name": "Kinetic: Iron Tail!",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "35",
+    "code": "fishstick",
+    "name": "Kinetic: Fish!",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "38",
+    "code": "rampant",
+    "name": "Kinetic: Rampant Outrage",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "39",
+    "code": "lodestar",
+    "name": "Kinetic: Flourishing Lodestar",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "42",
+    "code": "harlequin",
+    "name": "Kinetic: Harlequin Animation",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "53",
+    "code": "harlequin_weapon",
+    "name": "Kinetic: Harlequin Particles and Fade Bolt Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "54",
+    "code": "harlequin_head",
+    "name": "Kinetic: Harlequin Null Field Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "55",
+    "code": "harlequin_cape",
+    "name": "Kinetic: Harlequin Telekinesis Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "56",
+    "code": "harlequin_mantle",
+    "name": "Kinetic: Harlequin Spell Steal Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "57",
+    "code": "lucent_gate_eclipse",
+    "name": "Kinetic: Lucent Gate Eclipse Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "58",
+    "code": "lucent_gate_aura",
+    "name": "Kinetic: Lucent Gate Aura Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "59",
+    "code": "lucent_gate_imprisonment",
+    "name": "Kinetic: Lucent Gate Imprisonment Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "60",
+    "code": "lucent_gate_orb",
+    "name": "Kinetic: Lucent Gate Particles and Orb Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "65",
+    "code": "hunter_of_kings_shapeshift",
+    "name": "Kinetic: Hunter of Kings Shapeshift and Howl Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "66",
+    "code": "hunter_of_kings_summon",
+    "name": "Kinetic: Hunter of Kings Summon Wolves Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "67",
+    "code": "hunter_of_kings_feral_impulse",
+    "name": "Kinetic: Hunter of Kings Feral Impulse Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "68",
+    "code": "monstrous_reprisal_back_stab",
+    "name": "Kinetic: Monstrous Reprisal Back Stab Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "69",
+    "code": "monstrous_reprisal_blink_strike",
+    "name": "Kinetic: Monstrous Reprisal Blink Strike Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "70",
+    "code": "monstrous_reprisal_permanent_invisibility",
+    "name": "Kinetic: Monstrous Reprisal Permanent Invisibility Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "71",
+    "code": "wmonstrous_reprisal_smoke_screen",
+    "name": "Kinetic: Monstrous Reprisal Smoke Screen Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "72",
+    "code": "agaric_flourish_eyes_guise_icons",
+    "name": "Kinetic: Agaric Flourish Eyes and Guise Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "73",
+    "code": "agaric_flourish_overgrowth_icon",
+    "name": "Kinetic: Agaric Flourish Overgrowth Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "74",
+    "code": "agaric_flourish_armor_icon",
+    "name": "Kinetic: Agaric Flourish Living Armor Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "75",
+    "code": "agaric_flourish_leech_seed_icon",
+    "name": "Kinetic: Agaric Flourish Leech Seed Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "76",
+    "code": "fiend_cleaver_great_cleave_icon",
+    "name": "Kinetic: Fiend Cleaver Great Cleave Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "77",
+    "code": "fiend_cleaver_warcry_icon",
+    "name": "Kinetic: Fiend Cleaver Warcry Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "78",
+    "code": "fiend_cleaver_gods_strength_icon",
+    "name": "Kinetic: Fiend Cleaver God's Strength Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "79",
+    "code": "fiend_cleaver_storm_bolt_icon",
+    "name": "Kinetic: Fiend Cleaver Storm Bolt Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "80",
+    "code": "eldwurms_touch_bow_icons",
+    "name": "Kinetic: Eldwurm's Touch Bow Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "81",
+    "code": "eldwurms_touch_wave_of_silence_icon",
+    "name": "Kinetic: Eldwurm's Touch Wave of Silence Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "85",
+    "code": "dc_bladekeeper_healing_ward",
+    "name": "Kinetic: Bladekeeper's Healing Ward",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "88",
+    "code": "ghastly_matriarch_exorcism_icon",
+    "name": "Kinetic: Ghastly Matriarch Exorcism Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "89",
+    "code": "necronub_reapers_scythe",
+    "name": "Kinetic: Ghostly Wrath of Ka",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "90",
+    "code": "necronub_death_pulse",
+    "name": "Kinetic: Scarab Swarm of Ka",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "91",
+    "code": "necronub_base_attack",
+    "name": "Kinetic: Rotting Bolt of Ka",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "92",
+    "code": "necronub_ambient",
+    "name": "Kinetic: Sands of Ka",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "93",
+    "code": "dc_centaur_head_icons",
+    "name": "Kinetic: Stallion's Ability Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "94",
+    "code": "azure_constellation_head",
+    "name": "Kinetic: Azure Constellation Lunar Blessing Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "95",
+    "code": "azure_constellation_glaive",
+    "name": "Kinetic: Azure Constellation Moon Glaives Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "96",
+    "code": "azure_constellation_shield",
+    "name": "Kinetic: Azure Constellation Lucent Beam Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "97",
+    "code": "azure_constellation_mount",
+    "name": "Kinetic: Azure Constellation Eclipse Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "98",
+    "code": "bloody_ripper_mask",
+    "name": "Kinetic: Bloody Ripper Feast, Open Wounds and Rage Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "99",
+    "code": "bloody_ripper_back",
+    "name": "Kinetic: Bloody Ripper Infest Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "100",
+    "code": "bloody_ripper_arms",
+    "name": "Kinetic: Bloody Ripper Consume Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "101",
+    "code": "compendium_bloody_ripper_mask",
+    "name": "Kinetic: Compendium Bloody Ripper Feast, Open Wounds and Rage Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "102",
+    "code": "compendium_bloody_ripper_back",
+    "name": "Kinetic: Compendium Bloody Ripper Infest Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "103",
+    "code": "compendium_bloody_ripper_arms",
+    "name": "Kinetic: Compendium Bloody Ripper Consume Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "104",
+    "code": "surgical_prevision_apron",
+    "name": "Kinetic: Surgical Precision Rot and Flesh Heap Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "105",
+    "code": "surgical_prevision_hook",
+    "name": "Kinetic: Surgical Precision Meat Hook and Dismember Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "106",
+    "code": "moon_griffon",
+    "name": "Kinetic: Moon Griffon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "107",
+    "code": "crested_umbra_glaive",
+    "name": "Kinetic: Crested Umbra Magic Missile Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "108",
+    "code": "crested_umbra_virtue",
+    "name": "Kinetic: Crested Umbra Wave of Terror Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "109",
+    "code": "crested_umbra_duty",
+    "name": "Kinetic: Crested Umbra Command Aura Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "110",
+    "code": "crested_umbra_skirt",
+    "name": "Kinetic: Crested Umbra Nether Swap Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "114",
+    "code": "year_beast_hellfire_reincarnate",
+    "name": "Kinetic: Year Beast Hellfire Reincarnate Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "115",
+    "code": "year_beast_vampiric_aura",
+    "name": "Kinetic: Year Beast Vampiric Aura Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "116",
+    "code": "year_beast_mortal_strike",
+    "name": "Kinetic: Year Beast Mortal Strike Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "117",
+    "code": "bts_3_silencer",
+    "name": "Kinetic: Tools of the Final Utterance Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "118",
+    "code": "blueice_ability_icons",
+    "name": "Kinetic: Eye of the Beholder Abililty Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "119",
+    "code": "cyclopean_marauder_gaze_icons",
+    "name": "Kinetic: Cyclopean Marauder Gaze Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "121",
+    "code": "cyclopean_marauder_storm_bolt_icon",
+    "name": "Kinetic: Cyclopean Marauder Storm Bolt Icon",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "122",
+    "code": "ravening_wings_glaive_icons",
+    "name": "Kinetic: Ravening_Wings_Glaive_Icons",
+    "price": null,
+    "listings": 0
+  },
+  {
+    "id": "123",
+    "code": "ravening_wings_blur_icon",
+    "name": "Kinetic: Ravening_Wings_Blur_Icon",
+    "price": null,
+    "listings": 0
+  }
+]

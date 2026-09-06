@@ -17,8 +17,20 @@ import { DatabaseSync } from 'node:sqlite'
 import { historyUrl, parseHistory } from './server/valve.ts'
 
 const TOOLS = path.resolve(import.meta.dirname, '..', 'tools')
-const KEY = fs.readFileSync(path.join(TOOLS, 'steam.key'), 'utf8').trim()
-const OD_KEY = fs.readFileSync(path.join(TOOLS, 'opendota.key'), 'utf8').trim()
+// Ключи читаются лениво, каждый там, где он нужен.
+//
+// Оба читались безусловно при загрузке модуля, и обход падал с ENOENT
+// на opendota.key, хотя тот нужен только для сборки списка лиг (--leagues).
+// Продолжить прерванный обход без ключа зеркала было нельзя вовсе.
+const key = (file: string, what: string) => {
+  try {
+    const v = fs.readFileSync(path.join(TOOLS, file), 'utf8').trim()
+    if (v) return v
+  } catch { /* ниже скажем, чего не хватает */ }
+  throw new Error('нет ' + file + ' — ' + what)
+}
+const KEY = () => key('steam.key', 'без ключа Steam обходить нечем')
+const OD_KEY = () => key('opendota.key', 'он нужен только для сборки списка лиг: --leagues')
 const LEAGUES_FILE = path.join(TOOLS, 'leagues.json')
 
 const argv = process.argv.slice(2)
@@ -82,7 +94,7 @@ async function collectLeagues(): Promise<{ id: number; hint: number; name: strin
 
   try {
     const sql = 'SELECT leagueid, name FROM leagues ORDER BY leagueid'
-    const r = await fetch('https://api.opendota.com/api/explorer?api_key=' + OD_KEY + '&sql=' + encodeURIComponent(sql), { headers: UA })
+    const r = await fetch('https://api.opendota.com/api/explorer?api_key=' + OD_KEY() + '&sql=' + encodeURIComponent(sql), { headers: UA })
     const j: any = await r.json()
     let added = 0
     for (const l of j?.rows ?? []) {
@@ -111,7 +123,7 @@ async function crawlLeague(id: number): Promise<{ n: number; error: string | nul
     let payload: unknown = null
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const res = await fetch(historyUrl(KEY, id, start), { headers: UA })
+        const res = await fetch(historyUrl(KEY(), id, start), { headers: UA })
         if (res.status === 429) { await wait(30_000); continue }
         if (!res.ok) return { n, error: 'HTTP ' + res.status }
         payload = await res.json()
@@ -121,6 +133,15 @@ async function crawlLeague(id: number): Promise<{ n: number; error: string | nul
         await wait(2000)
       }
     }
+
+    // Три отказа подряд — это отказ, а не пустая лига.
+    //
+    // Раньше цикл попыток просто заканчивался, payload оставался null,
+    // и parseHistory(null) отвечал «страниц больше нет, ошибок нет».
+    // Лига уходила в vleague как done = 1 с нулём матчей и без причины,
+    // а следующий обход её уже пропускал: `where done = 1` навсегда.
+    // Отличить такую лигу от честно пустой потом нечем.
+    if (payload === null) return { n, error: 'Steam ограничил частоту — три отказа подряд' }
 
     const p = parseHistory(payload, id)
     if (p.error) return { n, error: p.error }
@@ -151,8 +172,20 @@ if (ONLY_LEAGUES) {
   process.exit(0)
 }
 
+// Что считать пройденным.
+//
+// По умолчанию — всё, что помечено done = 1. Но лиги, отмеченные нулём
+// матчей, стоит уметь перепроверить: до починки выше сюда попадали и те,
+// что Valve просто не отдал по частоте запросов, и отличить их от честно
+// пустых нечем. --retry-empty берёт их заново; это дёшево — одна страница
+// на лигу.
+const RETRY_EMPTY = process.argv.includes('--retry-empty')
 const doneIds = new Set(
-  (db.prepare(`select league_id from vleague where done = 1`).all() as any[]).map(r => String(r.league_id)))
+  (db.prepare(
+    RETRY_EMPTY
+      ? `select league_id from vleague where done = 1 and matches > 0`
+      : `select league_id from vleague where done = 1`,
+  ).all() as any[]).map(r => String(r.league_id)))
 const todo = leagues
   .filter((l: any) => ALL || l.hint > 0)
   .filter((l: any) => !doneIds.has(String(l.id)))

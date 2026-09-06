@@ -1,0 +1,236 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Surfaces climb from the page background toward the foreground. */
+  --color-ink: #05070b;
+  --color-panel: #0b1017;
+  --color-panel-2: #111823;
+  --color-panel-3: #18212e;
+  --color-line: #1c2634;
+  --color-line-soft: #151d28;
+
+  --color-text: #e8eef6;
+  --color-mute: #7f8da3;
+  --color-faint: #55627a;
+
+  --color-accent: #2ee6a8;
+  --color-warn: #f5a524;
+  --color-danger: #fb4d67;
+  --color-info: #4cc2ff;
+  --color-violet: #a78bfa;
+
+  /* Dota rarity colours, straight from the client. */
+  --color-rarity-common: #b0c3d9;
+  --color-rarity-uncommon: #5e98d9;
+  --color-rarity-rare: #4b69ff;
+  --color-rarity-mythical: #8847ff;
+  --color-rarity-legendary: #d32ce6;
+  --color-rarity-immortal: #e4ae39;
+  --color-rarity-arcana: #ade55c;
+
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--color-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Two very soft pools of light keep the flat dark background from reading
+     as an empty void without adding noise behind the data. */
+  background:
+    radial-gradient(1100px 520px at 12% -10%, rgba(46, 230, 168, 0.07), transparent 60%),
+    radial-gradient(900px 480px at 88% 0%, rgba(76, 194, 255, 0.06), transparent 55%),
+    var(--color-ink);
+  background-attachment: fixed;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2a3a;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2b3a4f;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- motion ---------- */
+
+@keyframes radar-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+  animation: radar-pulse 2.4s ease-out infinite;
+}
+
+@keyframes sweep-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sweep-spin {
+  transform-origin: 50% 50%;
+  animation: sweep-spin 3.4s linear infinite;
+}
+
+@keyframes row-flash {
+  from {
+    background-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.row-fresh {
+  animation: row-flash 3s ease-out 1;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise-in {
+  animation: rise-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.toast-in {
+  animation: toast-in 0.24s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.bar-grow {
+  transform-origin: left center;
+  animation: bar-grow 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/* ---------- icon micro-interactions ----------
+   Icons react to the hover of whatever they sit inside, in the spirit of the
+   animated-icon sets: intent first, decoration second. */
+
+.ico {
+  transition:
+    transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1),
+    color 0.18s ease;
+}
+.group:hover .ico-lift {
+  transform: translateY(-2px);
+}
+.group:hover .ico-nudge {
+  transform: translateX(2px);
+}
+.group:hover .ico-spin {
+  transform: rotate(90deg);
+}
+.group:hover .ico-pop {
+  transform: scale(1.16);
+}
+.group:hover .ico-shake {
+  animation: ico-shake 0.5s ease-in-out;
+}
+
+@keyframes ico-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-11deg);
+  }
+  55% {
+    transform: rotate(9deg);
+  }
+  80% {
+    transform: rotate(-4deg);
+  }
+}
+
+/* ---------- Valve's own item markup ----------
+   The socket block comes back as inline-styled HTML. These rules only tame
+   its spacing so it sits inside a card; the sprites stay untouched. */
+
+.valve-html {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-mute);
+}
+.valve-html img {
+  display: inline-block;
+}
+.valve-html br + br {
+  display: none;
+}
+
+/* Switching a tab inside the item dialog. Corporate weight: short, no
+   overshoot — the numbers behind it are money, not decoration. */
+@keyframes pane-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pane-in {
+  animation: pane-in 0.2s cubic-bezier(0.2, 0, 0, 1) both;
+}

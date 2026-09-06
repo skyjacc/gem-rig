@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Gauge, Network, ShoppingCart, Users, Wrench } from 'lucide-react'
 import { ago, DEMO, useJson, useLive, type Accounts as AccountsData } from './lib/api.ts'
 import { Dot } from './parts/ui.tsx'
-import { Sidebar, type ViewId } from './parts/Sidebar.tsx'
+import { Sidebar, TopNav, type ViewId } from './parts/Sidebar.tsx'
 import { LinkAccount } from './parts/LinkAccount.tsx'
 import { Work } from './views/Work.tsx'
 import { Graph } from './views/Graph.tsx'
@@ -86,6 +86,8 @@ export default function App() {
               </span>
             </div>
           </header>
+
+          <TopNav view={view} onView={setView} state={state} accounts={accounts} items={items} />
 
           <main
             key={view}

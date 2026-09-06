@@ -24,3 +24,24 @@ _ref/site/
 tools/rig.db.backup-*
 tools/rig.db.bak-*
 dist-demo/
+tools/dmarket.key
+tools/dmarket.pub
+
+# ---- случайные загрузки в корне проекта, не часть кода ----
+*.exe
+*.msi
+/*.html
+/*_files/
+/*.jpg
+/*.png
+/f.json
+
+# ---- рабочее состояние радара: журнал, история, кэш обходов ----
+radar/radar-data/
+radar/backend/radar.exe
+radar/backend/*.new.exe
+
+# Сборка фронта попадает в бинарь через go:embed, но в репозитории не нужна.
+# Плейсхолдер ниже оставлен, чтобы `go build` работал на свежем клоне.
+radar/backend/web/dist/*
+!radar/backend/web/dist/.gitkeep

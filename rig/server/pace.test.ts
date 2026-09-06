@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { advise, creditRate, evenDelay, EVEN_CEIL, silenceLimit, type Sample } from './pace.ts'
+import { toSamples } from './autopilot.ts'
 
 const ok = (n: number, delay: number): Sample[] =>
   Array.from({ length: n }, (_, i) => ({ delay, ts: i * delay, result: 'update' as const }))
@@ -89,4 +90,50 @@ test('доля начислений: половина пустых — поло�
 
 test('доля начислений: ниже пятнадцати процентов не опускаемся', () => {
   assert.equal(creditRate(1, 999), 0.15)
+})
+
+// ── откуда берутся замеры ──
+//
+// Фильтр «судим только по текущему темпу» выше работает, но в рабочем коде
+// он не отсекал ничего: панель подставляла в КАЖДУЮ запись отчёта свою
+// нынешнюю паузу вместо той, на которой отправка действительно ушла.
+// Замеры со вчерашних пяти секунд ложились в одну кучу с сегодняшними,
+// и советчик считал чистым темп, на котором никто не работал.
+
+test('пауза берётся из записи отчёта, а не из нынешней настройки панели', () => {
+  const s = toSamples([
+    { ts: 3, result: 'update', delay: 1000 },
+    { ts: 2, result: 'silent', delay: 5000 },
+    { ts: 1, result: 'update', delay: 5000 },
+  ], 1000)
+  assert.deepEqual(s.map(x => x.delay), [5000, 5000, 1000])
+})
+
+test('запись без паузы — только тогда берём нынешнюю', () => {
+  const s = toSamples([{ ts: 1, result: 'update' }, { ts: 2, result: 'dup', delay: 0 }], 2500)
+  assert.deepEqual(s.map(x => x.delay), [2500, 2500])
+})
+
+test('отчёт разворачивается: последним идёт самый свежий', () => {
+  const s = toSamples([
+    { ts: 30, result: 'update', delay: 900 },
+    { ts: 10, result: 'update', delay: 4000 },
+  ], 0)
+  assert.equal(s[s.length - 1].delay, 900, 'advise судит по последнему — это должен быть свежий')
+})
+
+test('молчания на старой паузе не портят приговор новой', () => {
+  // Сорок чистых отправок на секунде после сотни молчаний на пяти.
+  const old = Array.from({ length: 100 }, (_, i) => ({ ts: i, result: 'silent', delay: 5000 }))
+  const now = Array.from({ length: 40 }, (_, i) => ({ ts: 200 + i, result: 'update', delay: 1000 }))
+  const s = toSamples([...now, ...old].reverse().reverse(), 1000)
+  const a = advise(s, { floor: 500, ceil: 30_000, enough: 40, clean: 0.01, down: 0.8, up: 1.4 })
+  assert.equal(a.atDelay, 1000, 'судим по тому темпу, на котором работаем сейчас')
+  assert.equal(a.silent, 0)
+  assert.equal(a.measured, 40)
+})
+
+test('мусор в отчёте не роняет разбор', () => {
+  assert.deepEqual(toSamples(null as any, 1000), [])
+  assert.deepEqual(toSamples([{ ts: 1 }, null] as any, 1000), [])
 })

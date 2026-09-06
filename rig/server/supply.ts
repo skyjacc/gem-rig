@@ -22,10 +22,29 @@ export function classifySupply(measured: number, estimate: number | null): Suppl
 
 const ids = (rows: unknown[]) => rows.map((r: any) => String(r.match_id))
 
+// Карту матчей строит обходчик (rig/crawl.ts), и его могли ещё не запускать:
+// панель создаёт свои таблицы, vmatch и vplayer появляются позже. Без этой
+// проверки экран графа отвечал пятисотой ошибкой «no such table: vmatch» —
+// на свежей установке, то есть ровно тогда, когда человек первый раз открыл
+// панель. Ответ «карты нет» честнее и не роняет сервер.
+const mapped = new WeakMap<DatabaseSync, boolean>()
+export function hasMap(target: DatabaseSync): boolean {
+  const known = mapped.get(target)
+  if (known !== undefined) return known
+  const rows = target.prepare(
+    `select name from sqlite_master where type='table' and name in ('vmatch','vplayer')`).all() as any[]
+  const ok = rows.length === 2
+  // Запоминаем только удачу: таблицы появятся после обхода, и «нет» должно
+  // уметь стать «да» без перезапуска панели.
+  if (ok) mapped.set(target, true)
+  return ok
+}
+
 // Матчи сущности. Команда ищется с обеих сторон карты, игрок — по связям,
 // лига — по своему полю. Студия это не одна лига, а набор: у Beyond the Summit
 // их 31, у Dota Cinema две.
 export function entityMatchIds(target: DatabaseSync, e: Entity): string[] {
+  if (!hasMap(target)) return []
   const id = Math.trunc(Number(e.id))
 
   if (e.kind === 'team') {

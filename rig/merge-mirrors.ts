@@ -21,8 +21,28 @@ const KEY = fs.readFileSync(path.join(TOOLS, 'opendota.key'), 'utf8').trim()
 const WRITE = process.argv.includes('--write')
 const PAUSE = 1600
 
-const db = new DatabaseSync(path.join(TOOLS, 'rig.db'))
+const dbFile = path.join(TOOLS, 'rig.db')
+if (!fs.existsSync(dbFile)) throw new Error('нет ' + dbFile + ' — сначала обход: node rig/crawl.ts')
+const db = new DatabaseSync(dbFile)
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+// Таблицы карты создаёт обходчик, а колонку source — миграция сервера.
+// Порознь их не бывает только на бумаге: базу можно обойти и ни разу
+// не поднять панель. Тогда добор падал на подготовке запроса — уже после
+// того, как поход к OpenDota был оплачен временем.
+const hasTable = (t: string) =>
+  !!db.prepare(`select name from sqlite_master where type='table' and name=?`).get(t)
+
+if (!hasTable('vmatch') || !hasTable('vplayer')) {
+  console.log('карты матчей нет — сначала обход: node rig/crawl.ts')
+  process.exit(1)
+}
+
+const cols = (db.prepare(`pragma table_info(vmatch)`).all() as any[]).map(c => c.name)
+if (!cols.includes('source')) {
+  db.exec(`alter table vmatch add column source text default 'valve'`)
+  console.log('добавил vmatch.source — базу собирали обходом без панели')
+}
 
 async function explorer(sql: string): Promise<any[]> {
   const url = 'https://api.opendota.com/api/explorer?api_key=' + KEY + '&sql=' + encodeURIComponent(sql)
@@ -92,8 +112,16 @@ for (const b of behind) {
         Number(r.start_time) || 0, Number(r.lobby_type) || 0)
       if (!before) addedM++
     }
+    // Считаем ДОБАВЛЕННЫЕ связи, а не выполненные запросы: `insert or ignore`
+    // молча пропускает уже известные, и отчёт хвастался тысячами связей,
+    // которых он не добавлял. Матчи рядом считаются правильно — пробой
+    // на существование; здесь было иначе.
     const acc = Number(r.account_id)
-    if (Number.isFinite(acc) && acc > 0 && acc !== 4294967295) { insP.run(id, acc); addedP++ }
+    if (Number.isFinite(acc) && acc > 0 && acc !== 4294967295) {
+      const had = db.prepare('select 1 from vplayer where match_id = ? and account_id = ?').get(id, acc)
+      insP.run(id, acc)
+      if (!had) addedP++
+    }
   }
 
   if (i % 20 === 0 || i === behind.length) {

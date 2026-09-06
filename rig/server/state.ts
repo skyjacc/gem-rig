@@ -19,6 +19,7 @@ import { TOOLS, readJson, odKey, steamKey } from './paths.ts'
 import { invOf } from './steam.ts'
 import { burnedCount, lastConfirmed, ratePerMinute, recentEvents, supplyRows } from './db.ts'
 import { db } from './db.ts'
+import { arrivalSummary, asideSet } from './arrival.ts'
 import { entityStat } from './queue.ts'
 import { classifySupply } from './supply.ts'
 import { ACCOUNT } from './accounts.ts'
@@ -78,18 +79,29 @@ export function buildState() {
   const box = invOf()
 
   // мои гемы
+  //
+  // Отложенное на продажу помечается, а не прячется: вещь всё ещё в инвентаре
+  // и её видно на полке, но фарма под неё больше нет.
+  const asideArr = asideSet(db, ACCOUNT())
   const groups = new Map<string, any>()
   for (const r of box.rows) {
     const g = r.gem || '—'
-    if (!groups.has(g)) groups.set(g, { gem: g, items: 0, equipped: 0, min: null as number | null, max: 0, icon: r.icon, heroes: new Set<string>(), rows: [] as any[], bare: 0 })
+    if (!groups.has(g)) groups.set(g, { gem: g, items: 0, equipped: 0, min: null as number | null, max: 0, icon: r.icon, heroes: new Set<string>(), rows: [] as any[], bare: 0, aside: 0 })
     const e = groups.get(g)
+    const isAside = asideArr.has(r.assetid)
     e.items++
+    // Значок у вещи не хранится: он один на весь гем и уже лежит в группе.
+    // Хеш картинки Steam — полторы сотни знаков, вещей шестьсот с лишним,
+    // и на каждый толчок состояния это сто килобайт одного и того же текста:
+    // сорок процентов всего снимка. Ни один экран его не читал.
     e.rows.push({
       assetid: r.assetid, name: r.name, hero: r.hero, value: r.value,
-      equipped: !!r.equipped, icon: r.icon,
+      equipped: !!r.equipped,
       // Голый самоцвет и предмет с вставленным — разный товар и разная цена.
       carrier: r.carrier ?? 'item',
+      aside: isAside,
     })
+    if (isAside) e.aside++
     if ((r.carrier ?? 'item') === 'gem') e.bare++
     e.max = Math.max(e.max, r.value)
     e.min = e.min === null ? r.value : Math.min(e.min, r.value)
@@ -109,6 +121,7 @@ export function buildState() {
       rows: (e.rows as any[]).sort((x, y) => y.value - x.value),
       bare: e.bare,
       socketed: e.items - e.bare,
+      aside: e.aside,
       kind: s?.kind ?? null, entityId: s?.entity_id ?? null, entityName: s?.entity_name ?? null,
       supply: st && st.supply > 0 ? st.supply : estimate,
       left: st ? st.left : null,
@@ -121,19 +134,20 @@ export function buildState() {
     const key = norm(c.name)
     const s = supBy.get(key)
     const own = mine.find(m => norm(m.gem) === key)
-    const price = parseFloat(String(c.price).replace(/[^\d.]/g, '')) || 0
     const st = s?.kind && s?.entity_id ? stat(s.kind, s.entity_id) : null
     const measured = st && st.supply > 0 ? st.supply : (s?.matches ?? null)
     return {
+      // Только то, что читают экраны. listings, kind, entityId, entityName,
+      // per1000 и ownedValue считались на все 53 позиции каждый толчок
+      // и не открывались нигде.
       name: c.name,
       short: c.name.replace(/^(Genuine\s+)?Spectator:\s*/, '').trim() || 'без имени',
-      price: c.price, listings: c.listings, icon: c.icon,
+      price: c.price,
+      icon: c.icon,
       market: 'https://steamcommunity.com/market/listings/570/' + encodeURIComponent(c.name),
-      kind: s?.kind ?? null, entityId: s?.entity_id ?? null, entityName: s?.entity_name ?? null,
       supply: measured,
       supplyKind: classifySupply(st?.supply ?? 0, s?.matches ?? null),
-      per1000: measured ? price / measured * 1000 : null,
-      ownedItems: own?.items ?? 0, ownedValue: own?.max ?? null,
+      ownedItems: own?.items ?? 0,
     }
   }).sort((a, b) => (b.supply ?? 0) - (a.supply ?? 0))
 
@@ -157,5 +171,8 @@ export function buildState() {
     },
     burned: burnedCount(),
     keys,
+    // Сводка сканера прихода: open — выигрыши, ждущие решения. Одно число
+    // в состоянии дешевле, чем список: список живёт в /api/arrivals.
+    arrivals: arrivalSummary(db),
   }
 }

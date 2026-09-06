@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "node --watch server/index.ts",
     "server": "node server/index.ts",
-    "test": "node --test \"server/**/*.test.ts\""
+    "test": "node --import ./server/testenv.ts --test \"server/**/*.test.ts\"",
+    "check": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/static": "^8.0.4",

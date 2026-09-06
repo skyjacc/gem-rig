@@ -6,7 +6,7 @@ import {
   ago, nf, plural, span, useAction, useJson,
   type CatalogRow, type Kit, type Live, type Pool, type State,
 } from '../lib/api.ts'
-import { Bar, Button, Card, Dot, Empty, ItemIcon, Label, Note, Num, PageHead, Segmented } from '../parts/ui.tsx'
+import { Bar, Button, Card, Dot, Empty, ItemIcon, Label, Note, Num, PageHead, RowsSkeleton, Segmented } from '../parts/ui.tsx'
 import { Chart } from '../parts/Chart.tsx'
 import { Tune } from '../parts/Tune.tsx'
 import { Reveal } from '../parts/Reveal.tsx'
@@ -223,7 +223,7 @@ function Progress({ ap, now }: { ap: State['autopilot']; now: number }) {
           <span className="text-muted-foreground">
             цель <span className="tnum font-mono text-foreground">{nf(ap.target)}</span>
             {ap.ordered && ap.ordered !== ap.target
-              ? <span className="text-muted-foreground/60"> — заказ {nf(ap.ordered)}, круглое выдаёт накрутку</span>
+              ? <span className="text-muted-foreground/75"> — заказ {nf(ap.ordered)}, круглое выдаёт накрутку</span>
               : null}
           </span>
           <span className="tnum font-mono">{nf(ap.done)} / {nf(ap.target)}</span>
@@ -247,7 +247,7 @@ function Progress({ ap, now }: { ap: State['autopilot']; now: number }) {
             <span className="tnum font-mono text-foreground">
               {new Date(ap.until).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
             </span>
-            {ap.even ? <span className="text-muted-foreground/60"> — работа поделена ровно на срок</span> : null}
+            {ap.even ? <span className="text-muted-foreground/75"> — работа поделена ровно на срок</span> : null}
           </span>
           <span className="tnum font-mono" style={{ color: left <= 0 ? 'var(--warn)' : undefined }}>
             {left <= 0 ? 'срок вышел' : span(Math.round(left / 60_000))}
@@ -469,7 +469,7 @@ function Output({ out, goal, state }: { out: Out; goal: number; state: State }) 
           <Label>готово к продаже</Label>
           <span className="mt-1 block">
             <Num value={out.ready} className="font-mono text-[34px] font-medium leading-none tracking-[-0.03em]" />
-            <span className="tnum font-mono text-[15px] text-muted-foreground/50"> / {nf(out.items)}</span>
+            <span className="tnum font-mono text-[15px] text-muted-foreground/75"> / {nf(out.items)}</span>
           </span>
         </span>
         <span className="ml-auto text-right">
@@ -511,7 +511,7 @@ function Line({ k, v, note, tone }: { k: string; v: string; note?: string; tone?
           {v}
         </span>
       </span>
-      {note ? <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground/60">{note}</span> : null}
+      {note ? <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground/75">{note}</span> : null}
     </span>
   )
 }
@@ -613,9 +613,9 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline gap-2">
                           <span className="truncate text-[13px] font-medium">{m.gem}</span>
-                          <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/60">×{m.items}</span>
+                          <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/75">×{m.items}</span>
                           {!picked.has(m.gem) ? (
-                            <span className="ui-label shrink-0 text-muted-foreground/50">не в накрутке</span>
+                            <span className="ui-label shrink-0 text-muted-foreground/75">не в накрутке</span>
                           ) : null}
                         </span>
                         <span className="mt-1 block">
@@ -630,9 +630,9 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
                             className="font-mono text-[15px] font-medium"
                             style={{ color: done ? 'var(--ok)' : capped ? 'var(--warn)' : undefined }}
                           />
-                          <span className="tnum font-mono text-[12px] text-muted-foreground/50"> / {nf(goal)}</span>
+                          <span className="tnum font-mono text-[12px] text-muted-foreground/75"> / {nf(goal)}</span>
                         </span>
-                        <span className="tnum block font-mono text-[11px] text-muted-foreground/60">
+                        <span className="tnum block font-mono text-[11px] text-muted-foreground/75">
                           {spread ? nf(m.min ?? 0) + '…' + nf(m.max) : 'потолок ' + (m.supply != null ? nf(m.supply) : '—')}
                         </span>
                       </span>
@@ -651,14 +651,14 @@ function Inventory({ state, goal }: { state: State; goal: number }) {
                                 ? <span className="text-muted-foreground">самоцвет, никуда не вставлен</span>
                                 : r.name}
                             </span>
-                            {r.equipped ? <span className="ui-label shrink-0 text-muted-foreground/50">надет</span> : null}
+                            {r.equipped ? <span className="ui-label shrink-0 text-muted-foreground/75">надет</span> : null}
                             <span className="tnum shrink-0 font-mono text-[12px]" style={{ color: r.value >= goal ? 'var(--ok)' : undefined }}>
                               {nf(r.value)}
                             </span>
                           </div>
                         )) : null}
                         {isOpen && m.supply != null ? (
-                          <div className="px-3.5 py-2 pl-11 text-[11px] text-muted-foreground/60">
+                          <div className="px-3.5 py-2 pl-11 text-[11px] text-muted-foreground/75">
                             потолок {nf(m.supply)}
                             {m.supplyKind === 'estimated' ? ' (оценка)' : ''}
                             {m.left != null ? ' · осталось ' + nf(m.left) : ''}
@@ -696,7 +696,7 @@ function Sets({ state, goal }: { state: State; goal: number }) {
       </div>
     )
   }
-  if (!data) return <Empty>{loading ? 'собираю наборы…' : 'наборов пока нет'}</Empty>
+  if (loading || !data) return <RowsSkeleton rows={6} cols={[220, 90, 140, 90, 70, 60]} />
   if (!data.kits.length) return <Empty>пусто — купите гем, он появится здесь сам</Empty>
 
   return (
@@ -736,7 +736,7 @@ function KitRow({ k, goal, open, onToggle }: { k: Kit; goal: number; open: boole
           <span className="flex flex-wrap items-baseline gap-x-2">
             <span className="truncate text-[13px] font-medium">{k.set}</span>
             {bare ? null : <span className="shrink-0 text-[12px] text-muted-foreground">{k.hero}</span>}
-            <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/60">×{k.items}</span>
+            <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/75">×{k.items}</span>
           </span>
           <span className="mt-1 block">
             <Bar pct={(k.max / goal) * 100} tone={done ? 'ok' : 'run'} />
@@ -750,9 +750,9 @@ function KitRow({ k, goal, open, onToggle }: { k: Kit; goal: number; open: boole
               className="font-mono text-[15px] font-medium"
               style={{ color: done ? 'var(--ok)' : undefined }}
             />
-            <span className="tnum font-mono text-[12px] text-muted-foreground/50"> / {nf(goal)}</span>
+            <span className="tnum font-mono text-[12px] text-muted-foreground/75"> / {nf(goal)}</span>
           </span>
-          <span className="block text-[11px] text-muted-foreground/60">
+          <span className="block text-[11px] text-muted-foreground/75">
             {bare
               ? k.gem
               : k.complete
@@ -832,7 +832,7 @@ function Shop({ state, goal }: { state: State; goal: number }) {
               }}
               placeholder="найти на рынке Steam"
               aria-label="найти гем на рынке Steam"
-              className="ui-label w-48 max-w-[40vw] bg-transparent text-foreground outline-none placeholder:text-muted-foreground/50"
+              className="ui-label w-48 max-w-[40vw] bg-transparent text-foreground outline-none placeholder:text-muted-foreground/75"
             />
           </span>
           <Segmented
@@ -889,7 +889,7 @@ function Offer({ c, goal }: { c: CatalogRow; goal: number }) {
       <ItemIcon hash={c.icon} size={22} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px]">{c.short}</span>
-        <span className="block truncate text-[11px] text-muted-foreground/60">
+        <span className="block truncate text-[11px] text-muted-foreground/75">
           потолок {c.supply != null ? nf(c.supply) : '—'}
           {c.supplyKind === 'estimated' ? ' (оценка)' : ''}
           {reach ? '' : ' · до цели не дойдёт'}

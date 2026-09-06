@@ -81,9 +81,14 @@ export function migrate(target: DatabaseSync): string[] {
     applied.push(`${table}.${column}`)
   }
 
-  const bad = target.prepare(
-    `select count(*) c from burned where ts is not null and ts < ?`,
-  ).get(MS_FLOOR) as { c: number }
+  // Таблицы может не быть вовсе: у обходчика своя база, а тест приносит
+  // базу с одной нужной ему таблицей. Отсутствие — не повод падать.
+  const hasBurned = (target.prepare(`pragma table_info(burned)`).all() as any[]).length > 0
+  const bad = hasBurned
+    ? target.prepare(
+      `select count(*) c from burned where ts is not null and ts < ?`,
+    ).get(MS_FLOOR) as { c: number }
+    : { c: 0 }
 
   if (bad.c > 0) {
     target.prepare(`update burned set ts = null where ts is not null and ts < ?`).run(MS_FLOOR)

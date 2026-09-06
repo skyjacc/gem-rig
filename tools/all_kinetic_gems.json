@@ -1,0 +1,657 @@
+[
+  {
+    "id": "0",
+    "name": "silent_ripper",
+    "loc": "#DOTA_Anim_Mod_Silent_Ripper"
+  },
+  {
+    "id": "1",
+    "name": "pyre",
+    "loc": "#DOTA_Anim_Mod_Pyre"
+  },
+  {
+    "id": "2",
+    "name": "eyeoffetizu",
+    "loc": "#DOTA_Anim_Mod_Omoz"
+  },
+  {
+    "id": "3",
+    "name": "odachi",
+    "loc": "#DOTA_Anim_Mod_Odachi"
+  },
+  {
+    "id": "4",
+    "name": "bladebiter",
+    "loc": "#DOTA_Anim_Mod_Bladebiter"
+  },
+  {
+    "id": "5",
+    "name": "deadwinter_soul",
+    "loc": "#DOTA_Anim_Mod_Deadwinter_Soul"
+  },
+  {
+    "id": "6",
+    "name": "death_protest",
+    "loc": "#DOTA_Anim_Mod_Death_Protest"
+  },
+  {
+    "id": "7",
+    "name": "dizzying_punch",
+    "loc": "#DOTA_Anim_Mod_Dizzying_Punch"
+  },
+  {
+    "id": "8",
+    "name": "wraith_spin",
+    "loc": "#DOTA_Anim_Mod_Wraith_Spin"
+  },
+  {
+    "id": "9",
+    "name": "serene_honor",
+    "loc": "#DOTA_Anim_Mod_Serene_Honor"
+  },
+  {
+    "id": "10",
+    "name": "red_moon",
+    "loc": "#DOTA_Anim_Mod_Red_Moon"
+  },
+  {
+    "id": "11",
+    "name": "turbulent_teleport",
+    "loc": "#DOTA_Anim_Mod_Turbulent_Teleport"
+  },
+  {
+    "id": "12",
+    "name": "dagger_twirl",
+    "loc": "#DOTA_Anim_Mod_dagger_twirl"
+  },
+  {
+    "id": "13",
+    "name": "impatient_maiden",
+    "loc": "#DOTA_Anim_Mod_impatient_maiden"
+  },
+  {
+    "id": "14",
+    "name": "obeisance_of_the_keeper",
+    "loc": "#DOTA_Anim_Mod_obeisance_of_the_keeper"
+  },
+  {
+    "id": "15",
+    "name": "when_nature_attacks",
+    "loc": "#DOTA_Anim_Mod_when_nature_attacks"
+  },
+  {
+    "id": "16",
+    "name": "twister",
+    "loc": "#DOTA_Anim_Mod_twister"
+  },
+  {
+    "id": "17",
+    "name": "salvaged_sword",
+    "loc": "#DOTA_Anim_Mod_Salvaged_Sword"
+  },
+  {
+    "id": "18",
+    "name": "triumphant_timelord",
+    "loc": "#DOTA_Anim_Mod_Triumphant_Timelord"
+  },
+  {
+    "id": "19",
+    "name": "ss_fortune",
+    "loc": "#DOTA_Anim_Mod_Good_Fortune"
+  },
+  {
+    "id": "20",
+    "name": "es_prosperity",
+    "loc": "#DOTA_Anim_Mod_Prosperity"
+  },
+  {
+    "id": "21",
+    "name": "swordonshoulder",
+    "loc": "#DOTA_Anim_Mod_SwordonShoulder"
+  },
+  {
+    "id": "22",
+    "name": "abysm",
+    "loc": "#DOTA_Anim_Mod_abysm"
+  },
+  {
+    "id": "23",
+    "name": "lucentyr",
+    "loc": "#DOTA_Anim_Mod_lucentyr"
+  },
+  {
+    "id": "24",
+    "name": "f2p_doom",
+    "loc": "#DOTA_Anim_Mod_f2p_doom"
+  },
+  {
+    "id": "25",
+    "name": "fear",
+    "loc": "#DOTA_Anim_Mod_fear"
+  },
+  {
+    "id": "26",
+    "name": "bot",
+    "loc": "#DOTA_Anim_Mod_bot"
+  },
+  {
+    "id": "27",
+    "name": "ftp_dendi_back",
+    "loc": "#DOTA_Anim_Mod_ftp_dendi_back"
+  },
+  {
+    "id": "28",
+    "name": "telebolt",
+    "loc": "#DOTA_Anim_Mod_telebolt"
+  },
+  {
+    "id": "29",
+    "name": "glory",
+    "loc": "#DOTA_Anim_Mod_glory"
+  },
+  {
+    "id": "30",
+    "name": "MGC",
+    "loc": "#DOTA_Anim_Mod_MGC"
+  },
+  {
+    "id": "31",
+    "name": "moth",
+    "loc": "#DOTA_Anim_Mod_moth"
+  },
+  {
+    "id": "32",
+    "name": "windy",
+    "loc": "#DOTA_Anim_Mod_windy"
+  },
+  {
+    "id": "33",
+    "name": "iron",
+    "loc": "#DOTA_Anim_Mod_iron"
+  },
+  {
+    "id": "34",
+    "name": "everlasting_array",
+    "loc": "#DOTA_Anim_Mod_everylasting_array"
+  },
+  {
+    "id": "35",
+    "name": "fishstick",
+    "loc": "#DOTA_Anim_Mod_fishstick"
+  },
+  {
+    "id": "36",
+    "name": "glacier",
+    "loc": "#DOTA_Anim_Mod_glacier"
+  },
+  {
+    "id": "38",
+    "name": "rampant",
+    "loc": "#DOTA_Anim_Mod_rampant"
+  },
+  {
+    "id": "39",
+    "name": "lodestar",
+    "loc": "#DOTA_Anim_Mod_lodestar"
+  },
+  {
+    "id": "40",
+    "name": "emp",
+    "loc": "#DOTA_Anim_Mod_emp"
+  },
+  {
+    "id": "41",
+    "name": "burning_fiend",
+    "loc": "#DOTA_Anim_Mod_burning_fiend"
+  },
+  {
+    "id": "42",
+    "name": "harlequin",
+    "loc": "#DOTA_Anim_Mod_harlequin"
+  },
+  {
+    "id": "45",
+    "name": "torrent_divine_anchor",
+    "loc": "#DOTA_Ability_Mod_Torrent_Divine_Anchor"
+  },
+  {
+    "id": "46",
+    "name": "tidebringer_divine_anchor",
+    "loc": "#DOTA_Ability_Mod_Tidebringer_Divine_Anchor"
+  },
+  {
+    "id": "47",
+    "name": "epitaphic_bonds_trap",
+    "loc": "#DOTA_Ability_Mod_Epitaphic_Bonds_Trap"
+  },
+  {
+    "id": "48",
+    "name": "timberthaw_chakram",
+    "loc": "#DOTA_Ability_Mod_Timberthaw_Chakram"
+  },
+  {
+    "id": "49",
+    "name": "reminiscence_orb",
+    "loc": "#DOTA_Ability_Mod_Reminiscence_Orb"
+  },
+  {
+    "id": "50",
+    "name": "reminiscence_ambient",
+    "loc": "#DOTA_Ability_Mod_Reminiscence_Ambient"
+  },
+  {
+    "id": "51",
+    "name": "reminiscence_rift",
+    "loc": "#DOTA_Ability_Mod_Reminiscence_Rift"
+  },
+  {
+    "id": "52",
+    "name": "reminiscence_dreamcoil",
+    "loc": "#DOTA_Ability_Mod_Reminiscence_Dreamcoil"
+  },
+  {
+    "id": "53",
+    "name": "harlequin_weapon",
+    "loc": "#DOTA_Asset_Mod_Harlequin_Weapon"
+  },
+  {
+    "id": "54",
+    "name": "harlequin_head",
+    "loc": "#DOTA_Asset_Mod_Harlequin_Head"
+  },
+  {
+    "id": "55",
+    "name": "harlequin_cape",
+    "loc": "#DOTA_Asset_Mod_Harlequin_Cape"
+  },
+  {
+    "id": "56",
+    "name": "harlequin_mantle",
+    "loc": "#DOTA_Asset_Mod_Harlequin_Mantle"
+  },
+  {
+    "id": "57",
+    "name": "lucent_gate_eclipse",
+    "loc": "#DOTA_Asset_Mod_Lucent_Gate_Eclipse"
+  },
+  {
+    "id": "58",
+    "name": "lucent_gate_aura",
+    "loc": "#DOTA_Asset_Mod_Lucent_Gate_Aura"
+  },
+  {
+    "id": "59",
+    "name": "lucent_gate_imprisonment",
+    "loc": "#DOTA_Asset_Mod_Lucent_Gate_Imprisonment"
+  },
+  {
+    "id": "60",
+    "name": "lucent_gate_orb",
+    "loc": "#DOTA_Asset_Mod_Lucent_Gate_Orb"
+  },
+  {
+    "id": "61",
+    "name": "forgemaster_shockwave",
+    "loc": "#DOTA_Asset_Mod_Forge_Master_Shockwave"
+  },
+  {
+    "id": "62",
+    "name": "forgemaster_empower",
+    "loc": "#DOTA_Asset_Mod_Forge_Master_Empower"
+  },
+  {
+    "id": "63",
+    "name": "forgemaster_skewer",
+    "loc": "#DOTA_Asset_Mod_Forge_Master_Skewer"
+  },
+  {
+    "id": "64",
+    "name": "forgemaster_shockwave",
+    "loc": "#DOTA_Asset_Mod_Forge_Master_Reverse_Polarity"
+  },
+  {
+    "id": "65",
+    "name": "hunter_of_kings_shapeshift",
+    "loc": "#DOTA_Asset_Mod_Hunter_of_Kings_Shapeshift"
+  },
+  {
+    "id": "66",
+    "name": "hunter_of_kings_summon",
+    "loc": "#DOTA_Asset_Mod_Hunter_of_Kings_Summon"
+  },
+  {
+    "id": "67",
+    "name": "hunter_of_kings_feral_impulse",
+    "loc": "#DOTA_Asset_Mod_Hunter_of_Kings_Feral_Impulse"
+  },
+  {
+    "id": "68",
+    "name": "monstrous_reprisal_back_stab",
+    "loc": "#DOTA_Asset_Mod_Monstrous_Reprisal_Back_Stab"
+  },
+  {
+    "id": "69",
+    "name": "monstrous_reprisal_blink_strike",
+    "loc": "#DOTA_Asset_Mod_Monstrous_Reprisal_Blink_Strike"
+  },
+  {
+    "id": "70",
+    "name": "monstrous_reprisal_permanent_invisibility",
+    "loc": "#DOTA_Asset_Mod_Monstrous_Reprisal_Permanent_Invisibility"
+  },
+  {
+    "id": "71",
+    "name": "wmonstrous_reprisal_smoke_screen",
+    "loc": "#DOTA_Asset_Mod_Monstrous_Reprisal_Smoke_Screen"
+  },
+  {
+    "id": "72",
+    "name": "agaric_flourish_eyes_guise_icons",
+    "loc": "#DOTA_Asset_Mod_Agaric_Flourish_Eyes_Guise_Icons"
+  },
+  {
+    "id": "73",
+    "name": "agaric_flourish_overgrowth_icon",
+    "loc": "#DOTA_Asset_Mod_Agaric_Flourish_Overgrowth_Icon"
+  },
+  {
+    "id": "74",
+    "name": "agaric_flourish_armor_icon",
+    "loc": "#DOTA_Asset_Mod_Agaric_Flourish_Armor_Icon"
+  },
+  {
+    "id": "75",
+    "name": "agaric_flourish_leech_seed_icon",
+    "loc": "#DOTA_Asset_Mod_Agaric_Flourish_Leech_Seed_Icon"
+  },
+  {
+    "id": "76",
+    "name": "fiend_cleaver_great_cleave_icon",
+    "loc": "#DOTA_Asset_Mod_Fiend_Cleaver_Great_Cleave_Icon"
+  },
+  {
+    "id": "77",
+    "name": "fiend_cleaver_warcry_icon",
+    "loc": "#DOTA_Asset_Mod_Fiend_Cleaver_Warcry_Icon"
+  },
+  {
+    "id": "78",
+    "name": "fiend_cleaver_gods_strength_icon",
+    "loc": "#DOTA_Asset_Mod_Fiend_Cleaver_Gods_Strength_Icon"
+  },
+  {
+    "id": "79",
+    "name": "fiend_cleaver_storm_bolt_icon",
+    "loc": "#DOTA_Asset_Mod_Fiend_Cleaver_Storm_Bolt_Icon"
+  },
+  {
+    "id": "80",
+    "name": "eldwurms_touch_bow_icons",
+    "loc": "#DOTA_Asset_Mod_Eldwurms_Touch_Bow_Icons"
+  },
+  {
+    "id": "81",
+    "name": "eldwurms_touch_wave_of_silence_icon",
+    "loc": "#DOTA_Asset_Mod_Eldwurms_Touch_Wave_of_Silence_Icon"
+  },
+  {
+    "id": "82",
+    "name": "scavenger_dragon",
+    "loc": "#DOTA_Asset_Mod_Scavenger_Dragon"
+  },
+  {
+    "id": "83",
+    "name": "dc_bladekeeper_omnislash",
+    "loc": "#DOTA_Asset_Mod_DC_Bladekeeper_Omnislash"
+  },
+  {
+    "id": "84",
+    "name": "dc_bladekeeper_bladefury",
+    "loc": "#DOTA_Asset_Mod_DC_Bladekeeper_Bladefury"
+  },
+  {
+    "id": "85",
+    "name": "dc_bladekeeper_healing_ward",
+    "loc": "#DOTA_Asset_Mod_DC_Bladekeeper_Healing_Ward"
+  },
+  {
+    "id": "86",
+    "name": "dc_centaur_double_edge",
+    "loc": "#DOTA_Asset_Mod_Double_Edge_of_the_Berserker"
+  },
+  {
+    "id": "87",
+    "name": "dc_bladekeeper_crit",
+    "loc": "#DOTA_Asset_Mod_DC_Bladekeeper_Crit"
+  },
+  {
+    "id": "88",
+    "name": "ghastly_matriarch_exorcism_icon",
+    "loc": "#DOTA_Asset_Mod_Ghastly_Matriarch_Exorcism_Icon"
+  },
+  {
+    "id": "89",
+    "name": "necronub_reapers_scythe",
+    "loc": "#DOTA_Asset_Mod_Necronub_Reapers_Scythe"
+  },
+  {
+    "id": "90",
+    "name": "necronub_death_pulse",
+    "loc": "#DOTA_Asset_Mod_Necronub_Death_Pulse"
+  },
+  {
+    "id": "91",
+    "name": "necronub_base_attack",
+    "loc": "#DOTA_Asset_Mod_Necronub_Base_Attack"
+  },
+  {
+    "id": "92",
+    "name": "necronub_ambient",
+    "loc": "#DOTA_Asset_Mod_Necronub_Ambient"
+  },
+  {
+    "id": "93",
+    "name": "dc_centaur_head_icons",
+    "loc": "#DOTA_Asset_Mod_DC_Centaur_Head_Icons"
+  },
+  {
+    "id": "94",
+    "name": "azure_constellation_head",
+    "loc": "#DOTA_Asset_Mod_Azure_Constellation_Head"
+  },
+  {
+    "id": "95",
+    "name": "azure_constellation_glaive",
+    "loc": "#DOTA_Asset_Mod_Azure_Constellation_Glaive"
+  },
+  {
+    "id": "96",
+    "name": "azure_constellation_shield",
+    "loc": "#DOTA_Asset_Mod_Azure_Constellation_Shield"
+  },
+  {
+    "id": "97",
+    "name": "azure_constellation_mount",
+    "loc": "#DOTA_Asset_Mod_Azure_Constellation_Mount"
+  },
+  {
+    "id": "98",
+    "name": "bloody_ripper_mask",
+    "loc": "#DOTA_Asset_Mod_Bloody_Ripper_Mask"
+  },
+  {
+    "id": "99",
+    "name": "bloody_ripper_back",
+    "loc": "#DOTA_Asset_Mod_Bloody_Ripper_Back"
+  },
+  {
+    "id": "100",
+    "name": "bloody_ripper_arms",
+    "loc": "#DOTA_Asset_Mod_Bloody_Ripper_Arms"
+  },
+  {
+    "id": "101",
+    "name": "compendium_bloody_ripper_mask",
+    "loc": "#DOTA_Asset_Mod_Compendium_Bloody_Ripper_Mask"
+  },
+  {
+    "id": "102",
+    "name": "compendium_bloody_ripper_back",
+    "loc": "#DOTA_Asset_Mod_Compendium_Bloody_Ripper_Back"
+  },
+  {
+    "id": "103",
+    "name": "compendium_bloody_ripper_arms",
+    "loc": "#DOTA_Asset_Mod_Compendium_Bloody_Ripper_Arms"
+  },
+  {
+    "id": "104",
+    "name": "surgical_prevision_apron",
+    "loc": "#DOTA_Asset_Mod_Surgical_Precision_Apron"
+  },
+  {
+    "id": "105",
+    "name": "surgical_prevision_hook",
+    "loc": "#DOTA_Asset_Mod_Surgical_Precision_Hook"
+  },
+  {
+    "id": "106",
+    "name": "moon_griffon",
+    "loc": "#DOTA_Anim_Mod_moon_griffon"
+  },
+  {
+    "id": "107",
+    "name": "crested_umbra_glaive",
+    "loc": "#DOTA_Asset_Mod_Crested_Umbra_Glaive"
+  },
+  {
+    "id": "108",
+    "name": "crested_umbra_virtue",
+    "loc": "#DOTA_Asset_Mod_Crested_Umbra_Virtue"
+  },
+  {
+    "id": "109",
+    "name": "crested_umbra_duty",
+    "loc": "#DOTA_Asset_Mod_Crested_Umbra_Duty"
+  },
+  {
+    "id": "110",
+    "name": "crested_umbra_skirt",
+    "loc": "#DOTA_Asset_Mod_Crested_Umbra_Skirt"
+  },
+  {
+    "id": "111",
+    "name": "trapper",
+    "loc": "#DOTA_Anim_Mod_Promo_Trapper_Weapon"
+  },
+  {
+    "id": "113",
+    "name": "ogre_magi_antipodeans",
+    "loc": "#DOTA_Anim_ogre_magi_antipodeans"
+  },
+  {
+    "id": "114",
+    "name": "year_beast_hellfire_reincarnate",
+    "loc": "#DOTA_Asset_Mod_Year_Beast_Hellfire_Reincarnate"
+  },
+  {
+    "id": "115",
+    "name": "year_beast_vampiric_aura",
+    "loc": "#DOTA_Asset_Mod_Year_Beast_Vampiric_Aura"
+  },
+  {
+    "id": "116",
+    "name": "year_beast_mortal_strike",
+    "loc": "#DOTA_Asset_Mod_Year_Beast_Mortal_Strike"
+  },
+  {
+    "id": "117",
+    "name": "bts_3_silencer",
+    "loc": "#DOTA_Asset_Mod_bts_3_silencer"
+  },
+  {
+    "id": "118",
+    "name": "blueice_ability_icons",
+    "loc": "#DOTA_Asset_Eye_Of_The_Beholder"
+  },
+  {
+    "id": "119",
+    "name": "cyclopean_marauder_gaze_icons",
+    "loc": "#DOTA_Asset_Mod_Cyclopean_Marauder_Gaze_Icons"
+  },
+  {
+    "id": "120",
+    "name": "cyclopean_marauder_great_cleave_icon",
+    "loc": "#DOTA_Asset_Mod_Cyclopean_Marauder_Great_Cleave_Icon"
+  },
+  {
+    "id": "121",
+    "name": "cyclopean_marauder_storm_bolt_icon",
+    "loc": "#DOTA_Asset_Mod_Cyclopean_Marauder_Storm_Bolt_Icon"
+  },
+  {
+    "id": "122",
+    "name": "ravening_wings_glaive_icons",
+    "loc": "#DOTA_Asset_Mod_Ravening_Wings_Glaive_Icons"
+  },
+  {
+    "id": "123",
+    "name": "ravening_wings_blur_icon",
+    "loc": "#DOTA_Asset_Mod_Ravening_Wings_Blur_Icon"
+  },
+  {
+    "id": "124",
+    "name": "tine_of_the_behemoth_icons",
+    "loc": "#DOTA_Asset_Mod_Tine_Of_The_Behemoth_Icons"
+  },
+  {
+    "id": "125",
+    "name": "searing_dominator_icon",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_Searing_Dominator_Icon"
+  },
+  {
+    "id": "126",
+    "name": "iron_surge_icon",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_Iron_Surge_Icon"
+  },
+  {
+    "id": "127",
+    "name": "moonfall_icon",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_Moonfall_Icon"
+  },
+  {
+    "id": "128",
+    "name": "golden_moonfall_icon",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_Golden_Moonfall_Icon"
+  },
+  {
+    "id": "129",
+    "name": "shock_of_the_anvil_icon",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_Shock_Of_The_Anvil_Icon"
+  },
+  {
+    "id": "130",
+    "name": "black_nihility_icon",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_Black_Nihility_Icon"
+  },
+  {
+    "id": "131",
+    "name": "draining_wight_icon",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_Draining_Wight_Icon"
+  },
+  {
+    "id": "132",
+    "name": "the_barren_crown_icon",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_The_Barren_Crown_Icon"
+  },
+  {
+    "id": "133",
+    "name": "world_chasm_icon",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_World_Chasm_Icon"
+  },
+  {
+    "id": "134",
+    "name": "wailing_inferno_icons",
+    "loc": "#DOTA_Asset_Mod_DOTA_Item_Desc_Wailing_Inferno_Icon"
+  }
+]

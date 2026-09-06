@@ -74,6 +74,10 @@ function smooth(pts: Pt[]): string {
 export function Chart({ state }: { state: State }) {
   const { data } = useJson<Data>('/api/counters', state.ts)
   const [hot, setHot] = useState<string | null>(null)
+  // Срез под курсором: терминальное перекрестие. Не украшение: волна
+  // отвечает на вопрос «сколько было тогда», а без перекрестия на него
+  // можно было ответить только глазами, по сетке.
+  const [at, setAt] = useState<number | null>(null)
 
   const laid = useMemo(() => {
     if (!data?.lines?.length || data.stamps.length < 2) return null
@@ -107,16 +111,26 @@ export function Chart({ state }: { state: State }) {
     const grid: number[] = []
     for (let v = step; v < max; v += step) grid.push(v)
 
-    return { max, paths, gems, y, grid }
+    return { max, paths, gems, x, y, grid }
   }, [data])
+
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!laid) return
+    const box = e.currentTarget.getBoundingClientRect()
+    const rel = (e.clientX - box.left) / box.width * W
+    const n = data!.stamps.length
+    const i = Math.round((rel - PAD.left) / (W - PAD.left - PAD.right) * (n - 1))
+    setAt(Math.max(0, Math.min(n - 1, i)))
+  }
 
   if (!laid) {
     return <div className="px-4 py-10 text-center text-[12px] text-muted-foreground">срезов пока мало</div>
   }
 
-  const { paths, gems, y, grid } = laid
+  const { paths, gems, x, y, grid } = laid
   const stamps = data!.stamps
   const day = (t: number) => new Date(t).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  const time = (t: number) => new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   // Легенда — по гемам, а не по веткам. Веток четыреста двадцать четыре:
   // у каждой вещи Virtus.pro свой счётчик, и четыреста кнопок под графиком
   // читать невозможно. Гемов одиннадцать, и наведение на гем всё равно
@@ -132,13 +146,32 @@ export function Chart({ state }: { state: State }) {
     }
   }).sort((a, b) => b.high - a.high)
 
+  // Значения гемов на срезе под перекрестием: верхняя ветка гема и,
+  // если вещи разъехались, разброс.
+  const readout = at != null
+    ? gems.map(gem => {
+        const vals = data!.lines
+          .filter(l => l.gem === gem)
+          .map(l => l.points[at])
+          .filter((v): v is number => v != null)
+        if (!vals.length) return null
+        return { gem, low: Math.min(...vals), high: Math.max(...vals) }
+      }).filter(Boolean as unknown as (v: unknown) => boolean)
+        .sort((a: any, b: any) => b.high - a.high)
+    : null
+
   return (
-    <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" onMouseLeave={() => setHot(null)}>
+    <div className="relative">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="block h-auto w-full"
+        onMouseLeave={() => { setHot(null); setAt(null) }}
+        onMouseMove={onMove}
+      >
         {grid.map(v => (
           <g key={v}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="white" strokeOpacity={0.05} />
-            <text x={W - PAD.right + 8} y={y(v) + 3.5} fontSize={11} className="fill-white/30">{nf(v)}</text>
+            <text x={W - PAD.right + 8} y={y(v) + 3.5} fontSize={11} className="fill-white/55">{nf(v)}</text>
           </g>
         ))}
         <line
@@ -166,11 +199,62 @@ export function Chart({ state }: { state: State }) {
           )
         })}
 
-        <text x={PAD.left} y={H - 6} fontSize={11} className="fill-white/35">{day(stamps[0])}</text>
-        <text x={W - PAD.right} y={H - 6} fontSize={11} textAnchor="end" className="fill-white/35">
+        {/* Перекрестие: линия среза и точки на верхних ветках гемов */}
+        {at != null ? (
+          <g pointerEvents="none">
+            <line
+              x1={x(at)} x2={x(at)}
+              y1={PAD.top - 6} y2={H - PAD.bottom}
+              stroke="white" strokeOpacity={0.22} strokeDasharray="3 4"
+            />
+            {gems.map(gem => {
+              const top = Math.max(...data!.lines
+                .filter(l => l.gem === gem)
+                .map(l => l.points[at] ?? -1))
+              if (top < 0) return null
+              return <circle key={gem} cx={x(at)} cy={y(top)} r={hot === gem ? 4 : 2.8} fill={colorOf(gems, gem)} />
+            })}
+          </g>
+        ) : null}
+
+        {/* Даты: начало, четверти, конец — чтобы «когда» читалось без линейки */}
+        {[0.25, 0.5, 0.75].map(f => {
+          const i = Math.round(f * (stamps.length - 1))
+          return (
+            <text
+              key={f}
+              x={x(i)} y={H - 6} fontSize={11}
+              textAnchor="middle" className="fill-white/55"
+            >{day(stamps[i])}</text>
+          )
+        })}
+        <text x={PAD.left} y={H - 6} fontSize={11} className="fill-white/55">{day(stamps[0])}</text>
+        <text x={W - PAD.right} y={H - 6} fontSize={11} textAnchor="end" className="fill-white/55">
           {day(stamps[stamps.length - 1])}
         </text>
       </svg>
+
+      {/* Табло перекрестия: моно, как строка терминала. Появляется только
+          под курсором и не двигает график. */}
+      {readout && readout.length ? (
+        <div className="pointer-events-none absolute left-2 top-2 border border-white/[0.08] bg-[#0a0a0a]/92 px-2.5 py-2 backdrop-blur-sm">
+          <div className="tnum font-mono text-[11px] text-muted-foreground">{time(stamps[at!])}</div>
+          <div className="mt-1 space-y-0.5">
+            {readout.slice(0, 7).map((r: any) => (
+              <div key={r.gem} className="flex items-baseline gap-2 font-mono text-[11.5px] leading-4">
+                <span className="h-[2px] w-3 shrink-0 rounded-full" style={{ background: colorOf(gems, r.gem) }} />
+                <span className="max-w-[130px] truncate text-foreground/85">{r.gem}</span>
+                <span className="tnum ml-auto text-foreground">
+                  {r.low === r.high ? nf(r.high) : nf(r.low) + '…' + nf(r.high)}
+                </span>
+              </div>
+            ))}
+            {readout.length > 7 ? (
+              <div className="pl-5 font-mono text-[11px] text-muted-foreground">+{readout.length - 7}</div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-white/[0.06] pt-3">
         {legend.map(g => (
@@ -183,7 +267,7 @@ export function Chart({ state }: { state: State }) {
           >
             <span className="h-[2px] w-3 shrink-0 rounded-full" style={{ background: colorOf(gems, g.gem) }} />
             <span className="truncate">{g.gem}</span>
-            <span className="tnum font-mono text-[11px] text-muted-foreground/60">×{g.items}</span>
+            <span className="tnum font-mono text-[11px] text-muted-foreground/75">×{g.items}</span>
             <span className="tnum font-mono text-foreground/80">
               {g.low === g.high ? nf(g.high) : nf(g.low) + '…' + nf(g.high)}
             </span>

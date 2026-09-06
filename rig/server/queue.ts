@@ -22,6 +22,7 @@
 // а снаружи это неотличимо от «уже использован».
 
 import type { DatabaseSync } from 'node:sqlite'
+import { hasMap } from './supply.ts'
 
 export type Match = { match: string; league: string }
 export type QueueRow = { match: string; league: string; weight: number; entities: string[]; tried: boolean }
@@ -63,6 +64,8 @@ export function buildQueue(sets: Map<string, Match[]>, burned: Set<string>, trie
 // Матчи сущности из локальной карты. Команда ищется с обеих сторон,
 // игрок — по связям «кто в каком матче играл».
 export function matchesOf(target: DatabaseSync, p: Pick): Match[] {
+  // Обходчик мог ещё не запускаться — тогда карты нет и разворачивать нечего.
+  if (!hasMap(target)) return []
   const id = Math.trunc(Number(p.id))
   if (!Number.isFinite(id) || id <= 0) return []
 

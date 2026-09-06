@@ -79,3 +79,64 @@ test('отсутствие таблиц обходчика не ломает м�
   assert.equal(applied.includes('vmatch.source'), false)
   assert.ok(applied.includes('burned.state'), 'остальное всё равно применилось')
 })
+
+// ── лента отправок ──
+//
+// Ключом была одна метка времени. Но отправщик закрывает молчания пачкой
+// и выдаёт несколько записей с ОДНОЙ меткой, а два работника шлют
+// одновременно. `insert or replace` в такой схеме молча выбрасывал всё,
+// кроме последнего: лента врала, темп занижался, и «сколько ушло молча»
+// было неизвестно вовсе.
+
+function oldEvents() {
+  const db = new DatabaseSync(':memory:')
+  db.exec(`create table events (
+    ts integer primary key, n integer, total integer,
+    match_id text, league_id text, result text, bytes integer)`)
+  return db
+}
+
+const pk = (db: any) =>
+  (db.prepare(`pragma table_info(events)`).all() as any[]).filter(c => c.pk > 0).map(c => c.name)
+
+test('ключ ленты становится составным', () => {
+  const db = oldEvents()
+  assert.deepEqual(pk(db), ['ts'])
+  migrate(db)
+  assert.deepEqual(pk(db).sort(), ['account', 'match_id', 'ts'])
+})
+
+test('старые записи переезжают все до одной', () => {
+  const db = oldEvents()
+  const ins = db.prepare(`insert into events (ts, match_id, result) values (?,?,?)`)
+  for (let i = 0; i < 25; i++) ins.run(1_700_000_000_000 + i, 'm' + i, 'update')
+  migrate(db)
+  assert.equal((db.prepare(`select count(*) c from events`).get() as any).c, 25)
+})
+
+test('две отправки в одну миллисекунду больше не затирают друг друга', () => {
+  const db = oldEvents()
+  migrate(db)
+  const ins = db.prepare(
+    `insert or ignore into events (ts, n, total, match_id, league_id, result, bytes, account) values (?,?,?,?,?,?,?,?)`)
+  ins.run(1_700_000_000_000, 1, 2, 'A', '1', 'silent', 0, 'acc1')
+  ins.run(1_700_000_000_000, 2, 2, 'B', '1', 'silent', 0, 'acc1')
+  // тот же матч, но с другого аккаунта — это другое событие
+  ins.run(1_700_000_000_000, 1, 2, 'A', '1', 'update', 500, 'acc2')
+  assert.equal((db.prepare(`select count(*) c from events`).get() as any).c, 3)
+})
+
+test('повторный разбор того же отчёта ничего не удваивает', () => {
+  const db = oldEvents()
+  migrate(db)
+  const ins = db.prepare(
+    `insert or ignore into events (ts, n, total, match_id, league_id, result, bytes, account) values (?,?,?,?,?,?,?,?)`)
+  for (let i = 0; i < 3; i++) ins.run(1_700_000_000_000, 1, 1, 'A', '1', 'update', 500, 'acc1')
+  assert.equal((db.prepare(`select count(*) c from events`).get() as any).c, 1)
+})
+
+test('миграция ленты идемпотентна', () => {
+  const db = oldEvents()
+  migrate(db)
+  assert.equal(migrate(db).length, 0)
+})

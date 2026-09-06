@@ -92,7 +92,7 @@ export function LinkAccount({
               placeholder={defaultLabel(accounts)}
               width="mt-1.5 w-full"
             />
-            <span className="mt-1 block text-[11px] text-muted-foreground/60">
+            <span className="mt-1 block text-[11px] text-muted-foreground/75">
               можно вписать пока код ждёт — применится после входа
             </span>
           </label>

@@ -28,6 +28,13 @@ export function Reveal({ open, children }: { open: boolean; children: ReactNode 
     return () => ro.disconnect()
   }, [children])
 
+  // Свёрнутое не ловит фокус.
+  //
+  // height: 0 и overflow: hidden прячут содержимое от глаз, но не от
+  // клавиатуры: кнопки внутри оставались в порядке табуляции, и Tab уводил
+  // фокус в невидимую область — человек нажимал на то, чего не видит.
+  // inert снимает и фокус, и озвучивание, и при этом не мешает анимации
+  // высоты, в отличие от visibility: hidden.
   return (
     <div
       style={{
@@ -36,6 +43,7 @@ export function Reveal({ open, children }: { open: boolean; children: ReactNode 
         transition: 'height var(--t-mid) var(--ease)',
       }}
       aria-hidden={!open}
+      inert={!open}
     >
       <div ref={inner}>{children}</div>
     </div>

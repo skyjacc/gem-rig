@@ -56,7 +56,17 @@ for (const g of map) {
   let rows: { id: string; league: string }[] = []
   try {
     const res = await fetch(url, { headers: { 'User-Agent': 'gemtrack' } })
-    rows = parseRows(await res.json())
+    // Отказ по частоте запросов — это отказ, а не пустая сущность.
+    //
+    // OpenDota на 429 и 5xx отвечает не JSON-ом, и разбор падает в catch;
+    // но её же explorer умеет вернуть 200 с полем err и без rows, и такой
+    // ответ раньше проходил как «матчей ноль». В отчёте это выглядело как
+    // обнуление запаса команды, и с --write оно ещё и стирало её матчи.
+    if (!res.ok) throw new Error('OpenDota ' + res.status)
+    const body: any = await res.json()
+    if (body?.err) throw new Error(String(body.err).slice(0, 120))
+    if (!Array.isArray(body?.rows)) throw new Error('OpenDota не отдал строк')
+    rows = parseRows(body)
   } catch (e: any) {
     console.log(name.padEnd(36) + String(g.kind).padEnd(9) + '     ошибка: ' + e.message)
     failed++

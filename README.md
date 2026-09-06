@@ -312,13 +312,20 @@ Shadow Hunter Set (CaspeRRR, Nyx Assassin).
 ### `rig/` — пульт (основное)
 
 Node 24 + Fastify + встроенный `node:sqlite` + SSE на бэке.
-Vite + React 19 + TypeScript + Tailwind v4 + TanStack Table + GSAP + uPlot на фронте.
+Vite + React 19 + TypeScript + Tailwind v4 на фронте. Графики и граф —
+свой SVG без библиотек: TanStack Table, GSAP и uPlot из проекта убраны.
 
 ```bash
 cd rig
 npm install
-npm run start      # сборка + сервер на http://localhost:4322
-npm run dev        # разработка, фронт на 5173 с проксированием API
+npm run server     # сервер на http://localhost:4322, отдаёт собранный dash/dist
+npm run dev        # то же с перезапуском по правкам
+npm run test       # тесты движка
+npm run check      # проверка типов
+
+cd ../dash
+npm run dev        # фронт на 5173 с проксированием /api на 4322
+npm run build      # проверка типов и сборка в dash/dist
 ```
 
 Что умеет:
@@ -514,13 +521,16 @@ gem-rig/
 ### Быстрый старт
 
 ```bash
-cd rig
-npm install
-npm run start
+cd dash && npm install && npm run build
+cd ../rig && npm install && npm run server
 ```
 
-Панель на `http://localhost:4322`. Отправщик по умолчанию остановлен — пока не нажать
-«Запустить» в первой карточке пульта, ни одно сообщение в GC не уходит.
+Панель на `http://localhost:4322` — сервер слушает только петлю. Нужен доступ
+с телефона или другой машины — `HOST=0.0.0.0 npm run server`, но осознанно:
+ключа у панели нет, а за её кнопками необратимая отправка и трата денег.
+
+Работник по умолчанию выключен. Пока не нажать «накрутить» на «Пульте»
+и не подтвердить в окне предпросмотра, ни одно сообщение в GC не уходит.
 
 Зависимости отправщика ставятся отдельно:
 

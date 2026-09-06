@@ -33,6 +33,17 @@ const BUNDLES: Record<string, { name: string; pieces: number; price: number }> =
   'Spectator: Sing': { name: 'Artillery of the Crested Cannoneer Set', pieces: 8, price: 0.14 },
 }
 
+// Карту матчей строит обходчик, и его могли ещё не запускать. Без проверки
+// первый же запрос падает со стеком «no such table: vmatch» вместо внятного
+// «сначала обход».
+const hasTable = (t: string) =>
+  !!db.prepare(`select name from sqlite_master where type='table' and name=?`).get(t)
+
+if (!hasTable('vmatch') || !hasTable('vplayer')) {
+  console.log('карты матчей нет — сначала обход: node rig/crawl.ts')
+  process.exit(1)
+}
+
 const matchIds = (g: any): string[] => {
   if (g.kind === 'team') {
     return (db.prepare('select match_id from vmatch where radiant = ? or dire = ?')
@@ -124,8 +135,12 @@ console.log('  сообщений          ', uni.size, '(объединение
 console.log('  сумма потолков     ', rows.reduce((a, r) => a + r.pool, 0))
 console.log('  экономия на пересечениях', rows.reduce((a, r) => a + r.pool, 0) - uni.size)
 console.log()
-console.log('  товаров на тысячу сообщений', (objects / uni.size * 1000).toFixed(1))
-console.log('  цена одного товара         $' + (cost / objects).toFixed(4))
+// Оба отношения делятся на счётчики, которые бывают нулём: ни одна сущность
+// не прошла порог — и в итоге печаталось «NaN» вместо цены.
+console.log('  товаров на тысячу сообщений',
+  uni.size ? (objects / uni.size * 1000).toFixed(1) : '—')
+console.log('  цена одного товара         ',
+  objects ? '$' + (cost / objects).toFixed(4) : '— (ни одна сущность не прошла порог)')
 
 // Узкое место: где лотов меньше, чем надо купить.
 const thin = rows.filter(r => r.via === 'гем' && r.lots < COPIES * 3)

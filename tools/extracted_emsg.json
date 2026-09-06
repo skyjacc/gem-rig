@@ -1,0 +1,4814 @@
+[
+  {
+    "name": "k_EMsgGCCompressedMsgToClient_Legacy",
+    "id": 523
+  },
+  {
+    "name": "k_EMsgGCBase",
+    "id": 1000
+  },
+  {
+    "name": "k_EMsgGCSetItemPosition",
+    "id": 1001
+  },
+  {
+    "name": "k_EMsgClientToGCPackBundle",
+    "id": 1002
+  },
+  {
+    "name": "k_EMsgClientToGCPackBundleResponse",
+    "id": 1003
+  },
+  {
+    "name": "k_EMsgGCDelete",
+    "id": 1004
+  },
+  {
+    "name": "k_EMsgGCVerifyCacheSubscription",
+    "id": 1005
+  },
+  {
+    "name": "k_EMsgClientToGCNameItem",
+    "id": 1006
+  },
+  {
+    "name": "k_EMsgGCPaintItem",
+    "id": 1009
+  },
+  {
+    "name": "k_EMsgGCPaintItemResponse",
+    "id": 1010
+  },
+  {
+    "name": "k_EMsgGCNameBaseItem",
+    "id": 1019
+  },
+  {
+    "name": "k_EMsgGCNameBaseItemResponse",
+    "id": 1020
+  },
+  {
+    "name": "k_EMsgGCUseItemRequest",
+    "id": 1025
+  },
+  {
+    "name": "k_EMsgGCUseItemResponse",
+    "id": 1026
+  },
+  {
+    "name": "k_EMsgGCGiftedItems",
+    "id": 1027
+  },
+  {
+    "name": "k_EMsgGCUnwrapGiftRequest",
+    "id": 1037
+  },
+  {
+    "name": "k_EMsgGCUnwrapGiftResponse",
+    "id": 1038
+  },
+  {
+    "name": "k_EMsgGCSortItems",
+    "id": 1041
+  },
+  {
+    "name": "k_EMsgGCBackpackSortFinished",
+    "id": 1058
+  },
+  {
+    "name": "k_EMsgGCAdjustItemEquippedState",
+    "id": 1059
+  },
+  {
+    "name": "k_EMsgGCItemAcknowledged",
+    "id": 1062
+  },
+  {
+    "name": "k_EMsgClientToGCNameItemResponse",
+    "id": 1068
+  },
+  {
+    "name": "k_EMsgGCApplyStrangePart",
+    "id": 1073
+  },
+  {
+    "name": "k_EMsgGCApplyPennantUpgrade",
+    "id": 1076
+  },
+  {
+    "name": "k_EMsgGCSetItemPositions",
+    "id": 1077
+  },
+  {
+    "name": "k_EMsgGCApplyEggEssence",
+    "id": 1078
+  },
+  {
+    "name": "k_EMsgGCNameEggEssenceResponse",
+    "id": 1079
+  },
+  {
+    "name": "k_EMsgGCExtractGems",
+    "id": 1086
+  },
+  {
+    "name": "k_EMsgGCAddSocket",
+    "id": 1087
+  },
+  {
+    "name": "k_EMsgGCAddItemToSocket",
+    "id": 1088
+  },
+  {
+    "name": "k_EMsgGCAddItemToSocketResponse",
+    "id": 1089
+  },
+  {
+    "name": "k_EMsgGCAddSocketResponse",
+    "id": 1090
+  },
+  {
+    "name": "k_EMsgGCResetStrangeGemCount",
+    "id": 1091
+  },
+  {
+    "name": "k_EMsgGCRequestCrateItems",
+    "id": 1092
+  },
+  {
+    "name": "k_EMsgGCRequestCrateItemsResponse",
+    "id": 1093
+  },
+  {
+    "name": "k_EMsgGCExtractGemsResponse",
+    "id": 1094
+  },
+  {
+    "name": "k_EMsgGCResetStrangeGemCountResponse",
+    "id": 1095
+  },
+  {
+    "name": "k_EMsgGCServerUseItemRequest",
+    "id": 1103
+  },
+  {
+    "name": "k_EMsgGCAddGiftItem",
+    "id": 1104
+  },
+  {
+    "name": "k_EMsgSQLGCToGCRevokeUntrustedGift",
+    "id": 1105
+  },
+  {
+    "name": "k_EMsgClientToGCRemoveItemGifterAttributes",
+    "id": 1109
+  },
+  {
+    "name": "k_EMsgClientToGCRemoveItemName",
+    "id": 1110
+  },
+  {
+    "name": "k_EMsgClientToGCRemoveItemDescription",
+    "id": 1111
+  },
+  {
+    "name": "k_EMsgClientToGCRemoveItemAttributeResponse",
+    "id": 1112
+  },
+  {
+    "name": "k_EMsgGCDev_NewItemRequest",
+    "id": 2001
+  },
+  {
+    "name": "k_EMsgGCDev_NewItemRequestResponse",
+    "id": 2002
+  },
+  {
+    "name": "k_EMsgGCDev_UnlockAllItemStylesRequest",
+    "id": 2003
+  },
+  {
+    "name": "k_EMsgGCDev_UnlockAllItemStylesResponse",
+    "id": 2004
+  },
+  {
+    "name": "k_EMsgGCStorePurchaseFinalize",
+    "id": 2504
+  },
+  {
+    "name": "k_EMsgGCStorePurchaseFinalizeResponse",
+    "id": 2505
+  },
+  {
+    "name": "k_EMsgGCStorePurchaseCancel",
+    "id": 2506
+  },
+  {
+    "name": "k_EMsgGCStorePurchaseCancelResponse",
+    "id": 2507
+  },
+  {
+    "name": "k_EMsgGCStorePurchaseInit",
+    "id": 2510
+  },
+  {
+    "name": "k_EMsgGCStorePurchaseInitResponse",
+    "id": 2511
+  },
+  {
+    "name": "k_EMsgGCToGCBannedWordListUpdated",
+    "id": 2515
+  },
+  {
+    "name": "k_EMsgGCToGCDirtySDOCache",
+    "id": 2516
+  },
+  {
+    "name": "k_EMsgGCToGCUpdateSQLKeyValue",
+    "id": 2518
+  },
+  {
+    "name": "k_EMsgGCToGCBroadcastConsoleCommand",
+    "id": 2521
+  },
+  {
+    "name": "k_EMsgGCServerVersionUpdated",
+    "id": 2522
+  },
+  {
+    "name": "k_EMsgGCApplyAutograph",
+    "id": 2523
+  },
+  {
+    "name": "k_EMsgGCToGCWebAPIAccountChanged",
+    "id": 2524
+  },
+  {
+    "name": "k_EMsgGCClientVersionUpdated",
+    "id": 2528
+  },
+  {
+    "name": "k_EMsgGCToGCUpdateWelcomeMsg",
+    "id": 2529
+  },
+  {
+    "name": "k_EMsgGCToGCPlayerStrangeCountAdjustments",
+    "id": 2535
+  },
+  {
+    "name": "k_EMsgGCRequestStoreSalesData",
+    "id": 2536
+  },
+  {
+    "name": "k_EMsgGCRequestStoreSalesDataResponse",
+    "id": 2537
+  },
+  {
+    "name": "k_EMsgGCRequestStoreSalesDataUpToDateResponse",
+    "id": 2538
+  },
+  {
+    "name": "k_EMsgGCToGCPingRequest",
+    "id": 2539
+  },
+  {
+    "name": "k_EMsgGCToGCPingResponse",
+    "id": 2540
+  },
+  {
+    "name": "k_EMsgGCToGCGetUserSessionServer",
+    "id": 2541
+  },
+  {
+    "name": "k_EMsgGCToGCGetUserSessionServerResponse",
+    "id": 2542
+  },
+  {
+    "name": "k_EMsgGCToGCGetUserServerMembers",
+    "id": 2543
+  },
+  {
+    "name": "k_EMsgGCToGCGetUserServerMembersResponse",
+    "id": 2544
+  },
+  {
+    "name": "k_EMsgGCToGCCanUseDropRateBonus",
+    "id": 2547
+  },
+  {
+    "name": "k_EMsgSQLAddDropRateBonus",
+    "id": 2548
+  },
+  {
+    "name": "k_EMsgGCToGCRefreshSOCache",
+    "id": 2549
+  },
+  {
+    "name": "k_EMsgGCToGCGrantAccountRolledItems",
+    "id": 2554
+  },
+  {
+    "name": "k_EMsgGCToGCGrantSelfMadeItemToAccount",
+    "id": 2555
+  },
+  {
+    "name": "k_EMsgGCToGCUnlockCrate",
+    "id": 2556
+  },
+  {
+    "name": "k_EMsgGCStatueCraft",
+    "id": 2561
+  },
+  {
+    "name": "k_EMsgGCRedeemCode",
+    "id": 2562
+  },
+  {
+    "name": "k_EMsgGCRedeemCodeResponse",
+    "id": 2563
+  },
+  {
+    "name": "k_EMsgGCToGCItemConsumptionRollback",
+    "id": 2564
+  },
+  {
+    "name": "k_EMsgClientToGCWrapAndDeliverGift",
+    "id": 2565
+  },
+  {
+    "name": "k_EMsgClientToGCWrapAndDeliverGiftResponse",
+    "id": 2566
+  },
+  {
+    "name": "k_EMsgClientToGCUnpackBundleResponse",
+    "id": 2567
+  },
+  {
+    "name": "k_EMsgGCToClientStoreTransactionCompleted",
+    "id": 2568
+  },
+  {
+    "name": "k_EMsgClientToGCEquipItems",
+    "id": 2569
+  },
+  {
+    "name": "k_EMsgClientToGCEquipItemsResponse",
+    "id": 2570
+  },
+  {
+    "name": "k_EMsgClientToGCUnlockItemStyle",
+    "id": 2571
+  },
+  {
+    "name": "k_EMsgClientToGCUnlockItemStyleResponse",
+    "id": 2572
+  },
+  {
+    "name": "k_EMsgClientToGCSetItemInventoryCategory",
+    "id": 2573
+  },
+  {
+    "name": "k_EMsgClientToGCUnlockCrate",
+    "id": 2574
+  },
+  {
+    "name": "k_EMsgClientToGCUnlockCrateResponse",
+    "id": 2575
+  },
+  {
+    "name": "k_EMsgClientToGCUnpackBundle",
+    "id": 2576
+  },
+  {
+    "name": "k_EMsgClientToGCSetItemStyle",
+    "id": 2577
+  },
+  {
+    "name": "k_EMsgClientToGCSetItemStyleResponse",
+    "id": 2578
+  },
+  {
+    "name": "k_EMsgGCGenericResult",
+    "id": 2579
+  },
+  {
+    "name": "k_EMsgSQLGCToGCGrantBackpackSlots",
+    "id": 2580
+  },
+  {
+    "name": "k_EMsgClientToGCLookupAccountName",
+    "id": 2581
+  },
+  {
+    "name": "k_EMsgClientToGCLookupAccountNameResponse",
+    "id": 2582
+  },
+  {
+    "name": "k_EMsgClientToGCCreateStaticRecipe",
+    "id": 2584
+  },
+  {
+    "name": "k_EMsgClientToGCCreateStaticRecipeResponse",
+    "id": 2585
+  },
+  {
+    "name": "k_EMsgGCToGCStoreProcessCDKeyTransaction",
+    "id": 2586
+  },
+  {
+    "name": "k_EMsgGCToGCStoreProcessCDKeyTransactionResponse",
+    "id": 2587
+  },
+  {
+    "name": "k_EMsgGCToGCStoreProcessSettlement",
+    "id": 2588
+  },
+  {
+    "name": "k_EMsgGCToGCStoreProcessSettlementResponse",
+    "id": 2589
+  },
+  {
+    "name": "k_EMsgGCToGCConsoleOutput",
+    "id": 2590
+  },
+  {
+    "name": "k_EMsgGCToClientItemAges",
+    "id": 2591
+  },
+  {
+    "name": "k_EMsgGCToGCInternalTestMsg",
+    "id": 2592
+  },
+  {
+    "name": "k_EMsgGCToGCClientServerVersionsUpdated",
+    "id": 2593
+  },
+  {
+    "name": "k_EMsgGCUseMultipleItemsRequest",
+    "id": 2594
+  },
+  {
+    "name": "k_EMsgGCGetAccountSubscriptionItem",
+    "id": 2595
+  },
+  {
+    "name": "k_EMsgGCGetAccountSubscriptionItemResponse",
+    "id": 2596
+  },
+  {
+    "name": "k_EMsgGCToGCBroadcastMessageFromSub",
+    "id": 2598
+  },
+  {
+    "name": "k_EMsgGCToClientCurrencyPricePoints",
+    "id": 2599
+  },
+  {
+    "name": "k_EMsgGCToGCAddSubscriptionTime",
+    "id": 2600
+  },
+  {
+    "name": "k_EMsgGCToGCFlushSteamInventoryCache",
+    "id": 2601
+  },
+  {
+    "name": "k_EMsgGCRequestCrateEscalationLevel",
+    "id": 2602
+  },
+  {
+    "name": "k_EMsgGCRequestCrateEscalationLevelResponse",
+    "id": 2603
+  },
+  {
+    "name": "k_EMsgGCToGCUpdateSubscriptionItems",
+    "id": 2604
+  },
+  {
+    "name": "k_EMsgGCToGCSelfPing",
+    "id": 2605
+  },
+  {
+    "name": "k_EMsgGCToGCGetInfuxIntervalStats",
+    "id": 2606
+  },
+  {
+    "name": "k_EMsgGCToGCGetInfuxIntervalStatsResponse",
+    "id": 2607
+  },
+  {
+    "name": "k_EMsgGCToGCPurchaseSucceeded",
+    "id": 2608
+  },
+  {
+    "name": "k_EMsgClientToGCGetLimitedItemPurchaseQuantity",
+    "id": 2609
+  },
+  {
+    "name": "k_EMsgClientToGCGetLimitedItemPurchaseQuantityResponse",
+    "id": 2610
+  },
+  {
+    "name": "k_EMsgGCToGCBetaDeleteItems",
+    "id": 2611
+  },
+  {
+    "name": "k_EMsgClientToGCGetInFlightItemCharges",
+    "id": 2612
+  },
+  {
+    "name": "k_EMsgClientToGCGetInFlightItemChargesResponse",
+    "id": 2613
+  },
+  {
+    "name": "k_EMsgGCToClientInFlightChargesUpdated",
+    "id": 2614
+  },
+  {
+    "name": "k_EMsgClientToGCPurchaseChargeCostItems",
+    "id": 2615
+  },
+  {
+    "name": "k_EMsgClientToGCPurchaseChargeCostItemsResponse",
+    "id": 2616
+  },
+  {
+    "name": "k_EMsgClientToGCCancelUnfinalizedTransactions",
+    "id": 2617
+  },
+  {
+    "name": "k_EMsgClientToGCCancelUnfinalizedTransactionsResponse",
+    "id": 2618
+  },
+  {
+    "name": "k_EMsgClientToGCRecycleMultipleItems",
+    "id": 2619
+  },
+  {
+    "name": "k_EMsgClientToGCRecycleMultipleItemsResponse",
+    "id": 2620
+  },
+  {
+    "name": "k_EMsgGCPingRequest",
+    "id": 3001
+  },
+  {
+    "name": "k_EMsgGCPingResponse",
+    "id": 3002
+  },
+  {
+    "name": "k_EMsgGCToClientPollConvarRequest",
+    "id": 3003
+  },
+  {
+    "name": "k_EMsgGCToClientPollConvarResponse",
+    "id": 3004
+  },
+  {
+    "name": "k_EMsgGCCompressedMsgToClient",
+    "id": 3005
+  },
+  {
+    "name": "k_EMsgGCToClientRequestDropped",
+    "id": 3006
+  },
+  {
+    "name": "k_EMsgGCClientWelcome",
+    "id": 4004
+  },
+  {
+    "name": "k_EMsgGCServerWelcome",
+    "id": 4005
+  },
+  {
+    "name": "k_EMsgGCClientHello",
+    "id": 4006
+  },
+  {
+    "name": "k_EMsgGCServerHello",
+    "id": 4007
+  },
+  {
+    "name": "k_EMsgGCClientConnectionStatus",
+    "id": 4009
+  },
+  {
+    "name": "k_EMsgGCServerConnectionStatus",
+    "id": 4010
+  },
+  {
+    "name": "k_EMsgGCInviteToParty",
+    "id": 4501
+  },
+  {
+    "name": "k_EMsgGCInvitationCreated",
+    "id": 4502
+  },
+  {
+    "name": "k_EMsgGCPartyInviteResponse",
+    "id": 4503
+  },
+  {
+    "name": "k_EMsgGCKickFromParty",
+    "id": 4504
+  },
+  {
+    "name": "k_EMsgGCLeaveParty",
+    "id": 4505
+  },
+  {
+    "name": "k_EMsgGCServerAvailable",
+    "id": 4506
+  },
+  {
+    "name": "k_EMsgGCClientConnectToServer",
+    "id": 4507
+  },
+  {
+    "name": "k_EMsgGCGameServerInfo",
+    "id": 4508
+  },
+  {
+    "name": "k_EMsgGCLANServerAvailable",
+    "id": 4511
+  },
+  {
+    "name": "k_EMsgGCInviteToLobby",
+    "id": 4512
+  },
+  {
+    "name": "k_EMsgGCLobbyInviteResponse",
+    "id": 4513
+  },
+  {
+    "name": "k_EMsgGCToClientPollFileRequest",
+    "id": 4514
+  },
+  {
+    "name": "k_EMsgGCToClientPollFileResponse",
+    "id": 4515
+  },
+  {
+    "name": "k_EMsgGCToGCPerformManualOp",
+    "id": 4516
+  },
+  {
+    "name": "k_EMsgGCToGCPerformManualOpCompleted",
+    "id": 4517
+  },
+  {
+    "name": "k_EMsgGCToGCReloadServerRegionSettings",
+    "id": 4518
+  },
+  {
+    "name": "k_EMsgGCAdditionalWelcomeMsgList",
+    "id": 4519
+  },
+  {
+    "name": "k_EMsgGCToClientApplyRemoteConVars",
+    "id": 4520
+  },
+  {
+    "name": "k_EMsgGCToServerApplyRemoteConVars",
+    "id": 4521
+  },
+  {
+    "name": "k_EMsgClientToGCIntegrityStatus",
+    "id": 4522
+  },
+  {
+    "name": "k_EMsgClientToGCAggregateMetrics",
+    "id": 4523
+  },
+  {
+    "name": "k_EMsgGCToClientAggregateMetricsBackoff",
+    "id": 4524
+  },
+  {
+    "name": "k_EMsgGCToServerSteamLearnAccessTokensChanged",
+    "id": 4525
+  },
+  {
+    "name": "k_EMsgGCToServerSteamLearnUseHTTP",
+    "id": 4526
+  },
+  {
+    "name": "k_EMsgGCDOTABase",
+    "id": 7000
+  },
+  {
+    "name": "k_EMsgGCGameMatchSignOut",
+    "id": 7004
+  },
+  {
+    "name": "k_EMsgGCGameMatchSignOutResponse",
+    "id": 7005
+  },
+  {
+    "name": "k_EMsgGCJoinChatChannel",
+    "id": 7009
+  },
+  {
+    "name": "k_EMsgGCJoinChatChannelResponse",
+    "id": 7010
+  },
+  {
+    "name": "k_EMsgGCOtherJoinedChannel",
+    "id": 7013
+  },
+  {
+    "name": "k_EMsgGCOtherLeftChannel",
+    "id": 7014
+  },
+  {
+    "name": "k_EMsgServerToGCRequestStatus",
+    "id": 7026
+  },
+  {
+    "name": "k_EMsgGCStartFindingMatch",
+    "id": 7033
+  },
+  {
+    "name": "k_EMsgGCConnectedPlayers",
+    "id": 7034
+  },
+  {
+    "name": "k_EMsgGCAbandonCurrentGame",
+    "id": 7035
+  },
+  {
+    "name": "k_EMsgGCStopFindingMatch",
+    "id": 7036
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyCreate",
+    "id": 7038
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyLeave",
+    "id": 7040
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyLaunch",
+    "id": 7041
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyList",
+    "id": 7042
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyListResponse",
+    "id": 7043
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyJoin",
+    "id": 7044
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbySetDetails",
+    "id": 7046
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbySetTeamSlot",
+    "id": 7047
+  },
+  {
+    "name": "k_EMsgGCInitialQuestionnaireResponse",
+    "id": 7049
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyResponse",
+    "id": 7055
+  },
+  {
+    "name": "k_EMsgGCBroadcastNotification",
+    "id": 7056
+  },
+  {
+    "name": "k_EMsgGCLiveScoreboardUpdate",
+    "id": 7057
+  },
+  {
+    "name": "k_EMsgGCRequestChatChannelList",
+    "id": 7060
+  },
+  {
+    "name": "k_EMsgGCRequestChatChannelListResponse",
+    "id": 7061
+  },
+  {
+    "name": "k_EMsgGCReadyUp",
+    "id": 7070
+  },
+  {
+    "name": "k_EMsgGCKickedFromMatchmakingQueue",
+    "id": 7071
+  },
+  {
+    "name": "k_EMsgGCLeaverDetected",
+    "id": 7072
+  },
+  {
+    "name": "k_EMsgGCSpectateFriendGame",
+    "id": 7073
+  },
+  {
+    "name": "k_EMsgGCSpectateFriendGameResponse",
+    "id": 7074
+  },
+  {
+    "name": "k_EMsgGCReportsRemainingRequest",
+    "id": 7076
+  },
+  {
+    "name": "k_EMsgGCReportsRemainingResponse",
+    "id": 7077
+  },
+  {
+    "name": "k_EMsgGCSubmitPlayerReport",
+    "id": 7078
+  },
+  {
+    "name": "k_EMsgGCSubmitPlayerReportResponse",
+    "id": 7079
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyKick",
+    "id": 7081
+  },
+  {
+    "name": "k_EMsgGCSubmitPlayerReportV2",
+    "id": 7082
+  },
+  {
+    "name": "k_EMsgGCSubmitPlayerReportResponseV2",
+    "id": 7083
+  },
+  {
+    "name": "k_EMsgGCRequestSaveGames",
+    "id": 7084
+  },
+  {
+    "name": "k_EMsgGCRequestSaveGamesServer",
+    "id": 7085
+  },
+  {
+    "name": "k_EMsgGCRequestSaveGamesResponse",
+    "id": 7086
+  },
+  {
+    "name": "k_EMsgGCLeaverDetectedResponse",
+    "id": 7087
+  },
+  {
+    "name": "k_EMsgGCPlayerFailedToConnect",
+    "id": 7088
+  },
+  {
+    "name": "k_EMsgGCGCToRelayConnect",
+    "id": 7089
+  },
+  {
+    "name": "k_EMsgGCGCToRelayConnectresponse",
+    "id": 7090
+  },
+  {
+    "name": "k_EMsgGCWatchGame",
+    "id": 7091
+  },
+  {
+    "name": "k_EMsgGCWatchGameResponse",
+    "id": 7092
+  },
+  {
+    "name": "k_EMsgGCBanStatusRequest",
+    "id": 7093
+  },
+  {
+    "name": "k_EMsgGCBanStatusResponse",
+    "id": 7094
+  },
+  {
+    "name": "k_EMsgGCMatchDetailsRequest",
+    "id": 7095
+  },
+  {
+    "name": "k_EMsgGCMatchDetailsResponse",
+    "id": 7096
+  },
+  {
+    "name": "k_EMsgGCCancelWatchGame",
+    "id": 7097
+  },
+  {
+    "name": "k_EMsgGCPopup",
+    "id": 7102
+  },
+  {
+    "name": "k_EMsgGCFriendPracticeLobbyListRequest",
+    "id": 7111
+  },
+  {
+    "name": "k_EMsgGCFriendPracticeLobbyListResponse",
+    "id": 7112
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyJoinResponse",
+    "id": 7113
+  },
+  {
+    "name": "k_EMsgGCCreateTeam",
+    "id": 7115
+  },
+  {
+    "name": "k_EMsgGCCreateTeamResponse",
+    "id": 7116
+  },
+  {
+    "name": "k_EMsgGCTeamInvite_InviterToGC",
+    "id": 7122
+  },
+  {
+    "name": "k_EMsgGCTeamInvite_GCImmediateResponseToInviter",
+    "id": 7123
+  },
+  {
+    "name": "k_EMsgGCTeamInvite_GCRequestToInvitee",
+    "id": 7124
+  },
+  {
+    "name": "k_EMsgGCTeamInvite_InviteeResponseToGC",
+    "id": 7125
+  },
+  {
+    "name": "k_EMsgGCTeamInvite_GCResponseToInviter",
+    "id": 7126
+  },
+  {
+    "name": "k_EMsgGCTeamInvite_GCResponseToInvitee",
+    "id": 7127
+  },
+  {
+    "name": "k_EMsgGCKickTeamMember",
+    "id": 7128
+  },
+  {
+    "name": "k_EMsgGCKickTeamMemberResponse",
+    "id": 7129
+  },
+  {
+    "name": "k_EMsgGCLeaveTeam",
+    "id": 7130
+  },
+  {
+    "name": "k_EMsgGCLeaveTeamResponse",
+    "id": 7131
+  },
+  {
+    "name": "k_EMsgGCApplyTeamToPracticeLobby",
+    "id": 7142
+  },
+  {
+    "name": "k_EMsgGCTransferTeamAdmin",
+    "id": 7144
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyJoinBroadcastChannel",
+    "id": 7149
+  },
+  {
+    "name": "k_EMsgGC_TournamentItemEvent",
+    "id": 7150
+  },
+  {
+    "name": "k_EMsgGC_TournamentItemEventResponse",
+    "id": 7151
+  },
+  {
+    "name": "k_EMsgTeamFanfare",
+    "id": 7156
+  },
+  {
+    "name": "k_EMsgResponseTeamFanfare",
+    "id": 7157
+  },
+  {
+    "name": "k_EMsgGCEditTeamDetails",
+    "id": 7166
+  },
+  {
+    "name": "k_EMsgGCEditTeamDetailsResponse",
+    "id": 7167
+  },
+  {
+    "name": "k_EMsgGCReadyUpStatus",
+    "id": 7170
+  },
+  {
+    "name": "k_EMsgGCToGCMatchCompleted",
+    "id": 7186
+  },
+  {
+    "name": "k_EMsgGCBalancedShuffleLobby",
+    "id": 7188
+  },
+  {
+    "name": "k_EMsgGCMatchmakingStatsRequest",
+    "id": 7197
+  },
+  {
+    "name": "k_EMsgGCMatchmakingStatsResponse",
+    "id": 7198
+  },
+  {
+    "name": "k_EMsgGCBotGameCreate",
+    "id": 7199
+  },
+  {
+    "name": "k_EMsgGCSetMatchHistoryAccess",
+    "id": 7200
+  },
+  {
+    "name": "k_EMsgGCSetMatchHistoryAccessResponse",
+    "id": 7201
+  },
+  {
+    "name": "k_EMsgUpgradeLeagueItem",
+    "id": 7203
+  },
+  {
+    "name": "k_EMsgUpgradeLeagueItemResponse",
+    "id": 7204
+  },
+  {
+    "name": "k_EMsgGCWatchDownloadedReplay",
+    "id": 7206
+  },
+  {
+    "name": "k_EMsgClientsRejoinChatChannels",
+    "id": 7217
+  },
+  {
+    "name": "k_EMsgGCToGCGetUserChatInfo",
+    "id": 7218
+  },
+  {
+    "name": "k_EMsgGCToGCGetUserChatInfoResponse",
+    "id": 7219
+  },
+  {
+    "name": "k_EMsgGCToGCLeaveAllChatChannels",
+    "id": 7220
+  },
+  {
+    "name": "k_EMsgGCToGCUpdateAccountChatBan",
+    "id": 7221
+  },
+  {
+    "name": "k_EMsgGCToGCCanInviteUserToTeam",
+    "id": 7234
+  },
+  {
+    "name": "k_EMsgGCToGCCanInviteUserToTeamResponse",
+    "id": 7235
+  },
+  {
+    "name": "k_EMsgGCToGCGetUserRank",
+    "id": 7236
+  },
+  {
+    "name": "k_EMsgGCToGCGetUserRankResponse",
+    "id": 7237
+  },
+  {
+    "name": "k_EMsgGCToGCAdjustUserRank",
+    "id": 7238
+  },
+  {
+    "name": "k_EMsgGCToGCAdjustUserRankResponse",
+    "id": 7239
+  },
+  {
+    "name": "k_EMsgGCToGCUpdateTeamStats",
+    "id": 7240
+  },
+  {
+    "name": "k_EMsgGCToGCValidateTeam",
+    "id": 7241
+  },
+  {
+    "name": "k_EMsgGCToGCValidateTeamResponse",
+    "id": 7242
+  },
+  {
+    "name": "k_EMsgGCToGCGetLeagueAdmin",
+    "id": 7255
+  },
+  {
+    "name": "k_EMsgGCToGCGetLeagueAdminResponse",
+    "id": 7256
+  },
+  {
+    "name": "k_EMsgGCLeaveChatChannel",
+    "id": 7272
+  },
+  {
+    "name": "k_EMsgGCChatMessage",
+    "id": 7273
+  },
+  {
+    "name": "k_EMsgGCGetHeroStandings",
+    "id": 7274
+  },
+  {
+    "name": "k_EMsgGCGetHeroStandingsResponse",
+    "id": 7275
+  },
+  {
+    "name": "k_EMsgGCItemEditorReservationsRequest",
+    "id": 7283
+  },
+  {
+    "name": "k_EMsgGCItemEditorReservationsResponse",
+    "id": 7284
+  },
+  {
+    "name": "k_EMsgGCItemEditorReserveItemDef",
+    "id": 7285
+  },
+  {
+    "name": "k_EMsgGCItemEditorReserveItemDefResponse",
+    "id": 7286
+  },
+  {
+    "name": "k_EMsgGCItemEditorReleaseReservation",
+    "id": 7287
+  },
+  {
+    "name": "k_EMsgGCItemEditorReleaseReservationResponse",
+    "id": 7288
+  },
+  {
+    "name": "k_EMsgGCFantasyLivePlayerStats",
+    "id": 7308
+  },
+  {
+    "name": "k_EMsgGCFantasyFinalPlayerStats",
+    "id": 7309
+  },
+  {
+    "name": "k_EMsgGCFlipLobbyTeams",
+    "id": 7320
+  },
+  {
+    "name": "k_EMsgGCToGCEvaluateReportedPlayer",
+    "id": 7322
+  },
+  {
+    "name": "k_EMsgGCToGCEvaluateReportedPlayerResponse",
+    "id": 7323
+  },
+  {
+    "name": "k_EMsgGCToGCProcessPlayerReportForTarget",
+    "id": 7324
+  },
+  {
+    "name": "k_EMsgGCToGCProcessReportSuccess",
+    "id": 7325
+  },
+  {
+    "name": "k_EMsgGCNotifyAccountFlagsChange",
+    "id": 7326
+  },
+  {
+    "name": "k_EMsgGCSetProfilePrivacy",
+    "id": 7327
+  },
+  {
+    "name": "k_EMsgGCSetProfilePrivacyResponse",
+    "id": 7328
+  },
+  {
+    "name": "k_EMsgGCClientSuspended",
+    "id": 7342
+  },
+  {
+    "name": "k_EMsgGCPartyMemberSetCoach",
+    "id": 7343
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbySetCoach",
+    "id": 7346
+  },
+  {
+    "name": "k_EMsgGCChatModeratorBan",
+    "id": 7359
+  },
+  {
+    "name": "k_EMsgGCLobbyUpdateBroadcastChannelInfo",
+    "id": 7367
+  },
+  {
+    "name": "k_EMsgGCToGCGrantTournamentItem",
+    "id": 7372
+  },
+  {
+    "name": "k_EMsgGCToGCUpgradeTwitchViewerItems",
+    "id": 7375
+  },
+  {
+    "name": "k_EMsgGCToGCGetLiveMatchAffiliates",
+    "id": 7376
+  },
+  {
+    "name": "k_EMsgGCToGCGetLiveMatchAffiliatesResponse",
+    "id": 7377
+  },
+  {
+    "name": "k_EMsgGCToGCUpdatePlayerPennantCounts",
+    "id": 7378
+  },
+  {
+    "name": "k_EMsgGCToGCGetPlayerPennantCounts",
+    "id": 7379
+  },
+  {
+    "name": "k_EMsgGCToGCGetPlayerPennantCountsResponse",
+    "id": 7380
+  },
+  {
+    "name": "k_EMsgGCGameMatchSignOutPermissionRequest",
+    "id": 7381
+  },
+  {
+    "name": "k_EMsgGCGameMatchSignOutPermissionResponse",
+    "id": 7382
+  },
+  {
+    "name": "k_EMsgDOTAAwardEventPoints",
+    "id": 7384
+  },
+  {
+    "name": "k_EMsgDOTAGetEventPoints",
+    "id": 7387
+  },
+  {
+    "name": "k_EMsgDOTAGetEventPointsResponse",
+    "id": 7388
+  },
+  {
+    "name": "k_EMsgGCPartyLeaderWatchGamePrompt",
+    "id": 7397
+  },
+  {
+    "name": "k_EMsgGCCompendiumSetSelection",
+    "id": 7405
+  },
+  {
+    "name": "k_EMsgGCCompendiumDataRequest",
+    "id": 7406
+  },
+  {
+    "name": "k_EMsgGCCompendiumDataResponse",
+    "id": 7407
+  },
+  {
+    "name": "k_EMsgDOTAGetPlayerMatchHistory",
+    "id": 7408
+  },
+  {
+    "name": "k_EMsgDOTAGetPlayerMatchHistoryResponse",
+    "id": 7409
+  },
+  {
+    "name": "k_EMsgGCToGCMatchmakingAddParty",
+    "id": 7410
+  },
+  {
+    "name": "k_EMsgGCToGCMatchmakingRemoveParty",
+    "id": 7411
+  },
+  {
+    "name": "k_EMsgGCToGCMatchmakingRemoveAllParties",
+    "id": 7412
+  },
+  {
+    "name": "k_EMsgGCToGCMatchmakingMatchFound",
+    "id": 7413
+  },
+  {
+    "name": "k_EMsgGCToGCUpdateMatchManagementStats",
+    "id": 7414
+  },
+  {
+    "name": "k_EMsgGCToGCUpdateMatchmakingStats",
+    "id": 7415
+  },
+  {
+    "name": "k_EMsgGCToServerPingRequest",
+    "id": 7416
+  },
+  {
+    "name": "k_EMsgGCToServerPingResponse",
+    "id": 7417
+  },
+  {
+    "name": "k_EMsgGCToServerEvaluateToxicChat",
+    "id": 7418
+  },
+  {
+    "name": "k_EMsgServerToGCEvaluateToxicChat",
+    "id": 7419
+  },
+  {
+    "name": "k_EMsgServerToGCEvaluateToxicChatResponse",
+    "id": 7420
+  },
+  {
+    "name": "k_EMsgGCToGCProcessMatchLeaver",
+    "id": 7426
+  },
+  {
+    "name": "k_EMsgGCNotificationsRequest",
+    "id": 7427
+  },
+  {
+    "name": "k_EMsgGCNotificationsResponse",
+    "id": 7428
+  },
+  {
+    "name": "k_EMsgGCToGCModifyNotification",
+    "id": 7429
+  },
+  {
+    "name": "k_EMsgGCLeagueAdminList",
+    "id": 7434
+  },
+  {
+    "name": "k_EMsgGCNotificationsMarkReadRequest",
+    "id": 7435
+  },
+  {
+    "name": "k_EMsgServerToGCRequestBatchPlayerResources",
+    "id": 7450
+  },
+  {
+    "name": "k_EMsgServerToGCRequestBatchPlayerResourcesResponse",
+    "id": 7451
+  },
+  {
+    "name": "k_EMsgGCCompendiumSetSelectionResponse",
+    "id": 7453
+  },
+  {
+    "name": "k_EMsgGCRankedPlayerInfoSubmit",
+    "id": 7454
+  },
+  {
+    "name": "k_EMsgGCRankedPlayerInfoSubmitResponse",
+    "id": 7455
+  },
+  {
+    "name": "k_EMsgGCPlayerInfoSubmit",
+    "id": 7456
+  },
+  {
+    "name": "k_EMsgGCPlayerInfoSubmitResponse",
+    "id": 7457
+  },
+  {
+    "name": "k_EMsgGCToGCGetAccountLevel",
+    "id": 7458
+  },
+  {
+    "name": "k_EMsgGCToGCGetAccountLevelResponse",
+    "id": 7459
+  },
+  {
+    "name": "k_EMsgDOTAGetWeekendTourneySchedule",
+    "id": 7464
+  },
+  {
+    "name": "k_EMsgDOTAWeekendTourneySchedule",
+    "id": 7465
+  },
+  {
+    "name": "k_EMsgGCJoinableCustomGameModesRequest",
+    "id": 7466
+  },
+  {
+    "name": "k_EMsgGCJoinableCustomGameModesResponse",
+    "id": 7467
+  },
+  {
+    "name": "k_EMsgGCJoinableCustomLobbiesRequest",
+    "id": 7468
+  },
+  {
+    "name": "k_EMsgGCJoinableCustomLobbiesResponse",
+    "id": 7469
+  },
+  {
+    "name": "k_EMsgGCQuickJoinCustomLobby",
+    "id": 7470
+  },
+  {
+    "name": "k_EMsgGCQuickJoinCustomLobbyResponse",
+    "id": 7471
+  },
+  {
+    "name": "k_EMsgGCToGCGrantEventPointAction",
+    "id": 7472
+  },
+  {
+    "name": "k_EMsgGCToGCSetCompendiumSelection",
+    "id": 7478
+  },
+  {
+    "name": "k_EMsgGCHasItemQuery",
+    "id": 7484
+  },
+  {
+    "name": "k_EMsgGCHasItemResponse",
+    "id": 7485
+  },
+  {
+    "name": "k_EMsgGCToGCGrantEventPointActionMsg",
+    "id": 7488
+  },
+  {
+    "name": "k_EMsgGCToGCGetCompendiumSelections",
+    "id": 7492
+  },
+  {
+    "name": "k_EMsgGCToGCGetCompendiumSelectionsResponse",
+    "id": 7493
+  },
+  {
+    "name": "k_EMsgServerToGCMatchConnectionStats",
+    "id": 7494
+  },
+  {
+    "name": "k_EMsgGCToClientTournamentItemDrop",
+    "id": 7495
+  },
+  {
+    "name": "k_EMsgSQLDelayedGrantLeagueDrop",
+    "id": 7496
+  },
+  {
+    "name": "k_EMsgServerGCUpdateSpectatorCount",
+    "id": 7497
+  },
+  {
+    "name": "k_EMsgGCToGCEmoticonUnlock",
+    "id": 7501
+  },
+  {
+    "name": "k_EMsgSignOutDraftInfo",
+    "id": 7502
+  },
+  {
+    "name": "k_EMsgClientToGCEmoticonDataRequest",
+    "id": 7503
+  },
+  {
+    "name": "k_EMsgGCToClientEmoticonData",
+    "id": 7504
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyToggleBroadcastChannelCameramanStatus",
+    "id": 7505
+  },
+  {
+    "name": "k_EMsgDOTARedeemItem",
+    "id": 7518
+  },
+  {
+    "name": "k_EMsgDOTARedeemItemResponse",
+    "id": 7519
+  },
+  {
+    "name": "k_EMsgClientToGCGetAllHeroProgress",
+    "id": 7521
+  },
+  {
+    "name": "k_EMsgClientToGCGetAllHeroProgressResponse",
+    "id": 7522
+  },
+  {
+    "name": "k_EMsgGCToGCGetServerForClient",
+    "id": 7523
+  },
+  {
+    "name": "k_EMsgGCToGCGetServerForClientResponse",
+    "id": 7524
+  },
+  {
+    "name": "k_EMsgSQLProcessTournamentGameOutcome",
+    "id": 7525
+  },
+  {
+    "name": "k_EMsgSQLGrantTrophyToAccount",
+    "id": 7526
+  },
+  {
+    "name": "k_EMsgClientToGCGetTrophyList",
+    "id": 7527
+  },
+  {
+    "name": "k_EMsgClientToGCGetTrophyListResponse",
+    "id": 7528
+  },
+  {
+    "name": "k_EMsgGCToClientTrophyAwarded",
+    "id": 7529
+  },
+  {
+    "name": "k_EMsgGCGameBotMatchSignOut",
+    "id": 7530
+  },
+  {
+    "name": "k_EMsgGCGameBotMatchSignOutPermissionRequest",
+    "id": 7531
+  },
+  {
+    "name": "k_EMsgSignOutBotInfo",
+    "id": 7532
+  },
+  {
+    "name": "k_EMsgGCToGCUpdateProfileCards",
+    "id": 7533
+  },
+  {
+    "name": "k_EMsgClientToGCGetProfileCard",
+    "id": 7534
+  },
+  {
+    "name": "k_EMsgClientToGCGetProfileCardResponse",
+    "id": 7535
+  },
+  {
+    "name": "k_EMsgClientToGCGetBattleReport",
+    "id": 7536
+  },
+  {
+    "name": "k_EMsgClientToGCGetBattleReportResponse",
+    "id": 7537
+  },
+  {
+    "name": "k_EMsgClientToGCSetProfileCardSlots",
+    "id": 7538
+  },
+  {
+    "name": "k_EMsgGCToClientProfileCardUpdated",
+    "id": 7539
+  },
+  {
+    "name": "k_EMsgServerToGCVictoryPredictions",
+    "id": 7540
+  },
+  {
+    "name": "k_EMsgClientToGCGetBattleReportAggregateStats",
+    "id": 7541
+  },
+  {
+    "name": "k_EMsgClientToGCGetBattleReportAggregateStatsResponse",
+    "id": 7542
+  },
+  {
+    "name": "k_EMsgClientToGCGetBattleReportInfo",
+    "id": 7543
+  },
+  {
+    "name": "k_EMsgClientToGCGetBattleReportInfoResponse",
+    "id": 7544
+  },
+  {
+    "name": "k_EMsgSignOutCommunicationSummary",
+    "id": 7545
+  },
+  {
+    "name": "k_EMsgServerToGCRequestStatus_Response",
+    "id": 7546
+  },
+  {
+    "name": "k_EMsgClientToGCCreateHeroStatue",
+    "id": 7547
+  },
+  {
+    "name": "k_EMsgGCToClientHeroStatueCreateResult",
+    "id": 7548
+  },
+  {
+    "name": "k_EMsgGCGCToLANServerRelayConnect",
+    "id": 7549
+  },
+  {
+    "name": "k_EMsgClientToGCAcknowledgeBattleReport",
+    "id": 7550
+  },
+  {
+    "name": "k_EMsgClientToGCAcknowledgeBattleReportResponse",
+    "id": 7551
+  },
+  {
+    "name": "k_EMsgClientToGCGetBattleReportMatchHistory",
+    "id": 7552
+  },
+  {
+    "name": "k_EMsgClientToGCGetBattleReportMatchHistoryResponse",
+    "id": 7553
+  },
+  {
+    "name": "k_EMsgServerToGCReportKillSummaries",
+    "id": 7554
+  },
+  {
+    "name": "k_EMsgGCToGCUpdatePlayerPredictions",
+    "id": 7561
+  },
+  {
+    "name": "k_EMsgGCToServerPredictionResult",
+    "id": 7562
+  },
+  {
+    "name": "k_EMsgGCToGCReplayMonitorValidateReplay",
+    "id": 7569
+  },
+  {
+    "name": "k_EMsgLobbyEventPoints",
+    "id": 7572
+  },
+  {
+    "name": "k_EMsgGCToGCGetCustomGameTickets",
+    "id": 7573
+  },
+  {
+    "name": "k_EMsgGCToGCGetCustomGameTicketsResponse",
+    "id": 7574
+  },
+  {
+    "name": "k_EMsgGCToGCCustomGamePlayed",
+    "id": 7576
+  },
+  {
+    "name": "k_EMsgGCToGCGrantEventPointsToUser",
+    "id": 7577
+  },
+  {
+    "name": "k_EMsgGameserverCrashReport",
+    "id": 7579
+  },
+  {
+    "name": "k_EMsgGameserverCrashReportResponse",
+    "id": 7580
+  },
+  {
+    "name": "k_EMsgGCToClientSteamDatagramTicket",
+    "id": 7581
+  },
+  {
+    "name": "k_EMsgGCToGCSendAccountsEventPoints",
+    "id": 7583
+  },
+  {
+    "name": "k_EMsgClientToGCRerollPlayerChallenge",
+    "id": 7584
+  },
+  {
+    "name": "k_EMsgServerToGCRerollPlayerChallenge",
+    "id": 7585
+  },
+  {
+    "name": "k_EMsgGCRerollPlayerChallengeResponse",
+    "id": 7586
+  },
+  {
+    "name": "k_EMsgSignOutUpdatePlayerChallenge",
+    "id": 7587
+  },
+  {
+    "name": "k_EMsgClientToGCSetPartyLeader",
+    "id": 7588
+  },
+  {
+    "name": "k_EMsgClientToGCCancelPartyInvites",
+    "id": 7589
+  },
+  {
+    "name": "k_EMsgSQLGrantLeagueMatchToTicketHolders",
+    "id": 7592
+  },
+  {
+    "name": "k_EMsgGCToGCEmoticonUnlockNoRollback",
+    "id": 7594
+  },
+  {
+    "name": "k_EMsgClientToGCApplyGemCombiner",
+    "id": 7603
+  },
+  {
+    "name": "k_EMsgClientToGCGetAllHeroOrder",
+    "id": 7606
+  },
+  {
+    "name": "k_EMsgClientToGCGetAllHeroOrderResponse",
+    "id": 7607
+  },
+  {
+    "name": "k_EMsgSQLGCToGCGrantBadgePoints",
+    "id": 7608
+  },
+  {
+    "name": "k_EMsgGCToGCCheckOwnsEntireEmoticonRange",
+    "id": 7611
+  },
+  {
+    "name": "k_EMsgGCToGCCheckOwnsEntireEmoticonRangeResponse",
+    "id": 7612
+  },
+  {
+    "name": "k_EMsgGCToClientRequestLaneSelection",
+    "id": 7623
+  },
+  {
+    "name": "k_EMsgGCToClientRequestLaneSelectionResponse",
+    "id": 7624
+  },
+  {
+    "name": "k_EMsgServerToGCCavernCrawlIsHeroActive",
+    "id": 7625
+  },
+  {
+    "name": "k_EMsgServerToGCCavernCrawlIsHeroActiveResponse",
+    "id": 7626
+  },
+  {
+    "name": "k_EMsgClientToGCPlayerCardSpecificPurchaseRequest",
+    "id": 7627
+  },
+  {
+    "name": "k_EMsgClientToGCPlayerCardSpecificPurchaseResponse",
+    "id": 7628
+  },
+  {
+    "name": "k_EMsgSQLSetIsLeagueAdmin",
+    "id": 7630
+  },
+  {
+    "name": "k_EMsgGCToGCGetLiveLeagueMatches",
+    "id": 7631
+  },
+  {
+    "name": "k_EMsgGCToGCGetLiveLeagueMatchesResponse",
+    "id": 7632
+  },
+  {
+    "name": "k_EMsgDOTALeagueInfoListAdminsRequest",
+    "id": 7633
+  },
+  {
+    "name": "k_EMsgDOTALeagueInfoListAdminsReponse",
+    "id": 7634
+  },
+  {
+    "name": "k_EMsgGCToGCLeagueMatchStarted",
+    "id": 7645
+  },
+  {
+    "name": "k_EMsgGCToGCLeagueMatchCompleted",
+    "id": 7646
+  },
+  {
+    "name": "k_EMsgGCToGCLeagueMatchStartedResponse",
+    "id": 7647
+  },
+  {
+    "name": "k_EMsgDOTALeagueAvailableLobbyNodesRequest",
+    "id": 7650
+  },
+  {
+    "name": "k_EMsgDOTALeagueAvailableLobbyNodes",
+    "id": 7651
+  },
+  {
+    "name": "k_EMsgGCToGCLeagueRequest",
+    "id": 7652
+  },
+  {
+    "name": "k_EMsgGCToGCLeagueResponse",
+    "id": 7653
+  },
+  {
+    "name": "k_EMsgGCToGCLeagueNodeGroupRequest",
+    "id": 7654
+  },
+  {
+    "name": "k_EMsgGCToGCLeagueNodeGroupResponse",
+    "id": 7655
+  },
+  {
+    "name": "k_EMsgGCToGCLeagueNodeRequest",
+    "id": 7656
+  },
+  {
+    "name": "k_EMsgGCToGCLeagueNodeResponse",
+    "id": 7657
+  },
+  {
+    "name": "k_EMsgGCToGCRealtimeStatsTerseRequest",
+    "id": 7658
+  },
+  {
+    "name": "k_EMsgGCToGCRealtimeStatsTerseResponse",
+    "id": 7659
+  },
+  {
+    "name": "k_EMsgGCToGCGetTopMatchesRequest",
+    "id": 7660
+  },
+  {
+    "name": "k_EMsgGCToGCGetTopMatchesResponse",
+    "id": 7661
+  },
+  {
+    "name": "k_EMsgClientToGCGetFilteredPlayers",
+    "id": 7662
+  },
+  {
+    "name": "k_EMsgGCToClientGetFilteredPlayersResponse",
+    "id": 7663
+  },
+  {
+    "name": "k_EMsgClientToGCRemoveFilteredPlayer",
+    "id": 7664
+  },
+  {
+    "name": "k_EMsgGCToClientRemoveFilteredPlayerResponse",
+    "id": 7665
+  },
+  {
+    "name": "k_EMsgGCToClientPlayerBeaconState",
+    "id": 7666
+  },
+  {
+    "name": "k_EMsgGCToClientPartyBeaconUpdate",
+    "id": 7667
+  },
+  {
+    "name": "k_EMsgGCToClientPartySearchInvite",
+    "id": 7668
+  },
+  {
+    "name": "k_EMsgClientToGCUpdatePartyBeacon",
+    "id": 7669
+  },
+  {
+    "name": "k_EMsgClientToGCRequestActiveBeaconParties",
+    "id": 7670
+  },
+  {
+    "name": "k_EMsgGCToClientRequestActiveBeaconPartiesResponse",
+    "id": 7671
+  },
+  {
+    "name": "k_EMsgClientToGCManageFavorites",
+    "id": 7672
+  },
+  {
+    "name": "k_EMsgGCToClientManageFavoritesResponse",
+    "id": 7673
+  },
+  {
+    "name": "k_EMsgClientToGCJoinPartyFromBeacon",
+    "id": 7674
+  },
+  {
+    "name": "k_EMsgGCToClientJoinPartyFromBeaconResponse",
+    "id": 7675
+  },
+  {
+    "name": "k_EMsgClientToGCGetFavoritePlayers",
+    "id": 7676
+  },
+  {
+    "name": "k_EMsgGCToClientGetFavoritePlayersResponse",
+    "id": 7677
+  },
+  {
+    "name": "k_EMsgClientToGCVerifyFavoritePlayers",
+    "id": 7678
+  },
+  {
+    "name": "k_EMsgGCToClientVerifyFavoritePlayersResponse",
+    "id": 7679
+  },
+  {
+    "name": "k_EMsgGCToClientPartySearchInvites",
+    "id": 7680
+  },
+  {
+    "name": "k_EMsgGCToClientRequestMMInfo",
+    "id": 7681
+  },
+  {
+    "name": "k_EMsgClientToGCMMInfo",
+    "id": 7682
+  },
+  {
+    "name": "k_EMsgSignOutTextMuteInfo",
+    "id": 7683
+  },
+  {
+    "name": "k_EMsgClientToGCPurchaseLabyrinthBlessings",
+    "id": 7684
+  },
+  {
+    "name": "k_EMsgClientToGCPurchaseLabyrinthBlessingsResponse",
+    "id": 7685
+  },
+  {
+    "name": "k_EMsgClientToGCPurchaseFilteredPlayerSlot",
+    "id": 7686
+  },
+  {
+    "name": "k_EMsgGCToClientPurchaseFilteredPlayerSlotResponse",
+    "id": 7687
+  },
+  {
+    "name": "k_EMsgClientToGCUpdateFilteredPlayerNote",
+    "id": 7688
+  },
+  {
+    "name": "k_EMsgGCToClientUpdateFilteredPlayerNoteResponse",
+    "id": 7689
+  },
+  {
+    "name": "k_EMsgClientToGCClaimSwag",
+    "id": 7690
+  },
+  {
+    "name": "k_EMsgGCToClientClaimSwagResponse",
+    "id": 7691
+  },
+  {
+    "name": "k_EMsgServerToGCLockCharmTrading",
+    "id": 8004
+  },
+  {
+    "name": "k_EMsgClientToGCPlayerStatsRequest",
+    "id": 8006
+  },
+  {
+    "name": "k_EMsgGCToClientPlayerStatsResponse",
+    "id": 8007
+  },
+  {
+    "name": "k_EMsgGCClearPracticeLobbyTeam",
+    "id": 8008
+  },
+  {
+    "name": "k_EMsgClientToGCFindTopSourceTVGames",
+    "id": 8009
+  },
+  {
+    "name": "k_EMsgGCToClientFindTopSourceTVGamesResponse",
+    "id": 8010
+  },
+  {
+    "name": "k_EMsgGCLobbyList",
+    "id": 8011
+  },
+  {
+    "name": "k_EMsgGCLobbyListResponse",
+    "id": 8012
+  },
+  {
+    "name": "k_EMsgGCPlayerStatsMatchSignOut",
+    "id": 8013
+  },
+  {
+    "name": "k_EMsgClientToGCSocialFeedPostCommentRequest",
+    "id": 8016
+  },
+  {
+    "name": "k_EMsgGCToClientSocialFeedPostCommentResponse",
+    "id": 8017
+  },
+  {
+    "name": "k_EMsgClientToGCCustomGamesFriendsPlayedRequest",
+    "id": 8018
+  },
+  {
+    "name": "k_EMsgGCToClientCustomGamesFriendsPlayedResponse",
+    "id": 8019
+  },
+  {
+    "name": "k_EMsgClientToGCFriendsPlayedCustomGameRequest",
+    "id": 8020
+  },
+  {
+    "name": "k_EMsgGCToClientFriendsPlayedCustomGameResponse",
+    "id": 8021
+  },
+  {
+    "name": "k_EMsgGCTopCustomGamesList",
+    "id": 8024
+  },
+  {
+    "name": "k_EMsgClientToGCSetPartyOpen",
+    "id": 8029
+  },
+  {
+    "name": "k_EMsgClientToGCMergePartyInvite",
+    "id": 8030
+  },
+  {
+    "name": "k_EMsgGCToClientMergeGroupInviteReply",
+    "id": 8031
+  },
+  {
+    "name": "k_EMsgClientToGCMergePartyResponse",
+    "id": 8032
+  },
+  {
+    "name": "k_EMsgGCToClientMergePartyResponseReply",
+    "id": 8033
+  },
+  {
+    "name": "k_EMsgClientToGCGetProfileCardStats",
+    "id": 8034
+  },
+  {
+    "name": "k_EMsgClientToGCGetProfileCardStatsResponse",
+    "id": 8035
+  },
+  {
+    "name": "k_EMsgClientToGCTopLeagueMatchesRequest",
+    "id": 8036
+  },
+  {
+    "name": "k_EMsgClientToGCTopFriendMatchesRequest",
+    "id": 8037
+  },
+  {
+    "name": "k_EMsgGCToClientProfileCardStatsUpdated",
+    "id": 8040
+  },
+  {
+    "name": "k_EMsgServerToGCRealtimeStats",
+    "id": 8041
+  },
+  {
+    "name": "k_EMsgGCToServerRealtimeStatsStartStop",
+    "id": 8042
+  },
+  {
+    "name": "k_EMsgGCToGCGetServersForClients",
+    "id": 8045
+  },
+  {
+    "name": "k_EMsgGCToGCGetServersForClientsResponse",
+    "id": 8046
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyKickFromTeam",
+    "id": 8047
+  },
+  {
+    "name": "k_EMsgDOTAChatGetMemberCount",
+    "id": 8048
+  },
+  {
+    "name": "k_EMsgDOTAChatGetMemberCountResponse",
+    "id": 8049
+  },
+  {
+    "name": "k_EMsgClientToGCSocialFeedPostMessageRequest",
+    "id": 8050
+  },
+  {
+    "name": "k_EMsgGCToClientSocialFeedPostMessageResponse",
+    "id": 8051
+  },
+  {
+    "name": "k_EMsgCustomGameListenServerStartedLoading",
+    "id": 8052
+  },
+  {
+    "name": "k_EMsgCustomGameClientFinishedLoading",
+    "id": 8053
+  },
+  {
+    "name": "k_EMsgGCPracticeLobbyCloseBroadcastChannel",
+    "id": 8054
+  },
+  {
+    "name": "k_EMsgGCStartFindingMatchResponse",
+    "id": 8055
+  },
+  {
+    "name": "k_EMsgSQLGCToGCGrantAccountFlag",
+    "id": 8057
+  },
+  {
+    "name": "k_EMsgGCToClientTopLeagueMatchesResponse",
+    "id": 8061
+  },
+  {
+    "name": "k_EMsgGCToClientTopFriendMatchesResponse",
+    "id": 8062
+  },
+  {
+    "name": "k_EMsgClientToGCMatchesMinimalRequest",
+    "id": 8063
+  },
+  {
+    "name": "k_EMsgClientToGCMatchesMinimalResponse",
+    "id": 8064
+  },
+  {
+    "name": "k_EMsgGCToClientChatRegionsEnabled",
+    "id": 8067
+  },
+  {
+    "name": "k_EMsgClientToGCPingData",
+    "id": 8068
+  },
+  {
+    "name": "k_EMsgGCToGCEnsureAccountInParty",
+    "id": 8071
+  },
+  {
+    "name": "k_EMsgGCToGCEnsureAccountInPartyResponse",
+    "id": 8072
+  },
+  {
+    "name": "k_EMsgClientToGCGetProfileTickets",
+    "id": 8073
+  },
+  {
+    "name": "k_EMsgClientToGCGetProfileTicketsResponse",
+    "id": 8074
+  },
+  {
+    "name": "k_EMsgGCToClientMatchGroupsVersion",
+    "id": 8075
+  },
+  {
+    "name": "k_EMsgClientToGCH264Unsupported",
+    "id": 8076
+  },
+  {
+    "name": "k_EMsgClientToGCWatchingBroadcast",
+    "id": 8077
+  },
+  {
+    "name": "k_EMsgClientToGCGetQuestProgress",
+    "id": 8078
+  },
+  {
+    "name": "k_EMsgClientToGCGetQuestProgressResponse",
+    "id": 8079
+  },
+  {
+    "name": "k_EMsgSignOutXPCoins",
+    "id": 8080
+  },
+  {
+    "name": "k_EMsgGCToClientMatchSignedOut",
+    "id": 8081
+  },
+  {
+    "name": "k_EMsgGCGetHeroStatsHistory",
+    "id": 8082
+  },
+  {
+    "name": "k_EMsgGCGetHeroStatsHistoryResponse",
+    "id": 8083
+  },
+  {
+    "name": "k_EMsgClientToGCPrivateChatInvite",
+    "id": 8084
+  },
+  {
+    "name": "k_EMsgClientToGCPrivateChatKick",
+    "id": 8088
+  },
+  {
+    "name": "k_EMsgClientToGCPrivateChatPromote",
+    "id": 8089
+  },
+  {
+    "name": "k_EMsgClientToGCPrivateChatDemote",
+    "id": 8090
+  },
+  {
+    "name": "k_EMsgGCToClientPrivateChatResponse",
+    "id": 8091
+  },
+  {
+    "name": "k_EMsgClientToGCLatestConductScorecardRequest",
+    "id": 8095
+  },
+  {
+    "name": "k_EMsgClientToGCLatestConductScorecard",
+    "id": 8096
+  },
+  {
+    "name": "k_EMsgClientToGCWageringRequest",
+    "id": 8099
+  },
+  {
+    "name": "k_EMsgGCToClientWageringResponse",
+    "id": 8100
+  },
+  {
+    "name": "k_EMsgClientToGCEventGoalsRequest",
+    "id": 8103
+  },
+  {
+    "name": "k_EMsgClientToGCEventGoalsResponse",
+    "id": 8104
+  },
+  {
+    "name": "k_EMsgGCToGCLeaguePredictionsUpdate",
+    "id": 8108
+  },
+  {
+    "name": "k_EMsgGCToGCAddUserToPostGameChat",
+    "id": 8110
+  },
+  {
+    "name": "k_EMsgClientToGCHasPlayerVotedForMVP",
+    "id": 8111
+  },
+  {
+    "name": "k_EMsgClientToGCHasPlayerVotedForMVPResponse",
+    "id": 8112
+  },
+  {
+    "name": "k_EMsgClientToGCVoteForMVP",
+    "id": 8113
+  },
+  {
+    "name": "k_EMsgClientToGCVoteForMVPResponse",
+    "id": 8114
+  },
+  {
+    "name": "k_EMsgGCToGCGetEventParticipation",
+    "id": 8115
+  },
+  {
+    "name": "k_EMsgGCToGCGetEventParticipationResponse",
+    "id": 8116
+  },
+  {
+    "name": "k_EMsgGCToClientAutomatedTournamentStateChange",
+    "id": 8117
+  },
+  {
+    "name": "k_EMsgClientToGCWeekendTourneyOpts",
+    "id": 8118
+  },
+  {
+    "name": "k_EMsgClientToGCWeekendTourneyOptsResponse",
+    "id": 8119
+  },
+  {
+    "name": "k_EMsgClientToGCWeekendTourneyLeave",
+    "id": 8120
+  },
+  {
+    "name": "k_EMsgClientToGCWeekendTourneyLeaveResponse",
+    "id": 8121
+  },
+  {
+    "name": "k_EMsgClientToGCTeammateStatsRequest",
+    "id": 8124
+  },
+  {
+    "name": "k_EMsgClientToGCTeammateStatsResponse",
+    "id": 8125
+  },
+  {
+    "name": "k_EMsgClientToGCGetGiftPermissions",
+    "id": 8126
+  },
+  {
+    "name": "k_EMsgClientToGCGetGiftPermissionsResponse",
+    "id": 8127
+  },
+  {
+    "name": "k_EMsgClientToGCVoteForArcana",
+    "id": 8128
+  },
+  {
+    "name": "k_EMsgClientToGCVoteForArcanaResponse",
+    "id": 8129
+  },
+  {
+    "name": "k_EMsgClientToGCRequestArcanaVotesRemaining",
+    "id": 8130
+  },
+  {
+    "name": "k_EMsgClientToGCRequestArcanaVotesRemainingResponse",
+    "id": 8131
+  },
+  {
+    "name": "k_EMsgGCTransferTeamAdminResponse",
+    "id": 8132
+  },
+  {
+    "name": "k_EMsgGCToClientTeamInfo",
+    "id": 8135
+  },
+  {
+    "name": "k_EMsgGCToClientTeamsInfo",
+    "id": 8136
+  },
+  {
+    "name": "k_EMsgClientToGCMyTeamInfoRequest",
+    "id": 8137
+  },
+  {
+    "name": "k_EMsgClientToGCPublishUserStat",
+    "id": 8140
+  },
+  {
+    "name": "k_EMsgGCToGCSignoutSpendWager",
+    "id": 8141
+  },
+  {
+    "name": "k_EMsgGCSubmitLobbyMVPVote",
+    "id": 8144
+  },
+  {
+    "name": "k_EMsgGCSubmitLobbyMVPVoteResponse",
+    "id": 8145
+  },
+  {
+    "name": "k_EMsgSignOutCommunityGoalProgress",
+    "id": 8150
+  },
+  {
+    "name": "k_EMsgGCToClientLobbyMVPAwarded",
+    "id": 8152
+  },
+  {
+    "name": "k_EMsgGCToClientQuestProgressUpdated",
+    "id": 8153
+  },
+  {
+    "name": "k_EMsgGCToClientWageringUpdate",
+    "id": 8154
+  },
+  {
+    "name": "k_EMsgGCToClientArcanaVotesUpdate",
+    "id": 8155
+  },
+  {
+    "name": "k_EMsgClientToGCSetSpectatorLobbyDetails",
+    "id": 8157
+  },
+  {
+    "name": "k_EMsgClientToGCSetSpectatorLobbyDetailsResponse",
+    "id": 8158
+  },
+  {
+    "name": "k_EMsgClientToGCCreateSpectatorLobby",
+    "id": 8159
+  },
+  {
+    "name": "k_EMsgClientToGCCreateSpectatorLobbyResponse",
+    "id": 8160
+  },
+  {
+    "name": "k_EMsgClientToGCSpectatorLobbyList",
+    "id": 8161
+  },
+  {
+    "name": "k_EMsgClientToGCSpectatorLobbyListResponse",
+    "id": 8162
+  },
+  {
+    "name": "k_EMsgSpectatorLobbyGameDetails",
+    "id": 8163
+  },
+  {
+    "name": "k_EMsgServerToGCCompendiumInGamePredictionResults",
+    "id": 8166
+  },
+  {
+    "name": "k_EMsgServerToGCCloseCompendiumInGamePredictionVoting",
+    "id": 8167
+  },
+  {
+    "name": "k_EMsgClientToGCOpenPlayerCardPack",
+    "id": 8168
+  },
+  {
+    "name": "k_EMsgClientToGCOpenPlayerCardPackResponse",
+    "id": 8169
+  },
+  {
+    "name": "k_EMsgClientToGCSelectCompendiumInGamePrediction",
+    "id": 8170
+  },
+  {
+    "name": "k_EMsgClientToGCSelectCompendiumInGamePredictionResponse",
+    "id": 8171
+  },
+  {
+    "name": "k_EMsgClientToGCWeekendTourneyGetPlayerStats",
+    "id": 8172
+  },
+  {
+    "name": "k_EMsgClientToGCWeekendTourneyGetPlayerStatsResponse",
+    "id": 8173
+  },
+  {
+    "name": "k_EMsgClientToGCRecyclePlayerCard",
+    "id": 8174
+  },
+  {
+    "name": "k_EMsgClientToGCRecyclePlayerCardResponse",
+    "id": 8175
+  },
+  {
+    "name": "k_EMsgClientToGCCreatePlayerCardPack",
+    "id": 8176
+  },
+  {
+    "name": "k_EMsgClientToGCCreatePlayerCardPackResponse",
+    "id": 8177
+  },
+  {
+    "name": "k_EMsgClientToGCGetPlayerCardRosterRequest",
+    "id": 8178
+  },
+  {
+    "name": "k_EMsgClientToGCGetPlayerCardRosterResponse",
+    "id": 8179
+  },
+  {
+    "name": "k_EMsgClientToGCSetPlayerCardRosterRequest",
+    "id": 8180
+  },
+  {
+    "name": "k_EMsgClientToGCSetPlayerCardRosterResponse",
+    "id": 8181
+  },
+  {
+    "name": "k_EMsgServerToGCCloseCompendiumInGamePredictionVotingResponse",
+    "id": 8183
+  },
+  {
+    "name": "k_EMsgLobbyOverworldFortuneList",
+    "id": 8185
+  },
+  {
+    "name": "k_EMsgLobbyBattleCupVictory",
+    "id": 8186
+  },
+  {
+    "name": "k_EMsgGCGetPlayerCardItemInfo",
+    "id": 8187
+  },
+  {
+    "name": "k_EMsgGCGetPlayerCardItemInfoResponse",
+    "id": 8188
+  },
+  {
+    "name": "k_EMsgClientToGCRequestSteamDatagramTicket",
+    "id": 8189
+  },
+  {
+    "name": "k_EMsgClientToGCRequestSteamDatagramTicketResponse",
+    "id": 8190
+  },
+  {
+    "name": "k_EMsgGCToClientBattlePassRollupRequest",
+    "id": 8191
+  },
+  {
+    "name": "k_EMsgGCToClientBattlePassRollupResponse",
+    "id": 8192
+  },
+  {
+    "name": "k_EMsgClientToGCTransferSeasonalMMRRequest",
+    "id": 8193
+  },
+  {
+    "name": "k_EMsgClientToGCTransferSeasonalMMRResponse",
+    "id": 8194
+  },
+  {
+    "name": "k_EMsgGCToGCPublicChatCommunicationBan",
+    "id": 8195
+  },
+  {
+    "name": "k_EMsgGCToGCUpdateAccountInfo",
+    "id": 8196
+  },
+  {
+    "name": "k_EMsgGCChatReportPublicSpam",
+    "id": 8197
+  },
+  {
+    "name": "k_EMsgClientToGCSetPartyBuilderOptions",
+    "id": 8198
+  },
+  {
+    "name": "k_EMsgClientToGCSetPartyBuilderOptionsResponse",
+    "id": 8199
+  },
+  {
+    "name": "k_EMsgGCToClientPlaytestStatus",
+    "id": 8200
+  },
+  {
+    "name": "k_EMsgClientToGCJoinPlaytest",
+    "id": 8201
+  },
+  {
+    "name": "k_EMsgClientToGCJoinPlaytestResponse",
+    "id": 8202
+  },
+  {
+    "name": "k_EMsgLobbyPlaytestDetails",
+    "id": 8203
+  },
+  {
+    "name": "k_EMsgDOTASetFavoriteTeam",
+    "id": 8204
+  },
+  {
+    "name": "k_EMsgGCToClientBattlePassRollupListRequest",
+    "id": 8205
+  },
+  {
+    "name": "k_EMsgGCToClientBattlePassRollupListResponse",
+    "id": 8206
+  },
+  {
+    "name": "k_EMsgDOTAClaimEventAction",
+    "id": 8209
+  },
+  {
+    "name": "k_EMsgDOTAClaimEventActionResponse",
+    "id": 8210
+  },
+  {
+    "name": "k_EMsgDOTAGetPeriodicResource",
+    "id": 8211
+  },
+  {
+    "name": "k_EMsgDOTAGetPeriodicResourceResponse",
+    "id": 8212
+  },
+  {
+    "name": "k_EMsgDOTAPeriodicResourceUpdated",
+    "id": 8213
+  },
+  {
+    "name": "k_EMsgServerToGCSpendWager",
+    "id": 8214
+  },
+  {
+    "name": "k_EMsgGCToGCSignoutSpendWagerToken",
+    "id": 8215
+  },
+  {
+    "name": "k_EMsgSubmitTriviaQuestionAnswer",
+    "id": 8216
+  },
+  {
+    "name": "k_EMsgSubmitTriviaQuestionAnswerResponse",
+    "id": 8217
+  },
+  {
+    "name": "k_EMsgClientToGCGiveTip",
+    "id": 8218
+  },
+  {
+    "name": "k_EMsgClientToGCGiveTipResponse",
+    "id": 8219
+  },
+  {
+    "name": "k_EMsgStartTriviaSession",
+    "id": 8220
+  },
+  {
+    "name": "k_EMsgStartTriviaSessionResponse",
+    "id": 8221
+  },
+  {
+    "name": "k_EMsgAnchorPhoneNumberRequest",
+    "id": 8222
+  },
+  {
+    "name": "k_EMsgAnchorPhoneNumberResponse",
+    "id": 8223
+  },
+  {
+    "name": "k_EMsgUnanchorPhoneNumberRequest",
+    "id": 8224
+  },
+  {
+    "name": "k_EMsgUnanchorPhoneNumberResponse",
+    "id": 8225
+  },
+  {
+    "name": "k_EMsgGCToGCSignoutSpendRankWager",
+    "id": 8229
+  },
+  {
+    "name": "k_EMsgGCToGCGetFavoriteTeam",
+    "id": 8230
+  },
+  {
+    "name": "k_EMsgGCToGCGetFavoriteTeamResponse",
+    "id": 8231
+  },
+  {
+    "name": "k_EMsgSignOutEventGameData",
+    "id": 8232
+  },
+  {
+    "name": "k_EMsgClientToGCQuickStatsRequest",
+    "id": 8238
+  },
+  {
+    "name": "k_EMsgClientToGCQuickStatsResponse",
+    "id": 8239
+  },
+  {
+    "name": "k_EMsgGCToGCSubtractEventPointsFromUser",
+    "id": 8240
+  },
+  {
+    "name": "k_EMsgSelectionPriorityChoiceRequest",
+    "id": 8241
+  },
+  {
+    "name": "k_EMsgSelectionPriorityChoiceResponse",
+    "id": 8242
+  },
+  {
+    "name": "k_EMsgGCToGCCompendiumInGamePredictionResults",
+    "id": 8243
+  },
+  {
+    "name": "k_EMsgGameAutographReward",
+    "id": 8244
+  },
+  {
+    "name": "k_EMsgGameAutographRewardResponse",
+    "id": 8245
+  },
+  {
+    "name": "k_EMsgDestroyLobbyRequest",
+    "id": 8246
+  },
+  {
+    "name": "k_EMsgDestroyLobbyResponse",
+    "id": 8247
+  },
+  {
+    "name": "k_EMsgPurchaseItemWithEventPoints",
+    "id": 8248
+  },
+  {
+    "name": "k_EMsgPurchaseItemWithEventPointsResponse",
+    "id": 8249
+  },
+  {
+    "name": "k_EMsgServerToGCMatchPlayerItemPurchaseHistory",
+    "id": 8250
+  },
+  {
+    "name": "k_EMsgGCToGCGrantPlusHeroMatchResults",
+    "id": 8251
+  },
+  {
+    "name": "k_EMsgServerToGCMatchStateHistory",
+    "id": 8255
+  },
+  {
+    "name": "k_EMsgPurchaseHeroRandomRelic",
+    "id": 8258
+  },
+  {
+    "name": "k_EMsgPurchaseHeroRandomRelicResponse",
+    "id": 8259
+  },
+  {
+    "name": "k_EMsgClientToGCClaimEventActionUsingItem",
+    "id": 8260
+  },
+  {
+    "name": "k_EMsgClientToGCClaimEventActionUsingItemResponse",
+    "id": 8261
+  },
+  {
+    "name": "k_EMsgPartyReadyCheckRequest",
+    "id": 8262
+  },
+  {
+    "name": "k_EMsgPartyReadyCheckResponse",
+    "id": 8263
+  },
+  {
+    "name": "k_EMsgPartyReadyCheckAcknowledge",
+    "id": 8264
+  },
+  {
+    "name": "k_EMsgGetRecentPlayTimeFriendsRequest",
+    "id": 8265
+  },
+  {
+    "name": "k_EMsgGetRecentPlayTimeFriendsResponse",
+    "id": 8266
+  },
+  {
+    "name": "k_EMsgGCToClientCommendNotification",
+    "id": 8267
+  },
+  {
+    "name": "k_EMsgProfileRequest",
+    "id": 8268
+  },
+  {
+    "name": "k_EMsgProfileResponse",
+    "id": 8269
+  },
+  {
+    "name": "k_EMsgProfileUpdate",
+    "id": 8270
+  },
+  {
+    "name": "k_EMsgProfileUpdateResponse",
+    "id": 8271
+  },
+  {
+    "name": "k_EMsgHeroGlobalDataRequest",
+    "id": 8274
+  },
+  {
+    "name": "k_EMsgHeroGlobalDataResponse",
+    "id": 8275
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlusWeeklyChallengeResult",
+    "id": 8276
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlusWeeklyChallengeResultResponse",
+    "id": 8277
+  },
+  {
+    "name": "k_EMsgGCToGCGrantPlusPrepaidTime",
+    "id": 8278
+  },
+  {
+    "name": "k_EMsgPrivateMetadataKeyRequest",
+    "id": 8279
+  },
+  {
+    "name": "k_EMsgPrivateMetadataKeyResponse",
+    "id": 8280
+  },
+  {
+    "name": "k_EMsgGCToGCReconcilePlusStatus",
+    "id": 8281
+  },
+  {
+    "name": "k_EMsgGCToGCCheckPlusStatus",
+    "id": 8282
+  },
+  {
+    "name": "k_EMsgGCToGCCheckPlusStatusResponse",
+    "id": 8283
+  },
+  {
+    "name": "k_EMsgGCToGCReconcilePlusAutoGrantItems",
+    "id": 8284
+  },
+  {
+    "name": "k_EMsgGCToGCReconcilePlusStatusUnreliable",
+    "id": 8285
+  },
+  {
+    "name": "k_EMsgGCToClientCavernCrawlMapPathCompleted",
+    "id": 8288
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlClaimRoom",
+    "id": 8289
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlClaimRoomResponse",
+    "id": 8290
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlUseItemOnRoom",
+    "id": 8291
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlUseItemOnRoomResponse",
+    "id": 8292
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlUseItemOnPath",
+    "id": 8293
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlUseItemOnPathResponse",
+    "id": 8294
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlRequestMapState",
+    "id": 8295
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlRequestMapStateResponse",
+    "id": 8296
+  },
+  {
+    "name": "k_EMsgSignOutTips",
+    "id": 8297
+  },
+  {
+    "name": "k_EMsgClientToGCRequestEventPointLogV2",
+    "id": 8298
+  },
+  {
+    "name": "k_EMsgClientToGCRequestEventPointLogResponseV2",
+    "id": 8299
+  },
+  {
+    "name": "k_EMsgClientToGCRequestEventTipsSummary",
+    "id": 8300
+  },
+  {
+    "name": "k_EMsgClientToGCRequestEventTipsSummaryResponse",
+    "id": 8301
+  },
+  {
+    "name": "k_EMsgClientToGCRequestSocialFeed",
+    "id": 8303
+  },
+  {
+    "name": "k_EMsgClientToGCRequestSocialFeedResponse",
+    "id": 8304
+  },
+  {
+    "name": "k_EMsgClientToGCRequestSocialFeedComments",
+    "id": 8305
+  },
+  {
+    "name": "k_EMsgClientToGCRequestSocialFeedCommentsResponse",
+    "id": 8306
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlGetClaimedRoomCount",
+    "id": 8308
+  },
+  {
+    "name": "k_EMsgClientToGCCavernCrawlGetClaimedRoomCountResponse",
+    "id": 8309
+  },
+  {
+    "name": "k_EMsgGCToGCReconcilePlusAutoGrantItemsUnreliable",
+    "id": 8310
+  },
+  {
+    "name": "k_EMsgServerToGCAddBroadcastTimelineEvent",
+    "id": 8311
+  },
+  {
+    "name": "k_EMsgGCToServerUpdateSteamBroadcasting",
+    "id": 8312
+  },
+  {
+    "name": "k_EMsgClientToGCRecordContestVote",
+    "id": 8313
+  },
+  {
+    "name": "k_EMsgGCToClientRecordContestVoteResponse",
+    "id": 8314
+  },
+  {
+    "name": "k_EMsgGCToGCGrantAutograph",
+    "id": 8315
+  },
+  {
+    "name": "k_EMsgGCToGCGrantAutographResponse",
+    "id": 8316
+  },
+  {
+    "name": "k_EMsgSignOutConsumableUsage",
+    "id": 8317
+  },
+  {
+    "name": "k_EMsgLobbyEventGameDetails",
+    "id": 8318
+  },
+  {
+    "name": "k_EMsgDevGrantEventPoints",
+    "id": 8319
+  },
+  {
+    "name": "k_EMsgDevGrantEventPointsResponse",
+    "id": 8320
+  },
+  {
+    "name": "k_EMsgDevGrantEventAction",
+    "id": 8321
+  },
+  {
+    "name": "k_EMsgDevGrantEventActionResponse",
+    "id": 8322
+  },
+  {
+    "name": "k_EMsgDevResetEventState",
+    "id": 8323
+  },
+  {
+    "name": "k_EMsgDevResetEventStateResponse",
+    "id": 8324
+  },
+  {
+    "name": "k_EMsgGCToGCReconcileEventOwnership",
+    "id": 8325
+  },
+  {
+    "name": "k_EMsgConsumeEventSupportGrantItem",
+    "id": 8326
+  },
+  {
+    "name": "k_EMsgConsumeEventSupportGrantItemResponse",
+    "id": 8327
+  },
+  {
+    "name": "k_EMsgGCToClientClaimEventActionUsingItemCompleted",
+    "id": 8328
+  },
+  {
+    "name": "k_EMsgGCToClientCavernCrawlMapUpdated",
+    "id": 8329
+  },
+  {
+    "name": "k_EMsgServerToGCRequestPlayerRecentAccomplishments",
+    "id": 8330
+  },
+  {
+    "name": "k_EMsgServerToGCRequestPlayerRecentAccomplishmentsResponse",
+    "id": 8331
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlayerRecentAccomplishments",
+    "id": 8332
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlayerRecentAccomplishmentsResponse",
+    "id": 8333
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlayerHeroRecentAccomplishments",
+    "id": 8334
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlayerHeroRecentAccomplishmentsResponse",
+    "id": 8335
+  },
+  {
+    "name": "k_EMsgSignOutEventActionGrants",
+    "id": 8336
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlayerCoachMatches",
+    "id": 8337
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlayerCoachMatchesResponse",
+    "id": 8338
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitCoachTeammateRating",
+    "id": 8341
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitCoachTeammateRatingResponse",
+    "id": 8342
+  },
+  {
+    "name": "k_EMsgGCToClientCoachTeammateRatingsChanged",
+    "id": 8343
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlayerCoachMatch",
+    "id": 8345
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPlayerCoachMatchResponse",
+    "id": 8346
+  },
+  {
+    "name": "k_EMsgClientToGCRequestContestVotes",
+    "id": 8347
+  },
+  {
+    "name": "k_EMsgClientToGCRequestContestVotesResponse",
+    "id": 8348
+  },
+  {
+    "name": "k_EMsgClientToGCMVPVoteTimeout",
+    "id": 8349
+  },
+  {
+    "name": "k_EMsgClientToGCMVPVoteTimeoutResponse",
+    "id": 8350
+  },
+  {
+    "name": "k_EMsgMatchMatchmakingStats",
+    "id": 8360
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitPlayerMatchSurvey",
+    "id": 8361
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitPlayerMatchSurveyResponse",
+    "id": 8362
+  },
+  {
+    "name": "k_EMsgSQLGCToGCGrantAllHeroProgressAccount",
+    "id": 8363
+  },
+  {
+    "name": "k_EMsgSQLGCToGCGrantAllHeroProgressVictory",
+    "id": 8364
+  },
+  {
+    "name": "k_EMsgDevDeleteEventActions",
+    "id": 8365
+  },
+  {
+    "name": "k_EMsgDevDeleteEventActionsResponse",
+    "id": 8366
+  },
+  {
+    "name": "k_EMsgDevReloadAllEvents",
+    "id": 8367
+  },
+  {
+    "name": "k_EMsgDevReloadAllEventsResponse",
+    "id": 8368
+  },
+  {
+    "name": "k_EMsgGCToGCGetAllHeroCurrent",
+    "id": 8635
+  },
+  {
+    "name": "k_EMsgGCToGCGetAllHeroCurrentResponse",
+    "id": 8636
+  },
+  {
+    "name": "k_EMsgGCSubmitPlayerAvoidRequest",
+    "id": 8637
+  },
+  {
+    "name": "k_EMsgGCSubmitPlayerAvoidRequestResponse",
+    "id": 8638
+  },
+  {
+    "name": "k_EMsgGCToClientNotificationsUpdated",
+    "id": 8639
+  },
+  {
+    "name": "k_EMsgGCtoGCAssociatedExploiterAccountInfo",
+    "id": 8640
+  },
+  {
+    "name": "k_EMsgGCtoGCAssociatedExploiterAccountInfoResponse",
+    "id": 8641
+  },
+  {
+    "name": "k_EMsgGCtoGCRequestRecalibrationCheck",
+    "id": 8642
+  },
+  {
+    "name": "k_EMsgGCToClientVACReminder",
+    "id": 8643
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftBuy",
+    "id": 8644
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftBuyResponse",
+    "id": 8645
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftReroll",
+    "id": 8646
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftRerollResponse",
+    "id": 8647
+  },
+  {
+    "name": "k_EMsgNeutralItemStats",
+    "id": 8648
+  },
+  {
+    "name": "k_EMsgClientToGCCreateGuild",
+    "id": 8649
+  },
+  {
+    "name": "k_EMsgClientToGCCreateGuildResponse",
+    "id": 8650
+  },
+  {
+    "name": "k_EMsgClientToGCSetGuildInfo",
+    "id": 8651
+  },
+  {
+    "name": "k_EMsgClientToGCSetGuildInfoResponse",
+    "id": 8652
+  },
+  {
+    "name": "k_EMsgClientToGCAddGuildRole",
+    "id": 8653
+  },
+  {
+    "name": "k_EMsgClientToGCAddGuildRoleResponse",
+    "id": 8654
+  },
+  {
+    "name": "k_EMsgClientToGCModifyGuildRole",
+    "id": 8655
+  },
+  {
+    "name": "k_EMsgClientToGCModifyGuildRoleResponse",
+    "id": 8656
+  },
+  {
+    "name": "k_EMsgClientToGCRemoveGuildRole",
+    "id": 8657
+  },
+  {
+    "name": "k_EMsgClientToGCRemoveGuildRoleResponse",
+    "id": 8658
+  },
+  {
+    "name": "k_EMsgClientToGCJoinGuild",
+    "id": 8659
+  },
+  {
+    "name": "k_EMsgClientToGCJoinGuildResponse",
+    "id": 8660
+  },
+  {
+    "name": "k_EMsgClientToGCLeaveGuild",
+    "id": 8661
+  },
+  {
+    "name": "k_EMsgClientToGCLeaveGuildResponse",
+    "id": 8662
+  },
+  {
+    "name": "k_EMsgClientToGCInviteToGuild",
+    "id": 8663
+  },
+  {
+    "name": "k_EMsgClientToGCInviteToGuildResponse",
+    "id": 8664
+  },
+  {
+    "name": "k_EMsgClientToGCDeclineInviteToGuild",
+    "id": 8665
+  },
+  {
+    "name": "k_EMsgClientToGCDeclineInviteToGuildResponse",
+    "id": 8666
+  },
+  {
+    "name": "k_EMsgClientToGCCancelInviteToGuild",
+    "id": 8667
+  },
+  {
+    "name": "k_EMsgClientToGCCancelInviteToGuildResponse",
+    "id": 8668
+  },
+  {
+    "name": "k_EMsgClientToGCKickGuildMember",
+    "id": 8669
+  },
+  {
+    "name": "k_EMsgClientToGCKickGuildMemberResponse",
+    "id": 8670
+  },
+  {
+    "name": "k_EMsgClientToGCSetGuildMemberRole",
+    "id": 8671
+  },
+  {
+    "name": "k_EMsgClientToGCSetGuildMemberRoleResponse",
+    "id": 8672
+  },
+  {
+    "name": "k_EMsgClientToGCRequestGuildData",
+    "id": 8673
+  },
+  {
+    "name": "k_EMsgClientToGCRequestGuildDataResponse",
+    "id": 8674
+  },
+  {
+    "name": "k_EMsgGCToClientGuildDataUpdated",
+    "id": 8675
+  },
+  {
+    "name": "k_EMsgClientToGCRequestGuildMembership",
+    "id": 8676
+  },
+  {
+    "name": "k_EMsgClientToGCRequestGuildMembershipResponse",
+    "id": 8677
+  },
+  {
+    "name": "k_EMsgGCToClientGuildMembershipUpdated",
+    "id": 8678
+  },
+  {
+    "name": "k_EMsgClientToGCAcceptInviteToGuild",
+    "id": 8681
+  },
+  {
+    "name": "k_EMsgClientToGCAcceptInviteToGuildResponse",
+    "id": 8682
+  },
+  {
+    "name": "k_EMsgClientToGCSetGuildRoleOrder",
+    "id": 8683
+  },
+  {
+    "name": "k_EMsgClientToGCSetGuildRoleOrderResponse",
+    "id": 8684
+  },
+  {
+    "name": "k_EMsgClientToGCRequestGuildFeed",
+    "id": 8685
+  },
+  {
+    "name": "k_EMsgClientToGCRequestGuildFeedResponse",
+    "id": 8686
+  },
+  {
+    "name": "k_EMsgClientToGCRequestAccountGuildEventData",
+    "id": 8687
+  },
+  {
+    "name": "k_EMsgClientToGCRequestAccountGuildEventDataResponse",
+    "id": 8688
+  },
+  {
+    "name": "k_EMsgGCToClientAccountGuildEventDataUpdated",
+    "id": 8689
+  },
+  {
+    "name": "k_EMsgClientToGCRequestActiveGuildContracts",
+    "id": 8690
+  },
+  {
+    "name": "k_EMsgClientToGCRequestActiveGuildContractsResponse",
+    "id": 8691
+  },
+  {
+    "name": "k_EMsgGCToClientActiveGuildContractsUpdated",
+    "id": 8692
+  },
+  {
+    "name": "k_EMsgGCToClientGuildFeedUpdated",
+    "id": 8693
+  },
+  {
+    "name": "k_EMsgClientToGCSelectGuildContract",
+    "id": 8694
+  },
+  {
+    "name": "k_EMsgClientToGCSelectGuildContractResponse",
+    "id": 8695
+  },
+  {
+    "name": "k_EMsgGCToGCCompleteGuildContracts",
+    "id": 8696
+  },
+  {
+    "name": "k_EMsgClientToGCAddPlayerToGuildChat",
+    "id": 8698
+  },
+  {
+    "name": "k_EMsgClientToGCAddPlayerToGuildChatResponse",
+    "id": 8699
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftSell",
+    "id": 8700
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftSellResponse",
+    "id": 8701
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftRequest",
+    "id": 8702
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftResponse",
+    "id": 8703
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftRedeemReward",
+    "id": 8704
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftRedeemRewardResponse",
+    "id": 8705
+  },
+  {
+    "name": "k_EMsgGCToServerLobbyHeroBanRates",
+    "id": 8708
+  },
+  {
+    "name": "k_EMsgSignOutGuildContractProgress",
+    "id": 8711
+  },
+  {
+    "name": "k_EMsgSignOutMVPStats",
+    "id": 8712
+  },
+  {
+    "name": "k_EMsgClientToGCRequestActiveGuildChallenge",
+    "id": 8713
+  },
+  {
+    "name": "k_EMsgClientToGCRequestActiveGuildChallengeResponse",
+    "id": 8714
+  },
+  {
+    "name": "k_EMsgGCToClientActiveGuildChallengeUpdated",
+    "id": 8715
+  },
+  {
+    "name": "k_EMsgClientToGCRequestReporterUpdates",
+    "id": 8716
+  },
+  {
+    "name": "k_EMsgClientToGCRequestReporterUpdatesResponse",
+    "id": 8717
+  },
+  {
+    "name": "k_EMsgClientToGCAcknowledgeReporterUpdates",
+    "id": 8718
+  },
+  {
+    "name": "k_EMsgSignOutGuildChallengeProgress",
+    "id": 8720
+  },
+  {
+    "name": "k_EMsgClientToGCRequestGuildEventMembers",
+    "id": 8721
+  },
+  {
+    "name": "k_EMsgClientToGCRequestGuildEventMembersResponse",
+    "id": 8722
+  },
+  {
+    "name": "k_EMsgClientToGCReportGuildContent",
+    "id": 8725
+  },
+  {
+    "name": "k_EMsgClientToGCReportGuildContentResponse",
+    "id": 8726
+  },
+  {
+    "name": "k_EMsgClientToGCRequestAccountGuildPersonaInfo",
+    "id": 8727
+  },
+  {
+    "name": "k_EMsgClientToGCRequestAccountGuildPersonaInfoResponse",
+    "id": 8728
+  },
+  {
+    "name": "k_EMsgClientToGCRequestAccountGuildPersonaInfoBatch",
+    "id": 8729
+  },
+  {
+    "name": "k_EMsgClientToGCRequestAccountGuildPersonaInfoBatchResponse",
+    "id": 8730
+  },
+  {
+    "name": "k_EMsgGCToClientUnderDraftGoldUpdated",
+    "id": 8731
+  },
+  {
+    "name": "k_EMsgSignOutBounties",
+    "id": 8733
+  },
+  {
+    "name": "k_EMsgLobbyFeaturedGamemodeProgress",
+    "id": 8734
+  },
+  {
+    "name": "k_EMsgLobbyGauntletProgress",
+    "id": 8735
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitDraftTriviaMatchAnswer",
+    "id": 8736
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitDraftTriviaMatchAnswerResponse",
+    "id": 8737
+  },
+  {
+    "name": "k_EMsgGCToGCSignoutSpendBounty",
+    "id": 8738
+  },
+  {
+    "name": "k_EMsgClientToGCApplyGauntletTicket",
+    "id": 8739
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftRollBackBench",
+    "id": 8740
+  },
+  {
+    "name": "k_EMsgClientToGCUnderDraftRollBackBenchResponse",
+    "id": 8741
+  },
+  {
+    "name": "k_EMsgGCToGCGetEventActionScore",
+    "id": 8742
+  },
+  {
+    "name": "k_EMsgGCToGCGetEventActionScoreResponse",
+    "id": 8743
+  },
+  {
+    "name": "k_EMsgServerToGCGetGuildContracts",
+    "id": 8744
+  },
+  {
+    "name": "k_EMsgServerToGCGetGuildContractsResponse",
+    "id": 8745
+  },
+  {
+    "name": "k_EMsgLobbyEventGameData",
+    "id": 8746
+  },
+  {
+    "name": "k_EMsgGCToClientGuildMembersDataUpdated",
+    "id": 8747
+  },
+  {
+    "name": "k_EMsgSignOutReportActivityMarkers",
+    "id": 8748
+  },
+  {
+    "name": "k_EMsgSignOutDiretideCandy",
+    "id": 8749
+  },
+  {
+    "name": "k_EMsgGCToClientPostGameItemAwardNotification",
+    "id": 8750
+  },
+  {
+    "name": "k_EMsgClientToGCGetOWMatchDetails",
+    "id": 8751
+  },
+  {
+    "name": "k_EMsgClientToGCGetOWMatchDetailsResponse",
+    "id": 8752
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitOWConviction",
+    "id": 8753
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitOWConvictionResponse",
+    "id": 8754
+  },
+  {
+    "name": "k_EMsgGCToGCGetAccountSteamChina",
+    "id": 8755
+  },
+  {
+    "name": "k_EMsgGCToGCGetAccountSteamChinaResponse",
+    "id": 8756
+  },
+  {
+    "name": "k_EMsgClientToGCClaimLeaderboardRewards",
+    "id": 8757
+  },
+  {
+    "name": "k_EMsgClientToGCClaimLeaderboardRewardsResponse",
+    "id": 8758
+  },
+  {
+    "name": "k_EMsgClientToGCRecalibrateMMR",
+    "id": 8759
+  },
+  {
+    "name": "k_EMsgClientToGCRecalibrateMMRResponse",
+    "id": 8760
+  },
+  {
+    "name": "k_EMsgGCToGCGrantEventPointActionList",
+    "id": 8761
+  },
+  {
+    "name": "k_EMsgClientToGCChinaSSAURLRequest",
+    "id": 8764
+  },
+  {
+    "name": "k_EMsgClientToGCChinaSSAURLResponse",
+    "id": 8765
+  },
+  {
+    "name": "k_EMsgClientToGCChinaSSAAcceptedRequest",
+    "id": 8766
+  },
+  {
+    "name": "k_EMsgClientToGCChinaSSAAcceptedResponse",
+    "id": 8767
+  },
+  {
+    "name": "k_EMsgSignOutOverwatchSuspicion",
+    "id": 8768
+  },
+  {
+    "name": "k_EMsgServerToGCGetSuspicionConfig",
+    "id": 8769
+  },
+  {
+    "name": "k_EMsgServerToGCGetSuspicionConfigResponse",
+    "id": 8770
+  },
+  {
+    "name": "k_EMsgGCToGCGrantPlusHeroChallengeMatchResults",
+    "id": 8771
+  },
+  {
+    "name": "k_EMsgGCToClientOverwatchCasesAvailable",
+    "id": 8772
+  },
+  {
+    "name": "k_EMsgServerToGCAccountCheck",
+    "id": 8773
+  },
+  {
+    "name": "k_EMsgClientToGCStartWatchingOverwatch",
+    "id": 8774
+  },
+  {
+    "name": "k_EMsgClientToGCStopWatchingOverwatch",
+    "id": 8775
+  },
+  {
+    "name": "k_EMsgSignOutPerfData",
+    "id": 8776
+  },
+  {
+    "name": "k_EMsgClientToGCGetDPCFavorites",
+    "id": 8777
+  },
+  {
+    "name": "k_EMsgClientToGCGetDPCFavoritesResponse",
+    "id": 8778
+  },
+  {
+    "name": "k_EMsgClientToGCSetDPCFavoriteState",
+    "id": 8779
+  },
+  {
+    "name": "k_EMsgClientToGCSetDPCFavoriteStateResponse",
+    "id": 8780
+  },
+  {
+    "name": "k_EMsgClientToGCOverwatchReplayError",
+    "id": 8781
+  },
+  {
+    "name": "k_EMsgServerToGCPlayerChallengeHistory",
+    "id": 8782
+  },
+  {
+    "name": "k_EMsgSignOutBanData",
+    "id": 8783
+  },
+  {
+    "name": "k_EMsgWebapiDPCSeasonResults",
+    "id": 8784
+  },
+  {
+    "name": "k_EMsgClientToGCCoachFriend",
+    "id": 8785
+  },
+  {
+    "name": "k_EMsgClientToGCCoachFriendResponse",
+    "id": 8786
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPrivateCoachingSession",
+    "id": 8787
+  },
+  {
+    "name": "k_EMsgClientToGCRequestPrivateCoachingSessionResponse",
+    "id": 8788
+  },
+  {
+    "name": "k_EMsgClientToGCAcceptPrivateCoachingSession",
+    "id": 8789
+  },
+  {
+    "name": "k_EMsgClientToGCAcceptPrivateCoachingSessionResponse",
+    "id": 8790
+  },
+  {
+    "name": "k_EMsgClientToGCLeavePrivateCoachingSession",
+    "id": 8791
+  },
+  {
+    "name": "k_EMsgClientToGCLeavePrivateCoachingSessionResponse",
+    "id": 8792
+  },
+  {
+    "name": "k_EMsgClientToGCGetCurrentPrivateCoachingSession",
+    "id": 8793
+  },
+  {
+    "name": "k_EMsgClientToGCGetCurrentPrivateCoachingSessionResponse",
+    "id": 8794
+  },
+  {
+    "name": "k_EMsgGCToClientPrivateCoachingSessionUpdated",
+    "id": 8795
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitPrivateCoachingSessionRating",
+    "id": 8796
+  },
+  {
+    "name": "k_EMsgClientToGCSubmitPrivateCoachingSessionRatingResponse",
+    "id": 8797
+  },
+  {
+    "name": "k_EMsgClientToGCGetAvailablePrivateCoachingSessions",
+    "id": 8798
+  },
+  {
+    "name": "k_EMsgClientToGCGetAvailablePrivateCoachingSessionsResponse",
+    "id": 8799
+  },
+  {
+    "name": "k_EMsgClientToGCGetAvailablePrivateCoachingSessionsSummary",
+    "id": 8800
+  },
+  {
+    "name": "k_EMsgClientToGCGetAvailablePrivateCoachingSessionsSummaryResponse",
+    "id": 8801
+  },
+  {
+    "name": "k_EMsgClientToGCJoinPrivateCoachingSessionLobby",
+    "id": 8802
+  },
+  {
+    "name": "k_EMsgClientToGCJoinPrivateCoachingSessionLobbyResponse",
+    "id": 8803
+  },
+  {
+    "name": "k_EMsgClientToGCRespondToCoachFriendRequest",
+    "id": 8804
+  },
+  {
+    "name": "k_EMsgClientToGCRespondToCoachFriendRequestResponse",
+    "id": 8805
+  },
+  {
+    "name": "k_EMsgClientToGCSetEventActiveSeasonID",
+    "id": 8806
+  },
+  {
+    "name": "k_EMsgClientToGCSetEventActiveSeasonIDResponse",
+    "id": 8807
+  },
+  {
+    "name": "k_EMsgServerToGCMatchPlayerNeutralItemEquipHistory",
+    "id": 8808
+  },
+  {
+    "name": "k_EMsgServerToGCCompendiumChosenInGamePredictions",
+    "id": 8809
+  },
+  {
+    "name": "k_EMsgClientToGCCreateTeamPlayerCardPack",
+    "id": 8810
+  },
+  {
+    "name": "k_EMsgClientToGCCreateTeamPlayerCardPackResponse",
+    "id": 8811
+  },
+  {
+    "name": "k_EMsgGCToServerSubmitCheerData",
+    "id": 8812
+  },
+  {
+    "name": "k_EMsgGCToServerCheerConfig",
+    "id": 8813
+  },
+  {
+    "name": "k_EMsgServerToGCGetCheerConfig",
+    "id": 8814
+  },
+  {
+    "name": "k_EMsgServerToGCGetCheerConfigResponse",
+    "id": 8815
+  },
+  {
+    "name": "k_EMsgGCToGCGrantAutographByID",
+    "id": 8816
+  },
+  {
+    "name": "k_EMsgGCToServerCheerScalesOverride",
+    "id": 8817
+  },
+  {
+    "name": "k_EMsgGCToServerGetCheerState",
+    "id": 8818
+  },
+  {
+    "name": "k_EMsgServerToGCReportCheerState",
+    "id": 8819
+  },
+  {
+    "name": "k_EMsgGCToServerScenarioSave",
+    "id": 8820
+  },
+  {
+    "name": "k_EMsgGCToServerAbilityDraftLobbyData",
+    "id": 8821
+  },
+  {
+    "name": "k_EMsgSignOutReportCommunications",
+    "id": 8822
+  },
+  {
+    "name": "k_EMsgClientToGCBatchGetPlayerCardRosterRequest",
+    "id": 8823
+  },
+  {
+    "name": "k_EMsgClientToGCBatchGetPlayerCardRosterResponse",
+    "id": 8824
+  },
+  {
+    "name": "k_EMsgClientToGCGetStickerbookRequest",
+    "id": 8825
+  },
+  {
+    "name": "k_EMsgClientToGCGetStickerbookResponse",
+    "id": 8826
+  },
+  {
+    "name": "k_EMsgClientToGCCreateStickerbookPageRequest",
+    "id": 8827
+  },
+  {
+    "name": "k_EMsgClientToGCCreateStickerbookPageResponse",
+    "id": 8828
+  },
+  {
+    "name": "k_EMsgClientToGCDeleteStickerbookPageRequest",
+    "id": 8829
+  },
+  {
+    "name": "k_EMsgClientToGCDeleteStickerbookPageResponse",
+    "id": 8830
+  },
+  {
+    "name": "k_EMsgClientToGCPlaceStickersRequest",
+    "id": 8831
+  },
+  {
+    "name": "k_EMsgClientToGCPlaceStickersResponse",
+    "id": 8832
+  },
+  {
+    "name": "k_EMsgClientToGCPlaceCollectionStickersRequest",
+    "id": 8833
+  },
+  {
+    "name": "k_EMsgClientToGCPlaceCollectionStickersResponse",
+    "id": 8834
+  },
+  {
+    "name": "k_EMsgClientToGCOrderStickerbookTeamPageRequest",
+    "id": 8835
+  },
+  {
+    "name": "k_EMsgClientToGCOrderStickerbookTeamPageResponse",
+    "id": 8836
+  },
+  {
+    "name": "k_EMsgServerToGCGetStickerHeroes",
+    "id": 8837
+  },
+  {
+    "name": "k_EMsgServerToGCGetStickerHeroesResponse",
+    "id": 8838
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopGetUserData",
+    "id": 8840
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopGetUserDataResponse",
+    "id": 8841
+  },
+  {
+    "name": "k_EMsgGCToClientCandyShopUserDataUpdated",
+    "id": 8842
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopPurchaseReward",
+    "id": 8843
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopPurchaseRewardResponse",
+    "id": 8844
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDoExchange",
+    "id": 8845
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDoExchangeResponse",
+    "id": 8846
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDoVariableExchange",
+    "id": 8847
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDoVariableExchangeResponse",
+    "id": 8848
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopRerollRewards",
+    "id": 8849
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopRerollRewardsResponse",
+    "id": 8850
+  },
+  {
+    "name": "k_EMsgClientToGCSetHeroSticker",
+    "id": 8851
+  },
+  {
+    "name": "k_EMsgClientToGCSetHeroStickerResponse",
+    "id": 8852
+  },
+  {
+    "name": "k_EMsgClientToGCGetHeroStickers",
+    "id": 8853
+  },
+  {
+    "name": "k_EMsgClientToGCGetHeroStickersResponse",
+    "id": 8854
+  },
+  {
+    "name": "k_EMsgClientToGCSetFavoritePage",
+    "id": 8855
+  },
+  {
+    "name": "k_EMsgClientToGCSetFavoritePageResponse",
+    "id": 8856
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevGrantCandy",
+    "id": 8857
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevGrantCandyResponse",
+    "id": 8858
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevClearInventory",
+    "id": 8859
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevClearInventoryResponse",
+    "id": 8860
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopOpenBags",
+    "id": 8861
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopOpenBagsResponse",
+    "id": 8862
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevGrantCandyBags",
+    "id": 8863
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevGrantCandyBagsResponse",
+    "id": 8864
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevShuffleExchange",
+    "id": 8865
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevShuffleExchangeResponse",
+    "id": 8866
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevGrantRerollCharges",
+    "id": 8867
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevGrantRerollChargesResponse",
+    "id": 8868
+  },
+  {
+    "name": "k_EMsgLobbyAdditionalAccountData",
+    "id": 8869
+  },
+  {
+    "name": "k_EMsgServerToGCLobbyInitialized",
+    "id": 8870
+  },
+  {
+    "name": "k_EMsgClientToGCCollectorsCacheAvailableDataRequest",
+    "id": 8871
+  },
+  {
+    "name": "k_EMsgGCToClientCollectorsCacheAvailableDataResponse",
+    "id": 8872
+  },
+  {
+    "name": "k_EMsgClientToGCUploadMatchClip",
+    "id": 8873
+  },
+  {
+    "name": "k_EMsgGCToClientUploadMatchClipResponse",
+    "id": 8874
+  },
+  {
+    "name": "k_EMsgSignOutMuertaMinigame",
+    "id": 8877
+  },
+  {
+    "name": "k_EMsgGCToServerLobbyHeroRoleStats",
+    "id": 8878
+  },
+  {
+    "name": "k_EMsgClientToGCRankRequest",
+    "id": 8879
+  },
+  {
+    "name": "k_EMsgGCToClientRankResponse",
+    "id": 8880
+  },
+  {
+    "name": "k_EMsgGCToClientRankUpdate",
+    "id": 8881
+  },
+  {
+    "name": "k_EMsgSignOutMapStats",
+    "id": 8882
+  },
+  {
+    "name": "k_EMsgClientToGCMapStatsRequest",
+    "id": 8883
+  },
+  {
+    "name": "k_EMsgGCToClientMapStatsResponse",
+    "id": 8884
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseGetUserData",
+    "id": 8886
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseGetUserDataResponse",
+    "id": 8887
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseSetUserData",
+    "id": 8888
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseSetUserDataResponse",
+    "id": 8889
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingGetData",
+    "id": 8890
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingGetDataResponse",
+    "id": 8891
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingPerformOperation",
+    "id": 8892
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingPerformOperationResponse",
+    "id": 8893
+  },
+  {
+    "name": "k_EMsgGCToClientFantasyCraftingGetDataUpdated",
+    "id": 8894
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingDevModifyTablet",
+    "id": 8895
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingDevModifyTabletResponse",
+    "id": 8896
+  },
+  {
+    "name": "k_EMsgClientToGCRoadToTIGetQuests",
+    "id": 8897
+  },
+  {
+    "name": "k_EMsgClientToGCRoadToTIGetQuestsResponse",
+    "id": 8898
+  },
+  {
+    "name": "k_EMsgClientToGCRoadToTIGetActiveQuest",
+    "id": 8899
+  },
+  {
+    "name": "k_EMsgClientToGCRoadToTIGetActiveQuestResponse",
+    "id": 8900
+  },
+  {
+    "name": "k_EMsgClientToGCBingoGetUserData",
+    "id": 8901
+  },
+  {
+    "name": "k_EMsgClientToGCBingoGetUserDataResponse",
+    "id": 8902
+  },
+  {
+    "name": "k_EMsgClientToGCBingoClaimRow",
+    "id": 8903
+  },
+  {
+    "name": "k_EMsgClientToGCBingoClaimRowResponse",
+    "id": 8904
+  },
+  {
+    "name": "k_EMsgClientToGCBingoDevRerollCard",
+    "id": 8905
+  },
+  {
+    "name": "k_EMsgClientToGCBingoDevRerollCardResponse",
+    "id": 8906
+  },
+  {
+    "name": "k_EMsgClientToGCBingoGetStatsData",
+    "id": 8907
+  },
+  {
+    "name": "k_EMsgClientToGCBingoGetStatsDataResponse",
+    "id": 8908
+  },
+  {
+    "name": "k_EMsgGCToClientBingoUserDataUpdated",
+    "id": 8909
+  },
+  {
+    "name": "k_EMsgGCToClientRoadToTIQuestDataUpdated",
+    "id": 8910
+  },
+  {
+    "name": "k_EMsgClientToGCRoadToTIUseItem",
+    "id": 8911
+  },
+  {
+    "name": "k_EMsgClientToGCRoadToTIUseItemResponse",
+    "id": 8912
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseSubmitReport",
+    "id": 8913
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseSubmitReportResponse",
+    "id": 8914
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminGetReportsRollupList",
+    "id": 8915
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminGetReportsRollupListResponse",
+    "id": 8916
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminGetReportsRollup",
+    "id": 8917
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminGetReportsRollupResponse",
+    "id": 8918
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminGetUserDetails",
+    "id": 8919
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminGetUserDetailsResponse",
+    "id": 8920
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminConvict",
+    "id": 8921
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminConvictResponse",
+    "id": 8922
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminExonerate",
+    "id": 8923
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminExonerateResponse",
+    "id": 8924
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminReset",
+    "id": 8925
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminResetResponse",
+    "id": 8926
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminLockAccount",
+    "id": 8927
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseAdminLockAccountResponse",
+    "id": 8928
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingSelectPlayer",
+    "id": 8929
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingSelectPlayerResponse",
+    "id": 8930
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingGenerateTablets",
+    "id": 8931
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingGenerateTabletsResponse",
+    "id": 8932
+  },
+  {
+    "name": "k_EMsgClientToGcFantasyCraftingUpgradeTablets",
+    "id": 8933
+  },
+  {
+    "name": "k_EMsgClientToGcFantasyCraftingUpgradeTabletsResponse",
+    "id": 8934
+  },
+  {
+    "name": "k_EMsgClientToGCRoadToTIDevForceQuest",
+    "id": 8935
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingRerollOptions",
+    "id": 8936
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingRerollOptionsResponse",
+    "id": 8937
+  },
+  {
+    "name": "k_EMsgLobbyRoadToTIMatchQuestData",
+    "id": 8939
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseModerationGetQueue",
+    "id": 8940
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseModerationGetQueueResponse",
+    "id": 8941
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseModerationApplyModeration",
+    "id": 8942
+  },
+  {
+    "name": "k_EMsgClientToGCShowcaseModerationApplyModerationResponse",
+    "id": 8943
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldGetUserData",
+    "id": 8944
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldGetUserDataResponse",
+    "id": 8945
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldCompletePath",
+    "id": 8946
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldCompletePathResponse",
+    "id": 8947
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldClaimEncounterReward",
+    "id": 8948
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldClaimEncounterRewardResponse",
+    "id": 8949
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevResetAll",
+    "id": 8950
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevResetAllResponse",
+    "id": 8951
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevResetNode",
+    "id": 8952
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevResetNodeResponse",
+    "id": 8953
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevResetPath",
+    "id": 8954
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevResetPathResponse",
+    "id": 8955
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevGrantTokens",
+    "id": 8956
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevGrantTokensResponse",
+    "id": 8957
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevClearInventory",
+    "id": 8958
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevClearInventoryResponse",
+    "id": 8959
+  },
+  {
+    "name": "k_EMsgServerToGCNewBloomGift",
+    "id": 8960
+  },
+  {
+    "name": "k_EMsgServerToGCNewBloomGiftResponse",
+    "id": 8961
+  },
+  {
+    "name": "k_EMsgGCToClientOverworldUserDataUpdated",
+    "id": 8962
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldMoveToNode",
+    "id": 8963
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldMoveToNodeResponse",
+    "id": 8964
+  },
+  {
+    "name": "k_EMsgClientToGCNewBloomGift",
+    "id": 8965
+  },
+  {
+    "name": "k_EMsgClientToGCNewBloomGiftResponse",
+    "id": 8966
+  },
+  {
+    "name": "k_EMsgSignOutOverworld",
+    "id": 8967
+  },
+  {
+    "name": "k_EMsgClientToGCSetBannedHeroes",
+    "id": 8969
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldTradeTokens",
+    "id": 8970
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldTradeTokensResponse",
+    "id": 8971
+  },
+  {
+    "name": "k_EMsgOverworldEncounterTokenTreasureData",
+    "id": 8972
+  },
+  {
+    "name": "k_EMsgOverworldEncounterTokenQuestData",
+    "id": 8973
+  },
+  {
+    "name": "k_EMsgOverworldEncounterChooseHeroData",
+    "id": 8974
+  },
+  {
+    "name": "k_EMsgClientToGCUpdateComicBookStats",
+    "id": 8975
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevResetShop",
+    "id": 8976
+  },
+  {
+    "name": "k_EMsgClientToGCCandyShopDevResetShopResponse",
+    "id": 8977
+  },
+  {
+    "name": "k_EMsgOverworldEncounterProgressData",
+    "id": 8978
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldFeedback",
+    "id": 8979
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldFeedbackResponse",
+    "id": 8980
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldVisitEncounter",
+    "id": 8981
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldVisitEncounterResponse",
+    "id": 8982
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldGiftTokens",
+    "id": 8983
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldGiftTokensResponse",
+    "id": 8984
+  },
+  {
+    "name": "k_EMsgClientToGCDotaLabsFeedback",
+    "id": 8985
+  },
+  {
+    "name": "k_EMsgClientToGCDotaLabsFeedbackResponse",
+    "id": 8986
+  },
+  {
+    "name": "k_EMsgOverworldEncounterPitFighterRewardData",
+    "id": 8987
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldGetDynamicImage",
+    "id": 8988
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldGetDynamicImageResponse",
+    "id": 8989
+  },
+  {
+    "name": "k_EMsgClientToGCFightingGameChallengeFriend",
+    "id": 8990
+  },
+  {
+    "name": "k_EMsgClientToGCFightingGameChallengeFriendResponse",
+    "id": 8991
+  },
+  {
+    "name": "k_EMsgClientToGCFightingGameCancelChallengeFriend",
+    "id": 8992
+  },
+  {
+    "name": "k_EMsgClientToGCFightingGameAnswerChallenge",
+    "id": 8993
+  },
+  {
+    "name": "k_EMsgClientToGCFightingGameAnswerChallengeResponse",
+    "id": 8994
+  },
+  {
+    "name": "k_EMsgGCToClientFightingGameChallenge",
+    "id": 8995
+  },
+  {
+    "name": "k_EMsgGCToClientFightingGameStartMatch",
+    "id": 8996
+  },
+  {
+    "name": "k_EMsgGCToClientFightingGameChallengeCanceled",
+    "id": 8997
+  },
+  {
+    "name": "k_EMsgClientToGCBingoShuffleCard",
+    "id": 8999
+  },
+  {
+    "name": "k_EMsgClientToGCBingoShuffleCardResponse",
+    "id": 9000
+  },
+  {
+    "name": "k_EMsgClientToGCBingoModifySquare",
+    "id": 9001
+  },
+  {
+    "name": "k_EMsgClientToGCBingoModifySquareResponse",
+    "id": 9002
+  },
+  {
+    "name": "k_EMsgClientToGCBingoDevAddTokens",
+    "id": 9003
+  },
+  {
+    "name": "k_EMsgClientToGCBingoDevAddTokensResponse",
+    "id": 9004
+  },
+  {
+    "name": "k_EMsgClientToGCBingoDevClearInventory",
+    "id": 9005
+  },
+  {
+    "name": "k_EMsgClientToGCBingoDevClearInventoryResponse",
+    "id": 9006
+  },
+  {
+    "name": "k_EMsgGCCompendiumRemoveAllSelections",
+    "id": 9007
+  },
+  {
+    "name": "k_EMsgGCCompendiumRemoveAllSelectionsResponse",
+    "id": 9008
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldMinigameAction",
+    "id": 9009
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldMinigameActionResponse",
+    "id": 9010
+  },
+  {
+    "name": "k_EMsgClientToGCSurvivorsTelemetry",
+    "id": 9011
+  },
+  {
+    "name": "k_EMsgClientToGCSurvivorsTelemetryResponse",
+    "id": 9012
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldRequestTokensNeededByFriend",
+    "id": 9013
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldRequestTokensNeededByFriendResponse",
+    "id": 9014
+  },
+  {
+    "name": "k_EMsgClientToGCCraftworksGetUserData",
+    "id": 9015
+  },
+  {
+    "name": "k_EMsgClientToGCCraftworksGetUserDataResponse",
+    "id": 9016
+  },
+  {
+    "name": "k_EMsgGCToClientCraftworksUserDataUpdated",
+    "id": 9017
+  },
+  {
+    "name": "k_EMsgClientToGCCraftworksCraftRecipe",
+    "id": 9018
+  },
+  {
+    "name": "k_EMsgClientToGCCraftworksCraftRecipeResponse",
+    "id": 9019
+  },
+  {
+    "name": "k_EMsgClientToGCCraftworksDevModifyComponents",
+    "id": 9020
+  },
+  {
+    "name": "k_EMsgClientToGCCraftworksDevModifyComponentsResponse",
+    "id": 9021
+  },
+  {
+    "name": "k_EMsgSignOutCraftworks",
+    "id": 9022
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterGetUserData",
+    "id": 9023
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterGetUserDataResponse",
+    "id": 9024
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterClaimReward",
+    "id": 9025
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterClaimRewardResponse",
+    "id": 9026
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterTradeMaterials",
+    "id": 9027
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterTradeMaterialsResponse",
+    "id": 9028
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterGiftMaterials",
+    "id": 9029
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterGiftMaterialsResponse",
+    "id": 9030
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterRequestMaterialsNeededByFriend",
+    "id": 9031
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterRequestMaterialsNeededByFriendResponse",
+    "id": 9032
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevResetAll",
+    "id": 9033
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevResetAllResponse",
+    "id": 9034
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevGrantMaterials",
+    "id": 9035
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevGrantMaterialsResponse",
+    "id": 9036
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevClearInventory",
+    "id": 9037
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevClearInventoryResponse",
+    "id": 9038
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevClaimInvestigationRewards",
+    "id": 9039
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevClaimInvestigationRewardsResponse",
+    "id": 9040
+  },
+  {
+    "name": "k_EMsgGCToClientMonsterHunterUserDataUpdated",
+    "id": 9041
+  },
+  {
+    "name": "k_EMsgSignOutMonsterHunter",
+    "id": 9042
+  },
+  {
+    "name": "k_EMsgClientToGCClaimGatedEvent",
+    "id": 9043
+  },
+  {
+    "name": "k_EMsgClientToGCClaimGatedEventResponse",
+    "id": 9044
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevModifyHeroCodex",
+    "id": 9045
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterDevModifyHeroCodexResponse",
+    "id": 9046
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterClaimCodexReward",
+    "id": 9047
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterClaimCodexRewardResponse",
+    "id": 9048
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterClaimSetReward",
+    "id": 9049
+  },
+  {
+    "name": "k_EMsgClientToGCMonsterHunterClaimSetRewardResponse",
+    "id": 9050
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingSelectTeam",
+    "id": 9051
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingSelectTeamResponse",
+    "id": 9052
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingSelectGlobalPrefix",
+    "id": 9053
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingSelectGlobalPrefixResponse",
+    "id": 9054
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingSelectGlobalSuffix",
+    "id": 9055
+  },
+  {
+    "name": "k_EMsgClientToGCFantasyCraftingSelectGlobalSuffixResponse",
+    "id": 9056
+  },
+  {
+    "name": "k_EMsgClientToGCItemBattlerGetUserData",
+    "id": 9100
+  },
+  {
+    "name": "k_EMsgClientToGCItemBattlerGetUserDataResponse",
+    "id": 9101
+  },
+  {
+    "name": "k_EMsgClientToGCItemBattlerGameAction",
+    "id": 9102
+  },
+  {
+    "name": "k_EMsgClientToGCItemBattlerGameActionResponse",
+    "id": 9103
+  },
+  {
+    "name": "k_EMsgGCToClientItemBattlerUserDataUpdated",
+    "id": 9104
+  },
+  {
+    "name": "k_EMsgClientToGCItemBattlerDevGrantItem",
+    "id": 9105
+  },
+  {
+    "name": "k_EMsgClientToGCItemBattlerDevGrantItemResponse",
+    "id": 9106
+  },
+  {
+    "name": "k_EMsgClientToGCGetEventRanking",
+    "id": 9107
+  },
+  {
+    "name": "k_EMsgClientToGCGetEventRankingResponse",
+    "id": 9108
+  },
+  {
+    "name": "k_EMsgClientToGCGetEventCoupon",
+    "id": 9109
+  },
+  {
+    "name": "k_EMsgClientToGCGetEventCouponResponse",
+    "id": 9110
+  },
+  {
+    "name": "k_EMsgClientToGCConvertEventPoints",
+    "id": 9111
+  },
+  {
+    "name": "k_EMsgClientToGCConvertEventPointsResponse",
+    "id": 9112
+  },
+  {
+    "name": "k_EMsgServerToGCWarningLowServerFramerate",
+    "id": 9113
+  },
+  {
+    "name": "k_EMsgServerToGCWarningInvalidBotAbilityUsage",
+    "id": 9114
+  },
+  {
+    "name": "k_EMsgClientToGCInviteToDemoMode",
+    "id": 9115
+  },
+  {
+    "name": "k_EMsgGCToClientInviteToDemoMode",
+    "id": 9116
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevSetFortune",
+    "id": 9117
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevSetFortuneResponse",
+    "id": 9118
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldRequestFortune",
+    "id": 9119
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldRequestFortuneResponse",
+    "id": 9120
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevClearFortune",
+    "id": 9121
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevClearFortuneResponse",
+    "id": 9122
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldClaimFortuneReward",
+    "id": 9123
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldClaimFortuneRewardResponse",
+    "id": 9124
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevGrantFortuneTellerCoin",
+    "id": 9125
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldDevGrantFortuneTellerCoinResponse",
+    "id": 9126
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldClaimFortunePermanentReward",
+    "id": 9127
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldClaimFortunePermanentRewardResponse",
+    "id": 9128
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldClaimFortuneTellerStoryNode",
+    "id": 9129
+  },
+  {
+    "name": "k_EMsgClientToGCOverworldClaimFortuneTellerStoryNodeResponse",
+    "id": 9130
+  },
+  {
+    "name": "k_EMsgClientToGCGetEventPoints",
+    "id": 15000
+  },
+  {
+    "name": "k_EMsgClientToGCGetEventPointsResponse",
+    "id": 15001
+  },
+  {
+    "name": "k_EMsgGCToClientEventPointsUpdated",
+    "id": 15002
+  }
+]

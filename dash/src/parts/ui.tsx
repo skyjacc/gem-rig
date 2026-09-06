@@ -183,7 +183,7 @@ export function Field({
       value={value}
       placeholder={placeholder}
       onChange={e => onChange(e.target.value)}
-      className={`ui-label h-10 border border-white/[0.08] bg-background/40 px-2.5 text-foreground placeholder:text-muted-foreground/50 ${width}`}
+      className={`ui-label h-10 border border-white/[0.08] bg-background/40 px-2.5 text-foreground placeholder:text-muted-foreground/75 ${width}`}
     />
   )
 }
@@ -200,12 +200,38 @@ export function Bar({ pct, tone = 'run' }: { pct: number; tone?: 'run' | 'ok' | 
   )
 }
 
-export function Dot({ tone, pulse }: { tone: 'ok' | 'warn' | 'stop' | 'idle'; pulse?: boolean }) {
+// Лампа состояния.
+//
+// Цвет не может быть единственным носителем смысла: у восьми процентов
+// мужчин зелёный и красный неразличимы, а тут ими помечено «идёт»
+// и «сломалось». Поэтому у точки есть имя — его читает и диктор,
+// и всплывающая подсказка.
+const DOT: Record<string, string> = {
+  ok: 'работает',
+  warn: 'ждёт',
+  stop: 'остановлено',
+  idle: 'выключено',
+}
+
+export function Dot({ tone, pulse, label }: {
+  tone: 'ok' | 'warn' | 'stop' | 'idle'
+  pulse?: boolean
+  label?: string
+}) {
   const color =
     tone === 'ok' ? 'var(--ok)' :
     tone === 'warn' ? 'var(--warn)' :
     tone === 'stop' ? 'var(--stop)' : 'rgb(255 255 255 / 0.25)'
-  return <span className={`inline-block h-[6px] w-[6px] shrink-0 ${pulse ? 'animate-pulse' : ''}`} style={{ background: color }} />
+  const name = label ?? DOT[tone]
+  return (
+    <span
+      role="img"
+      aria-label={name}
+      title={name}
+      className={`inline-block h-[6px] w-[6px] shrink-0 ${pulse ? 'animate-pulse' : ''}`}
+      style={{ background: color }}
+    />
+  )
 }
 
 // Значок предмета.
@@ -258,6 +284,30 @@ export function PageHead({ title, sub, right }: { title: string; sub?: ReactNode
 
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="px-4 py-10 text-center text-[13px] text-muted-foreground">{children}</div>
+}
+
+// Скелетон: каркас того, что придёт, вместо слова «читаю».
+//
+// Пульс мягкий, без бегущего блика: блик — украшение, пульс — состояние
+// «живое, ждём». Анимируется только прозрачность, это дешево даже когда
+// каркасов много.
+export function Skeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
+  return <div aria-hidden="true" className={'skeleton ' + className} style={style} />
+}
+
+// Каркас табличного экрана: строки той же высоты, что настоящие, чтобы
+// приход данных не прыгал макетом. Ширина блоков — приблизительная форма
+// колонок, а не точная копия.
+export function RowsSkeleton({ rows = 8, cols = [96, 64, 160, 48] }: { rows?: number; cols?: number[] }) {
+  return (
+    <div className="space-y-2.5 p-3.5" aria-busy="true">
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex items-center gap-4" style={{ opacity: 1 - (r % 4) * 0.15 }}>
+          {cols.map((w, c) => <Skeleton key={c} className="h-[13px] shrink-0" style={{ width: w }} />)}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // Число, которое катится к новому значению, а не прыгает. На панели,

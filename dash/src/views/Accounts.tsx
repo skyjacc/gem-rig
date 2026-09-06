@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Link2, Pencil, Play, Square, Unlink } from 'lucide-react'
 import {
-  nf, post, span, useJson,
+  ago, nf, plural, post, span, useAction, useJson,
   type AccountRow, type Accounts as AccountsData, type Settings, type State, type Unit,
 } from '../lib/api.ts'
-import { Bar, Button, Card, Dot, Field, Head, ItemIcon, Label, Num, PageHead, Segmented } from '../parts/ui.tsx'
+import { Bar, Button, Card, Dot, Field, Head, ItemIcon, Label, Note, Num, PageHead, Segmented } from '../parts/ui.tsx'
 import { Modal } from '../parts/Modal.tsx'
 import { Reveal } from '../parts/Reveal.tsx'
+import { Confirm } from '../parts/Confirm.tsx'
 
 // Аккаунты.
 //
@@ -32,6 +33,7 @@ export function Accounts({
   accounts: AccountsData | null
   onLink: () => void
 }) {
+  const now = state.ts
   const [dropping, setDropping] = useState<string | null>(null)
   const [open, setOpen] = useState<Set<string>>(new Set())
 
@@ -70,6 +72,7 @@ export function Accounts({
             active={accounts?.active === a.id}
             alone={list.length === 1}
             open={open.has(a.id)}
+            now={now}
             onToggle={() => toggle(a.id)}
             onDrop={() => setDropping(a.id)}
           />
@@ -78,37 +81,51 @@ export function Accounts({
 
       <Common state={state} />
 
-      <Modal
-        open={!!dropped}
-        title="Отвязать аккаунт"
-        note={dropped?.label}
-        width="w-[460px]"
-        onClose={() => setDropping(null)}
-        footer={
-          <>
-            <Button onClick={() => setDropping(null)}>отмена</Button>
-            <Button
-              tone="danger"
-              onClick={async () => { await post('/api/accounts/unlink', { id: dropped!.id }); setDropping(null) }}
-            >
-              удалить сессию
-            </Button>
-          </>
-        }
-      >
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
-          Сессия будет удалена — вернуть аккаунт можно только новым QR.
-          {' '}Журнал расхода останется: {nf(dropped?.burned ?? 0)} матчей на нём
-          действительно израсходованы, и если аккаунт привяжут заново, очередь
-          должна об этом помнить.
-        </p>
-      </Modal>
+      <DropAccount dropped={dropped} onClose={() => setDropping(null)} />
     </div>
   )
 }
 
+// Отвязка удаляет ключ от аккаунта. Действие обратимо только новым QR,
+// поэтому у него своё окно, а не просто кнопка в ряду.
+function DropAccount({ dropped, onClose }: { dropped: AccountRow | null | undefined; onClose: () => void }) {
+  const act = useAction()
+  return (
+    <Modal
+      open={!!dropped}
+      title="Отвязать аккаунт"
+      note={dropped?.label}
+      width="w-[460px]"
+      onClose={() => { act.clear(); onClose() }}
+      footer={
+        <>
+          <Button onClick={() => { act.clear(); onClose() }}>отмена</Button>
+          <Button
+            tone="danger"
+            loading={act.busy}
+            onClick={async () => {
+              const r: any = await act.run('/api/accounts/unlink', { id: dropped!.id })
+              if (!r?.error) onClose()
+            }}
+          >
+            удалить сессию
+          </Button>
+        </>
+      }
+    >
+      <p className="text-[13px] leading-relaxed text-muted-foreground">
+        Сессия будет удалена — вернуть аккаунт можно только новым QR.
+        {' '}Журнал расхода останется: {nf(dropped?.burned ?? 0)} матчей на нём
+        действительно израсходованы, и если аккаунт привяжут заново, очередь
+        должна об этом помнить.
+      </p>
+      {act.error ? <div className="mt-3"><Note title="не отвязался">{act.error}</Note></div> : null}
+    </Modal>
+  )
+}
+
 function Row({
-  a, u, icons, active, alone, open, onToggle, onDrop,
+  a, u, icons, active, alone, open, now, onToggle, onDrop,
 }: {
   a: AccountRow
   u?: Unit
@@ -116,11 +133,15 @@ function Row({
   active: boolean
   alone: boolean
   open: boolean
+  now: number
   onToggle: () => void
   onDrop: () => void
 }) {
   const [name, setName] = useState(a.label)
   const [editing, setEditing] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const act = useAction()
+  const box = u?.inv
 
   return (
     <Card hover className="rise p-3.5">
@@ -149,12 +170,47 @@ function Row({
         ) : null}
       </div>
 
-      <div className="mt-3 grid grid-cols-4 gap-3">
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Cell k="израсходовано" v={nf(a.burned)} />
         <Cell k="в очереди" v={nf(u?.queueLength ?? 0)} />
-        <Cell k="пауза" v={u ? nf(u.delay) + (u.auto ? ' сама' : ' мс') : '—'} />
+        <Cell k="пауза" v={u ? nf(u.delay) + (u.auto ? ' сама' : u.even ? ' к сроку' : ' мс') : '—'} />
         <Cell k="сессия" v={a.session ? 'есть' : 'нет'} tone={a.session ? undefined : 'stop'} />
+        {/* Инвентарь у каждого аккаунта свой. Одно общее число врало бы про
+            всех, кроме активного, а по составу считаются потолки. */}
+        <Cell
+          k="инвентарь"
+          v={box
+            ? box.private ? 'закрыт'
+              : box.error ? 'ошибка'
+                : nf(box.items) + ' ' + plural(box.items, 'вещь', 'вещи', 'вещей')
+            : '—'}
+          tone={box?.private || box?.error ? 'stop' : undefined}
+        />
+        <Cell k="снимок" v={box?.age != null ? ago(now - box.age * 1000, now) + ' назад' : '—'} />
+        <Cell k="падений подряд" v={String(u?.failures ?? 0)} tone={u?.failures ? 'stop' : undefined} />
+        <Cell k="выбило сессией" v={String(u?.displaced ?? 0)} tone={u?.displaced ? 'stop' : undefined} />
       </div>
+
+      {u?.fatal ? (
+        <div className="mt-3">
+          <Note title="отправщик встал">{u.fatal}</Note>
+        </div>
+      ) : null}
+      {box?.private ? (
+        <div className="mt-3">
+          <Note title="инвентарь Steam закрыт">
+            Ни состава, ни счётчиков не видно. Работник с потолком на этом аккаунте
+            не запустится: остановиться вслепую он не сможет, а матчи тратятся навсегда.
+          </Note>
+        </div>
+      ) : box?.error ? (
+        <div className="mt-3">
+          <Note tone="warn" title="Steam не отдал инвентарь">{box.error} — панель повторит сама.</Note>
+        </div>
+      ) : null}
+      {act.error ? (
+        <div className="mt-3"><Note title="команда не прошла">{act.error}</Note></div>
+      ) : null}
 
       {u?.target ? (
         <div className="mt-3">
@@ -168,15 +224,20 @@ function Row({
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {u?.enabled ? (
-          <Button tone="danger" onClick={() => post('/api/autopilot', { id: a.id, on: false })}>
+          <Button tone="danger" loading={act.busy} onClick={() => act.run('/api/autopilot', { id: a.id, on: false })}>
             <Square className="h-3.5 w-3.5" /><span>остановить</span>
           </Button>
         ) : (
-          <Button disabled={!a.session} onClick={() => post('/api/autopilot', { id: a.id, on: true })}>
-            <Play className="h-3.5 w-3.5" /><span>запустить</span>
+          <Button
+            tone="burn"
+            disabled={!a.session}
+            title={a.session ? undefined : 'нет сессии — привяжите аккаунт по QR'}
+            onClick={() => setStarting(true)}
+          >
+            <Play className="h-3.5 w-3.5" /><span>накрутить</span>
           </Button>
         )}
-        {!active ? <Button onClick={() => post('/api/accounts/active', { id: a.id })}>сделать активным</Button> : null}
+        {!active ? <Button loading={act.busy} onClick={() => act.run('/api/accounts/active', { id: a.id })}>сделать активным</Button> : null}
         <Button active={open} onClick={onToggle}>
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           <span>настройки</span>
@@ -190,6 +251,30 @@ function Row({
       <Reveal open={open && !!u}>
         {open && u ? <Tune a={a} u={u} icons={icons} /> : null}
       </Reveal>
+
+      {u ? (
+        <Confirm
+          open={starting}
+          title="Запустить накрутку"
+          note={a.label + ' · ' + a.steamid}
+          verb="накрутить"
+          url="/api/autopilot"
+          body={{ id: a.id, on: true }}
+          onClose={() => setStarting(false)}
+          what={[
+            { k: 'гемы в работе', v: (u.picked ?? []).length ? (u.picked ?? []).join(', ') : 'все из инвентаря' },
+            { k: 'в очереди', v: u.queueLength ? nf(u.queueLength) + ' матчей' : 'соберу после запуска' },
+            { k: 'сколько отправок', v: u.target ? nf(u.target) : 'до конца очереди', tone: u.target ? undefined : 'warn' },
+            { k: 'докуда вести гем', v: u.cap ? nf(u.cap) : 'весь запас матчей', tone: u.cap ? undefined : 'warn' },
+            { k: 'пауза', v: nf(u.delay) + (u.auto ? ' мс сама' : u.even ? ' мс к сроку' : ' мс') },
+          ]}
+        >
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            Матчи расходуются на этом аккаунте и только на нём: на другом они
+            останутся свежими. Вернуть израсходованный матч нельзя.
+          </p>
+        </Confirm>
+      ) : null}
     </Card>
   )
 }
@@ -299,7 +384,7 @@ function Tune({ a, u, icons }: { a: AccountRow; u: Unit; icons: Map<string, stri
                     <ItemIcon hash={icons.get(g.gem) ?? ''} size={16} />
                   </span>
                   <span>{g.gem}</span>
-                  <span className="tnum font-mono text-[11px] text-muted-foreground/60">{g.objects}</span>
+                  <span className="tnum font-mono text-[11px] text-muted-foreground/75">{g.objects}</span>
                 </button>
               )
             })}
@@ -322,7 +407,7 @@ function Line({ k, hint, children }: { k: string; hint?: string; children: React
     <div className="space-y-1.5">
       <div>
         <Label>{k}</Label>
-        {hint ? <div className="text-[11px] text-muted-foreground/60">{hint}</div> : null}
+        {hint ? <div className="text-[11px] text-muted-foreground/75">{hint}</div> : null}
       </div>
       {children}
     </div>

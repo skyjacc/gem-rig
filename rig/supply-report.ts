@@ -1,17 +1,28 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { leftFor, entityMatchIds } from './server/supply.ts'
 
-const db = new DatabaseSync('../tools/rig.db', { readOnly: true })
-const map = JSON.parse(fs.readFileSync('../tools/gem-map.json', 'utf8')) as any[]
-const prev = JSON.parse(fs.readFileSync('../tools/gem-supply.json', 'utf8')) as Record<string, number>
-const leagues = JSON.parse(fs.readFileSync('../tools/leagues.json', 'utf8')) as any[]
+// Пути считаются от файла, а не от текущей папки.
+//
+// Было '../tools/rig.db' — то есть отчёт работал, только если запускать его
+// ровно из rig/. Из корня проекта он молча создавал пустую базу рядом и
+// показывал нули по всем гемам. Все остальные утилиты рядом уже считают
+// путь от import.meta.dirname.
+const TOOLS = path.resolve(import.meta.dirname, '..', 'tools')
+const read = (f: string) => JSON.parse(fs.readFileSync(path.join(TOOLS, f), 'utf8'))
+
+const dbFile = path.join(TOOLS, 'rig.db')
+if (!fs.existsSync(dbFile)) throw new Error('нет ' + dbFile + ' — сначала запустите панель или обходчик')
+const db = new DatabaseSync(dbFile, { readOnly: true })
+const map = read('gem-map.json') as any[]
+const prev = read('gem-supply.json') as Record<string, number>
+const leagues = read('leagues.json') as any[]
 
 // Журнал расхода ведётся по аккаунту, и без него leftFor считает по строке
 // «undefined» — то есть всегда ноль сожжённых. Отчёт молча показывал полный
 // запас там, где половина уже потрачена. Берём активный аккаунт из реестра.
-const reg = JSON.parse(fs.readFileSync('../tools/accounts.json', 'utf8')) as
-  { active: string; list: { id: string; steamid: string }[] }
+const reg = read('accounts.json') as { active: string; list: { id: string; steamid: string }[] }
 const ACCOUNT = (reg.list.find(a => a.id === reg.active) ?? reg.list[0])?.steamid ?? ''
 if (!ACCOUNT) throw new Error('в tools/accounts.json нет ни одного аккаунта — некому приписать расход')
 

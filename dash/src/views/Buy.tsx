@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Minus, Plus, RefreshCw, ShoppingCart, SlidersHorizontal, Square, Wand2 } from 'lucide-react'
-import { nf, plural, useAction, useJson, type PurchaseRun, type State } from '../lib/api.ts'
-import { Bar, Button, Card, Dot, Empty, Field, ItemIcon, Label, Note, PageHead, Segmented } from '../parts/ui.tsx'
+import { nf, plural, post, useAction, useJson, type PurchaseRun, type State } from '../lib/api.ts'
+import { Bar, Button, Card, Dot, Empty, Field, ItemIcon, Label, Note, PageHead, RowsSkeleton, Segmented } from '../parts/ui.tsx'
 import { Modal } from '../parts/Modal.tsx'
 import { Reveal } from '../parts/Reveal.tsx'
 
@@ -195,22 +195,36 @@ export function Buy({ state }: { state: State }) {
       </div>
     )
   }
-  if (!data) return <Card className="p-6 text-[13px] text-muted-foreground">опрашиваю площадку…</Card>
+  if (!data) return <Card className="fade"><RowsSkeleton rows={9} cols={[200, 80, 80, 96, 70, 70, 90]} /></Card>
 
   const bump = (gem: string, n: number, max: number) =>
     setTake(t => ({ ...t, [gem]: Math.max(0, Math.min(max, (t[gem] ?? 0) + n)) }))
 
   // Оптимальная закупка: сначала то, что не стоит отправок, потом дешёвое.
+  //
+  // Порядок не произвольный. Копия гема, который уже накручивается, стоит
+  // ноль отправок — счётчик ей поднимут те же сообщения. Дальше идут те,
+  // у кого много общих матчей с моими: их прогон короче на это число.
+  // И только потом новые сущности, каждая из которых стоит полного прогона.
   const optimal = () => {
-    const money = Number(budget.replace(',', '.')) || 0
-    if (!money) return
-    let left = money
+    // Пустой бюджет означает «на всё, что есть на счету».
+    const asked = Number(budget.replace(',', '.')) || 0
+    const cash = asked || (data.balance ?? 0)
+    if (!cash) return
+    let left = cash
     const next: Record<string, number> = {}
     const order = [...data.offers]
-      .filter(o => o.reaches)
-      .sort((a, b) => Number(b.burning) - Number(a.burning) || a.price - b.price)
+      .filter(o => o.reaches && o.price > 0)
+      .sort((a, b) =>
+        Number(b.burning) - Number(a.burning) ||
+        (b.overlap ?? 0) - (a.overlap ?? 0) ||
+        a.per1000 - b.per1000 ||
+        a.price - b.price)
     for (const o of order) {
-      const can = Math.min(o.volume, Math.floor(left / o.price))
+      // Больше perGem одного гема брать незачем: двадцать шестая копия
+      // той же команды продаётся так же плохо, как двадцать пятая, а деньги
+      // лучше положить в следующую сущность — у неё свой запас матчей.
+      const can = Math.min(o.volume, data.perGem, Math.floor(left / o.price))
       if (can <= 0) continue
       next[o.gem] = can
       left -= can * o.price
@@ -220,6 +234,11 @@ export function Buy({ state }: { state: State }) {
 
   const kpi = data.offers.filter(o => o.reaches)
   const free = kpi.filter(o => o.burning)
+
+  // Валюта показа и валюта счёта — разные вещи, и площадка торгует только
+  // в своей. Раньше про это узнавали после нажатия «подтвердить»: список
+  // собран, кнопка нажата, а в ответ отказ. Теперь видно заранее.
+  const wrongCurrency = !!data.balanceCurrency && cur !== data.balanceCurrency
 
   return (
     <div className="view-in space-y-4">
@@ -269,6 +288,23 @@ export function Buy({ state }: { state: State }) {
         />
       </div>
 
+      {data.balanceError ? (
+        <Note tone={data.balance == null ? 'warn' : 'ok'} title="покупать пока нельзя">
+          {data.balanceError === 'нет ключа'
+            ? 'Ключ площадки не найден. Положите его в tools/market.key — без него виден список цен, но не покупка. Список цен открытый, ключ нужен только чтобы списывать деньги.'
+            : 'Площадка не отдала баланс: ' + data.balanceError + '. Список цен ниже мог устареть.'}
+        </Note>
+      ) : null}
+
+      {wrongCurrency ? (
+        <Note tone="warn" title={'счёт площадки в ' + data.balanceCurrency + ', а цены показаны в ' + cur}>
+          Купить можно только в валюте счёта: у площадки рубль считается сотнями,
+          а доллар тысячами, и перепутать их значит переплатить вдесятеро.
+          {data.converted ? ' Гривны у площадки нет вовсе — это пересчёт по курсу НБУ, для прикидки.' : ''}
+          {' '}Переключите валюту на {data.balanceCurrency}, чтобы закупка стала доступна.
+        </Note>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2">
         <Segmented
           value={only}
@@ -310,7 +346,7 @@ export function Buy({ state }: { state: State }) {
                     inputMode="decimal"
                     className="ui-label h-9 w-20 border border-white/[0.08] bg-background/40 px-2 text-right text-foreground"
                   />
-                  <span className="text-muted-foreground/40">—</span>
+                  <span className="text-muted-foreground/75">—</span>
                   <input
                     value={range[r.key][1]}
                     onChange={e => setRange(x => ({ ...x, [r.key]: [x[r.key][0], e.target.value] }))}
@@ -327,12 +363,18 @@ export function Buy({ state }: { state: State }) {
       </Reveal>
 
       <Card className="fade">
-        <div className="scroll-thin max-h-[calc(100svh-430px)] overflow-auto">
-          <table className="w-full text-[13px]">
+        <div className="scroll-thin max-h-[max(240px,calc(100svh-430px))] overflow-auto">
+          <table className="w-full min-w-[860px] text-[13px]">
             <thead className="sticky top-0 bg-[#0f0f0f]">
               <tr className="ui-label border-b border-white/[0.06] text-left text-muted-foreground/75">
                 {COLUMNS.map(c => (
-                  <th key={c.key} scope="col" className={"px-3.5 py-2 font-medium " + c.align} title={c.hint}>
+                  <th
+                    key={c.key}
+                    scope="col"
+                    aria-sort={sort.key === c.key ? (sort.down ? 'descending' : 'ascending') : 'none'}
+                    className={"px-3.5 py-2 font-medium " + c.align}
+                    title={c.hint}
+                  >
                     <button
                       type="button"
                       onClick={() => setSort(prev => ({ key: c.key, down: prev.key === c.key ? !prev.down : true }))}
@@ -368,7 +410,7 @@ export function Buy({ state }: { state: State }) {
                           <span className="ui-label shrink-0" style={{ color: 'var(--ok)' }}>идёт</span>
                         ) : null}
                         {o.owned ? (
-                          <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/50">есть {o.owned}</span>
+                          <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/75">есть {o.owned}</span>
                         ) : null}
                       </span>
                     </td>
@@ -385,7 +427,7 @@ export function Buy({ state }: { state: State }) {
                       className="tnum px-3.5 py-1.5 text-right font-mono"
                       style={{ color: o.overlap ? 'var(--ok)' : undefined }}
                       title={o.overlap ? 'столько матчей уже уходят с моими гемами — этот счётчик достанется даром' : undefined}
-                    >{o.overlap ? nf(o.overlap) : <span className="text-muted-foreground/40">—</span>}</td>
+                    >{o.overlap ? nf(o.overlap) : <span className="text-muted-foreground/75">—</span>}</td>
                     <td className="tnum px-3.5 py-1.5 text-right font-mono text-muted-foreground">{nf(o.volume)}</td>
                     <td className="tnum px-3.5 py-1.5 text-right font-mono">
                       {o.burning
@@ -439,10 +481,19 @@ export function Buy({ state }: { state: State }) {
           <Sum k="отправок" v={nf(cart.sends)} note={cart.minutes ? '≈ ' + nf(cart.minutes) + ' мин' : 'ничего не надо жечь'} />
           <Sum k="выручка" v={money(cart.revenue, cur)} />
           <Sum k="прибыль" v={money(cart.profit, cur)} tone="ok" />
-          <span className="ml-auto">
-            <Button active onClick={() => setConfirm(true)}>
+          <span className="ml-auto flex items-center gap-3">
+            {wrongCurrency ? (
+              <span className="ui-label max-w-[280px] text-right" style={{ color: 'var(--warn)' }}>
+                счёт площадки в {data.balanceCurrency} — покупать можно только в этой валюте
+              </span>
+            ) : null}
+            <Button
+              tone="burn"
+              disabled={wrongCurrency || !!run?.active}
+              onClick={() => setConfirm(true)}
+            >
               <ShoppingCart className="h-3.5 w-3.5" />
-              <span>купить {nf(cart.units)}</span>
+              <span>купить {nf(cart.units)} {plural(cart.units, 'лот', 'лота', 'лотов')}</span>
             </Button>
           </span>
         </Card>
@@ -458,8 +509,9 @@ export function Buy({ state }: { state: State }) {
           <>
             <Button onClick={() => { setConfirm(false); setResult(null) }}>отмена</Button>
             <Button
-              active
-              disabled={busy || !!run?.active}
+              tone="burn"
+              loading={busy}
+              disabled={busy || !!run?.active || wrongCurrency}
               onClick={async () => {
                 setBusy(true)
                 const r = await post('/api/market/buy', {
@@ -471,7 +523,7 @@ export function Buy({ state }: { state: State }) {
                 if (!r?.error) setConfirm(false)
               }}
             >
-              {busy ? 'запускаю…' : 'подтвердить'}
+              {busy ? 'запускаю…' : 'списать ' + money(cart.cost, cur)}
             </Button>
           </>
         }
@@ -584,14 +636,14 @@ function Progress({ run, cur, onStop }: { run: Run; cur: Cur; onStop: ReturnType
           {run.log.map((l, i) => (
             <div key={l.ts + ':' + i} className="flex items-center gap-3 py-1.5 text-[12px]">
               <Dot tone={l.ok ? 'ok' : l.reason === 'цена ушла' ? 'warn' : 'stop'} />
-              <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/60">
+              <span className="tnum shrink-0 font-mono text-[11px] text-muted-foreground/75">
                 {new Date(l.ts).toLocaleTimeString('ru-RU')}
               </span>
               <span className="min-w-0 flex-1 truncate">{l.gem}</span>
               <span className="tnum shrink-0 font-mono">
                 {money(l.price, cur)}
                 {l.planned != null && l.planned !== l.price ? (
-                  <span className="text-muted-foreground/50"> вместо {money(l.planned, cur)}</span>
+                  <span className="text-muted-foreground/75"> вместо {money(l.planned, cur)}</span>
                 ) : null}
               </span>
               <span
@@ -615,7 +667,7 @@ function Kpi({ k, v, note, tone }: { k: string; v: string; note?: string; tone?:
       <Label>{k}</Label>
       <div className="tnum mt-1.5 font-mono text-[22px] font-medium tracking-tight"
         style={{ color: tone === 'ok' ? 'var(--ok)' : undefined }}>{v}</div>
-      {note ? <div className="mt-1 text-[11px] text-muted-foreground/60">{note}</div> : null}
+      {note ? <div className="mt-1 text-[11px] text-muted-foreground/75">{note}</div> : null}
     </Card>
   )
 }
@@ -626,7 +678,7 @@ function Sum({ k, v, note, tone }: { k: string; v: string; note?: string; tone?:
       <Label>{k}</Label>
       <span className="tnum mt-0.5 block font-mono text-[17px] font-medium"
         style={{ color: tone === 'ok' ? 'var(--ok)' : undefined }}>{v}</span>
-      {note ? <span className="block text-[11px] text-muted-foreground/60">{note}</span> : null}
+      {note ? <span className="block text-[11px] text-muted-foreground/75">{note}</span> : null}
     </span>
   )
 }

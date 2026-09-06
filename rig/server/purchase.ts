@@ -124,41 +124,61 @@ function classify(error: string): Entry['reason'] {
   return 'отказ'
 }
 
+// Замок берётся ДО первого await и держится до конца проверок.
+//
+// Раньше защита от второго запуска была одной строкой `if (job.active)`,
+// а между ней и `job.active = true` стоял поход за балансом на площадку —
+// сотни миллисекунд. Два нажатия подряд, два открытых окна панели, повтор
+// запроса при обрыве связи — и оба вызова проходили проверку, пока флаг
+// ещё не поднят, а потом оба уходили покупать. Деньги списываются дважды,
+// и вернуть их нельзя: лоты уже куплены.
+let starting = false
+
 export async function startPurchase(lines: Line[], currency: Currency, push: () => void) {
-  if (job.active) return { error: 'закупка уже идёт' }
+  if (job.active || starting) return { error: 'закупка уже идёт' }
+  starting = true
+  try {
+    const key = marketKey()
+    if (!key) return { error: 'нет ключа площадки — положите его в tools/market.key' }
+    if (!lines.length) return { error: 'нечего покупать' }
 
-  const key = marketKey()
-  if (!key) return { error: 'нет ключа площадки — положите его в tools/market.key' }
-  if (!lines.length) return { error: 'нечего покупать' }
+    const acc: any = await balance(key)
+    if (!acc?.success) return { error: 'площадка не отдала баланс: ' + (acc?.error ?? 'нет ответа') }
 
-  const acc: any = await balance(key)
-  if (!acc?.success) return { error: 'площадка не отдала баланс: ' + (acc?.error ?? 'нет ответа') }
+    const accCur = String(acc.currency ?? '') as Currency
+    if (currency === 'UAH') return { error: 'в гривне площадка не торгует — валюта счёта ' + accCur }
+    if (currency !== accCur) return { error: 'валюта счёта ' + accCur + ', а цены показаны в ' + currency }
 
-  const accCur = String(acc.currency ?? '') as Currency
-  if (currency === 'UAH') return { error: 'в гривне площадка не торгует — валюта счёта ' + accCur }
-  if (currency !== accCur) return { error: 'валюта счёта ' + accCur + ', а цены показаны в ' + currency }
+    const planned = lines.reduce((n, l) => n + Math.max(0, Math.trunc(l.take)), 0)
+    const total = lines.reduce((n, l) => n + Math.max(0, Math.trunc(l.take)) * l.price, 0)
+    if (Number(acc.money) < total) {
+      return { error: 'на счету ' + acc.money + ' ' + accCur + ', нужно ' + total.toFixed(2) }
+    }
 
-  const planned = lines.reduce((n, l) => n + Math.max(0, Math.trunc(l.take)), 0)
-  const total = lines.reduce((n, l) => n + Math.max(0, Math.trunc(l.take)) * l.price, 0)
-  if (Number(acc.money) < total) {
-    return { error: 'на счету ' + acc.money + ' ' + accCur + ', нужно ' + total.toFixed(2) }
+    job = {
+      ...EMPTY,
+      active: true,
+      startedAt: Date.now(),
+      currency: accCur,
+      planned,
+      log: [],
+    }
+    push()
+
+    // Работа идёт своим чередом, ответ уходит сразу: панель дальше смотрит
+    // на состояние, а не ждёт конца.
+    void run(lines, key, accCur, settings().priceTolerance, push)
+    return { started: true, planned, total, currency: accCur }
+  } finally {
+    // Снимаем замок только после того, как job.active поднят: дальше
+    // от второго запуска защищает уже он.
+    starting = false
   }
-
-  job = {
-    ...EMPTY,
-    active: true,
-    startedAt: Date.now(),
-    currency: accCur,
-    planned,
-    log: [],
-  }
-  push()
-
-  // Работа идёт своим чередом, ответ уходит сразу: панель дальше смотрит
-  // на состояние, а не ждёт конца.
-  void run(lines, key, accCur, settings().priceTolerance, push)
-  return { started: true, planned, total, currency: accCur }
 }
+
+// Идёт ли закупка прямо сейчас — с учётом того, что она может быть
+// в середине проверок и ещё не отражена в job.
+export const purchaseBusy = () => job.active || starting
 
 async function run(lines: Line[], key: string, currency: Currency, tolerance: number, push: () => void) {
   // Список работ: у каждой позиции своё «сколько ещё надо».

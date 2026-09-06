@@ -8,15 +8,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { GC, readJson } from './paths.ts'
 import { counterLines, db, importLegacy, pushEvent, supplyRows } from './db.ts'
-import { ingestOne } from './ledger.ts'
+import { fresh, ingestOne } from './ledger.ts'
 import { refreshEquipped, refreshInventory } from './steam.ts'
 import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
 import { statusFile, stop } from './sender.ts'
-import { accountList, accountsApi, burnedList, graph, itemPool, marketScan, queuePreview, tree } from './api.ts'
+import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph, itemPool, marketScan, queuePreview, tree } from './api.ts'
 import { purchaseState, startPurchase, stopPurchase } from './purchase.ts'
 import { ACCOUNT, activeId as activeAccountId, list as accountList2 } from './accounts.ts'
-import { roadmap } from './roadmap.ts'
 import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
 import { reset as resetSettings, settings, update as updateSettings } from './settings.ts'
 
@@ -98,15 +97,6 @@ setInterval(() => {
 }, 15_000)
 
 app.get('/api/state', async () => buildState())
-
-// Roadmap считается живьём и не дёшево — держим короткий кеш, чтобы
-// частые опросы не гоняли счёт по трёмстам тысячам матчей.
-let rmCache: any = null
-let rmAt = 0
-app.get('/api/roadmap', async () => {
-  if (!rmCache || Date.now() - rmAt > 5000) { rmCache = roadmap(); rmAt = Date.now() }
-  return rmCache
-})
 
 // ───────────────────────── управление отправщиком ─────────────────────────
 //
@@ -223,6 +213,15 @@ app.get('/api/market/run', async () => purchaseState())
 app.get('/api/market', async (req: any) => marketScan(req.query?.force === '1', (req.query?.cur ?? 'USD')))
 app.get('/api/pool', async () => itemPool())
 app.get('/api/burned', async (req: any) => burnedList(Number(req.query?.limit) || 500))
+
+// Приходы сканера слепых лотов. Откладывание меняет farm-решения работника,
+// поэтому после него — толчок состояния.
+app.get('/api/arrivals', async () => arrivalList())
+app.post('/api/arrivals/aside', async (req: any) => {
+  const r = arrivalAside(String(req.body?.assetid ?? ''), !!req.body?.aside)
+  push()
+  return r
+})
 app.get('/api/counters', async () => counterLines())
 app.get('/api/tree', async (req: any) => tree(Number(req.query?.top) || settings().treeTop))
 
@@ -236,20 +235,14 @@ function ingestStatus() {
   for (const a of accountList2()) {
     const st = readJson<any>(path.join(GC, statusFile(a.id)), null)
     if (!Array.isArray(st?.recent)) continue
-    const seen = seenBy.get(a.id) ?? 0
-    let top = seen
-    for (const e of st.recent) {
-      if (!e?.ts || e.ts <= seen) continue
+    const { rows, watermark } = fresh(st.recent, seenBy.get(a.id) ?? 0)
+    for (const e of rows) {
       pushEvent(e, a.steamid)
       // В ленту попадает всё, включая silent. В журнал — только то, что GC
       // подтвердил: silent означает «не знаем», а не «сожжён».
-      if (e.match) ingestOne(db, e, a.steamid)
-      if (e.ts > top) top = e.ts
+      if (e.match) ingestOne(db, e as any, a.steamid)
     }
-    // Метка берётся по максимуму РАЗОБРАННЫХ, а не по первой строке отчёта:
-    // порядок в recent — дело отправщика, и один переставленный элемент
-    // отрезал бы всё, что легло после него.
-    if (top > seen) seenBy.set(a.id, top)
+    seenBy.set(a.id, watermark)
   }
 }
 

@@ -1,0 +1,454 @@
+{
+ "Kinetic: Agaric Flourish Eyes and Guise Icons": {
+  "code": "agaric_flourish_eyes_guise_icons",
+  "title": "Agaric Flourish Eyes and Guise Icons"
+ },
+ "Kinetic: Agaric Flourish Leech Seed Icon": {
+  "code": "agaric_flourish_leech_seed_icon",
+  "title": "Agaric Flourish Leech Seed Icon"
+ },
+ "Kinetic: Agaric Flourish Living Armor Icon": {
+  "code": "agaric_flourish_armor_icon",
+  "title": "Agaric Flourish Living Armor Icon"
+ },
+ "Kinetic: Agaric Flourish Overgrowth Icon": {
+  "code": "agaric_flourish_overgrowth_icon",
+  "title": "Agaric Flourish Overgrowth Icon"
+ },
+ "Kinetic: Allure of the Succubus": {
+  "code": "dagger_twirl",
+  "title": "Allure of the Succubus"
+ },
+ "Kinetic: Ambience of Reminiscence": {
+  "code": "reminiscence_ambient",
+  "title": "Ambience of Reminiscence"
+ },
+ "Kinetic: Azure Constellation Eclipse Icon": {
+  "code": "azure_constellation_mount",
+  "title": "Azure Constellation Eclipse Icon"
+ },
+ "Kinetic: Azure Constellation Lucent Beam Icon": {
+  "code": "azure_constellation_shield",
+  "title": "Azure Constellation Lucent Beam Icon"
+ },
+ "Kinetic: Azure Constellation Lunar Blessing Icon": {
+  "code": "azure_constellation_head",
+  "title": "Azure Constellation Lunar Blessing Icon"
+ },
+ "Kinetic: Azure Constellation Moon Glaives Icon": {
+  "code": "azure_constellation_glaive",
+  "title": "Azure Constellation Moon Glaives Icon"
+ },
+ "Kinetic: Bladebiter's Strike": {
+  "code": "bladebiter",
+  "title": "Bladebiter's Strike"
+ },
+ "Kinetic: Bladekeeper's Blade Dance": {
+  "code": "dc_bladekeeper_crit",
+  "title": "Bladekeeper's Blade Dance"
+ },
+ "Kinetic: Bladekeeper's Bladefury": {
+  "code": "dc_bladekeeper_bladefury",
+  "title": "Bladekeeper's Bladefury"
+ },
+ "Kinetic: Bladekeeper's Healing Ward": {
+  "code": "dc_bladekeeper_healing_ward",
+  "title": "Bladekeeper's Healing Ward"
+ },
+ "Kinetic: Bladekeeper's Omnislash": {
+  "code": "dc_bladekeeper_omnislash",
+  "title": "Bladekeeper's Omnislash"
+ },
+ "Kinetic: Bloody Ripper Consume Icon": {
+  "code": "bloody_ripper_arms",
+  "title": "Bloody Ripper Consume Icon"
+ },
+ "Kinetic: Bloody Ripper Feast, Open Wounds and Rage Icons": {
+  "code": "bloody_ripper_mask",
+  "title": "Bloody Ripper Feast, Open Wounds and Rage Icons"
+ },
+ "Kinetic: Bloody Ripper Infest Icon": {
+  "code": "bloody_ripper_back",
+  "title": "Bloody Ripper Infest Icon"
+ },
+ "Kinetic: Booties of Travel!": {
+  "code": "bot",
+  "title": "Booties of Travel!"
+ },
+ "Kinetic: Compendium Bloody Ripper Consume Icon": {
+  "code": "compendium_bloody_ripper_arms",
+  "title": "Compendium Bloody Ripper Consume Icon"
+ },
+ "Kinetic: Compendium Bloody Ripper Feast, Open Wounds and Rage Icons": {
+  "code": "compendium_bloody_ripper_mask",
+  "title": "Compendium Bloody Ripper Feast, Open Wounds and Rage Icons"
+ },
+ "Kinetic: Compendium Bloody Ripper Infest Icon": {
+  "code": "compendium_bloody_ripper_back",
+  "title": "Compendium Bloody Ripper Infest Icon"
+ },
+ "Kinetic: Crested Umbra Command Aura Icon": {
+  "code": "crested_umbra_duty",
+  "title": "Crested Umbra Command Aura Icon"
+ },
+ "Kinetic: Crested Umbra Magic Missile Icon": {
+  "code": "crested_umbra_glaive",
+  "title": "Crested Umbra Magic Missile Icon"
+ },
+ "Kinetic: Crested Umbra Nether Swap Icon": {
+  "code": "crested_umbra_skirt",
+  "title": "Crested Umbra Nether Swap Icon"
+ },
+ "Kinetic: Crested Umbra Wave of Terror Icon": {
+  "code": "crested_umbra_virtue",
+  "title": "Crested Umbra Wave of Terror Icon"
+ },
+ "Kinetic: Crow's Feet": {
+  "code": "ftp_dendi_back",
+  "title": "Crow's Feet"
+ },
+ "Kinetic: Crown of Hells!": {
+  "code": "f2p_doom",
+  "title": "Crown of Hells!"
+ },
+ "Kinetic: Cyclopean Marauder Gaze Icons": {
+  "code": "cyclopean_marauder_gaze_icons",
+  "title": "Cyclopean Marauder Gaze Icons"
+ },
+ "Kinetic: Cyclopean Marauder Storm Bolt Icon": {
+  "code": "cyclopean_marauder_storm_bolt_icon",
+  "title": "Cyclopean Marauder Storm Bolt Icon"
+ },
+ "Kinetic: Deadwinter's Soul": {
+  "code": "deadwinter_soul",
+  "title": "Deadwinter's Soul"
+ },
+ "Kinetic: Dizzying Punch!": {
+  "code": "dizzying_punch",
+  "title": "Dizzying Punch!"
+ },
+ "Kinetic: Dominator's Stance": {
+  "code": "burning_fiend",
+  "title": "Dominator's Stance"
+ },
+ "Kinetic: Dreamcoil of Reminiscence": {
+  "code": "reminiscence_dreamcoil",
+  "title": "Dreamcoil of Reminiscence"
+ },
+ "Kinetic: Eldwurm's Touch Bow Icons": {
+  "code": "eldwurms_touch_bow_icons",
+  "title": "Eldwurm's Touch Bow Icons"
+ },
+ "Kinetic: Eldwurm's Touch Wave of Silence Icon": {
+  "code": "eldwurms_touch_wave_of_silence_icon",
+  "title": "Eldwurm's Touch Wave of Silence Icon"
+ },
+ "Kinetic: Empyrean": {
+  "code": "emp",
+  "title": "Empyrean"
+ },
+ "Kinetic: Epitaphic Trap": {
+  "code": "epitaphic_bonds_trap",
+  "title": "Epitaphic Trap"
+ },
+ "Kinetic: Everlasting Array": {
+  "code": "everlasting_array",
+  "title": "Everlasting Array"
+ },
+ "Kinetic: Eye of the Beholder Abililty Icons": {
+  "code": "blueice_ability_icons",
+  "title": "Eye of the Beholder Abililty Icons"
+ },
+ "Kinetic: Fiend Cleaver God's Strength Icon": {
+  "code": "fiend_cleaver_gods_strength_icon",
+  "title": "Fiend Cleaver God's Strength Icon"
+ },
+ "Kinetic: Fiend Cleaver Great Cleave Icon": {
+  "code": "fiend_cleaver_great_cleave_icon",
+  "title": "Fiend Cleaver Great Cleave Icon"
+ },
+ "Kinetic: Fiend Cleaver Storm Bolt Icon": {
+  "code": "fiend_cleaver_storm_bolt_icon",
+  "title": "Fiend Cleaver Storm Bolt Icon"
+ },
+ "Kinetic: Fiend Cleaver Warcry Icon": {
+  "code": "fiend_cleaver_warcry_icon",
+  "title": "Fiend Cleaver Warcry Icon"
+ },
+ "Kinetic: Fireborn Assault": {
+  "code": "odachi",
+  "title": "Fireborn Assault"
+ },
+ "Kinetic: Fish!": {
+  "code": "fishstick",
+  "title": "Fish!"
+ },
+ "Kinetic: Flames of the Pyre": {
+  "code": "pyre",
+  "title": "Flames of the Pyre"
+ },
+ "Kinetic: Flourishing Lodestar": {
+  "code": "lodestar",
+  "title": "Flourishing Lodestar"
+ },
+ "Kinetic: Free to Fear": {
+  "code": "fear",
+  "title": "Free to Fear"
+ },
+ "Kinetic: Ghastly Matriarch Exorcism Icon": {
+  "code": "ghastly_matriarch_exorcism_icon",
+  "title": "Ghastly Matriarch Exorcism Icon"
+ },
+ "Kinetic: Ghostly Wrath of Ka": {
+  "code": "necronub_reapers_scythe",
+  "title": "Ghostly Wrath of Ka"
+ },
+ "Kinetic: Glorious!": {
+  "code": "glory",
+  "title": "Glorious!"
+ },
+ "Kinetic: Good Fortune Remnants": {
+  "code": "ss_fortune",
+  "title": "Good Fortune Remnants"
+ },
+ "Kinetic: Harlequin Animation": {
+  "code": "harlequin",
+  "title": "Harlequin Animation"
+ },
+ "Kinetic: Harlequin Null Field Icon": {
+  "code": "harlequin_head",
+  "title": "Harlequin Null Field Icon"
+ },
+ "Kinetic: Harlequin Particles and Fade Bolt Icon": {
+  "code": "harlequin_weapon",
+  "title": "Harlequin Particles and Fade Bolt Icon"
+ },
+ "Kinetic: Harlequin Spell Steal Icon": {
+  "code": "harlequin_mantle",
+  "title": "Harlequin Spell Steal Icon"
+ },
+ "Kinetic: Harlequin Telekinesis Icons": {
+  "code": "harlequin_cape",
+  "title": "Harlequin Telekinesis Icons"
+ },
+ "Kinetic: Horns of Inner Abysm": {
+  "code": "abysm",
+  "title": "Horns of Inner Abysm"
+ },
+ "Kinetic: Hunter of Kings Feral Impulse Icon": {
+  "code": "hunter_of_kings_feral_impulse",
+  "title": "Hunter of Kings Feral Impulse Icon"
+ },
+ "Kinetic: Hunter of Kings Shapeshift and Howl Icons": {
+  "code": "hunter_of_kings_shapeshift",
+  "title": "Hunter of Kings Shapeshift and Howl Icons"
+ },
+ "Kinetic: Hunter of Kings Summon Wolves Icon": {
+  "code": "hunter_of_kings_summon",
+  "title": "Hunter of Kings Summon Wolves Icon"
+ },
+ "Kinetic: Impatient Maiden": {
+  "code": "impatient_maiden",
+  "title": "Impatient Maiden"
+ },
+ "Kinetic: Iron Tail!": {
+  "code": "iron",
+  "title": "Iron Tail!"
+ },
+ "Kinetic: Krobelus": {
+  "code": "moth",
+  "title": "Krobelus"
+ },
+ "Kinetic: Liveliness of Lucentyr": {
+  "code": "lucentyr",
+  "title": "Liveliness of Lucentyr"
+ },
+ "Kinetic: Lucent Gate Aura Icon": {
+  "code": "lucent_gate_aura",
+  "title": "Lucent Gate Aura Icon"
+ },
+ "Kinetic: Lucent Gate Eclipse Icon": {
+  "code": "lucent_gate_eclipse",
+  "title": "Lucent Gate Eclipse Icon"
+ },
+ "Kinetic: Lucent Gate Imprisonment Icon": {
+  "code": "lucent_gate_imprisonment",
+  "title": "Lucent Gate Imprisonment Icon"
+ },
+ "Kinetic: Lucent Gate Particles and Orb Icon": {
+  "code": "lucent_gate_orb",
+  "title": "Lucent Gate Particles and Orb Icon"
+ },
+ "Kinetic: Monstrous Reprisal Back Stab Icon": {
+  "code": "monstrous_reprisal_back_stab",
+  "title": "Monstrous Reprisal Back Stab Icon"
+ },
+ "Kinetic: Monstrous Reprisal Blink Strike Icon": {
+  "code": "monstrous_reprisal_blink_strike",
+  "title": "Monstrous Reprisal Blink Strike Icon"
+ },
+ "Kinetic: Monstrous Reprisal Permanent Invisibility Icon": {
+  "code": "monstrous_reprisal_permanent_invisibility",
+  "title": "Monstrous Reprisal Permanent Invisibility Icon"
+ },
+ "Kinetic: Monstrous Reprisal Smoke Screen Icon": {
+  "code": "wmonstrous_reprisal_smoke_screen",
+  "title": "Monstrous Reprisal Smoke Screen Icon"
+ },
+ "Kinetic: Moon Griffon": {
+  "code": "moon_griffon",
+  "title": "Moon Griffon"
+ },
+ "Kinetic: Muh Keen Gun": {
+  "code": "MGC",
+  "title": "Muh Keen Gun"
+ },
+ "Kinetic: Obeisance of the Keeper": {
+  "code": "obeisance_of_the_keeper",
+  "title": "Obeisance of the Keeper"
+ },
+ "Kinetic: Orb of Reminiscence": {
+  "code": "reminiscence_orb",
+  "title": "Orb of Reminiscence"
+ },
+ "Kinetic: Pits of Omoz": {
+  "code": "eyeoffetizu",
+  "title": "Pits of Omoz"
+ },
+ "Kinetic: Pounce of the Silent Ripper": {
+  "code": "silent_ripper",
+  "title": "Pounce of the Silent Ripper"
+ },
+ "Kinetic: Prosperity Remnants": {
+  "code": "es_prosperity",
+  "title": "Prosperity Remnants"
+ },
+ "Kinetic: Rampant Outrage": {
+  "code": "rampant",
+  "title": "Rampant Outrage"
+ },
+ "Kinetic: Ravening_Wings_Blur_Icon": {
+  "code": "ravening_wings_blur_icon",
+  "title": "Ravening_Wings_Blur_Icon"
+ },
+ "Kinetic: Ravening_Wings_Glaive_Icons": {
+  "code": "ravening_wings_glaive_icons",
+  "title": "Ravening_Wings_Glaive_Icons"
+ },
+ "Kinetic: Red Moon": {
+  "code": "red_moon",
+  "title": "Red Moon"
+ },
+ "Kinetic: Rift of Reminiscence": {
+  "code": "reminiscence_rift",
+  "title": "Rift of Reminiscence"
+ },
+ "Kinetic: Rotting Bolt of Ka": {
+  "code": "necronub_base_attack",
+  "title": "Rotting Bolt of Ka"
+ },
+ "Kinetic: Salvaged Sword": {
+  "code": "salvaged_sword",
+  "title": "Salvaged Sword"
+ },
+ "Kinetic: Sands of Ka": {
+  "code": "necronub_ambient",
+  "title": "Sands of Ka"
+ },
+ "Kinetic: Scarab Swarm of Ka": {
+  "code": "necronub_death_pulse",
+  "title": "Scarab Swarm of Ka"
+ },
+ "Kinetic: Serene Honor": {
+  "code": "serene_honor",
+  "title": "Serene Honor"
+ },
+ "Kinetic: Stallion's Ability Icons": {
+  "code": "dc_centaur_head_icons",
+  "title": "Stallion's Ability Icons"
+ },
+ "Kinetic: Stallion's Double Edge": {
+  "code": "dc_centaur_double_edge",
+  "title": "Stallion's Double Edge"
+ },
+ "Kinetic: Surgical Precision Meat Hook and Dismember Icons": {
+  "code": "surgical_prevision_hook",
+  "title": "Surgical Precision Meat Hook and Dismember Icons"
+ },
+ "Kinetic: Surgical Precision Rot and Flesh Heap Icons": {
+  "code": "surgical_prevision_apron",
+  "title": "Surgical Precision Rot and Flesh Heap Icons"
+ },
+ "Kinetic: Sylvan Cascade!": {
+  "code": "windy",
+  "title": "Sylvan Cascade!"
+ },
+ "Kinetic: Teleboltin'!": {
+  "code": "telebolt",
+  "title": "Teleboltin'!"
+ },
+ "Kinetic: The Knight's Repose": {
+  "code": "swordonshoulder",
+  "title": "The Knight's Repose"
+ },
+ "Kinetic: Tidebringer of the Divine Anchor": {
+  "code": "tidebringer_divine_anchor",
+  "title": "Tidebringer of the Divine Anchor"
+ },
+ "Kinetic: Timberthaw Chakram": {
+  "code": "timberthaw_chakram",
+  "title": "Timberthaw Chakram"
+ },
+ "Kinetic: Tools of the Final Utterance Icons": {
+  "code": "bts_3_silencer",
+  "title": "Tools of the Final Utterance Icons"
+ },
+ "Kinetic: Torrent of the Divine Anchor": {
+  "code": "torrent_divine_anchor",
+  "title": "Torrent of the Divine Anchor"
+ },
+ "Kinetic: Trapper's Treachery": {
+  "code": "trapper",
+  "title": "Trapper's Treachery"
+ },
+ "Kinetic: Triumphant Timelord": {
+  "code": "triumphant_timelord",
+  "title": "Triumphant Timelord"
+ },
+ "Kinetic: Turbulent Teleport": {
+  "code": "turbulent_teleport",
+  "title": "Turbulent Teleport"
+ },
+ "Kinetic: Twin Deaths' Haunting": {
+  "code": "death_protest",
+  "title": "Twin Deaths' Haunting"
+ },
+ "Kinetic: Twister": {
+  "code": "twister",
+  "title": "Twister"
+ },
+ "Kinetic: When Nature Attacks": {
+  "code": "when_nature_attacks",
+  "title": "When Nature Attacks"
+ },
+ "Kinetic: Wraith Spin": {
+  "code": "wraith_spin",
+  "title": "Wraith Spin"
+ },
+ "Kinetic: Year Beast Hellfire Reincarnate Icons": {
+  "code": "year_beast_hellfire_reincarnate",
+  "title": "Year Beast Hellfire Reincarnate Icons"
+ },
+ "Kinetic: Year Beast Mortal Strike Icon": {
+  "code": "year_beast_mortal_strike",
+  "title": "Year Beast Mortal Strike Icon"
+ },
+ "Kinetic: Year Beast Vampiric Aura Icon": {
+  "code": "year_beast_vampiric_aura",
+  "title": "Year Beast Vampiric Aura Icon"
+ },
+ "Kinetic: Yulsaria's Glacier": {
+  "code": "glacier",
+  "title": "Yulsaria's Glacier"
+ }
+}

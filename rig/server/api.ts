@@ -6,9 +6,11 @@ import { TOOLS, marketKey, readJson } from './paths.ts'
 import { db } from './db.ts'
 import { ACCOUNT, active, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink } from './accounts.ts'
 import { buildGraph, type GraphEntity } from './graph.ts'
+import { hasMap } from './supply.ts'
 import { queueFor } from './queue.ts'
 import { invOf } from './steam.ts'
 import { picks } from './autopilot.ts'
+import { arrivalsOf, arrivalSummary, setAside } from './arrival.ts'
 import { pieceKey } from './itemset.ts'
 import { settings } from './settings.ts'
 import { balance, fetchPrices, gemName, impliedRate, nbuRate, rank, type Currency, type Offer } from './market.ts'
@@ -155,7 +157,8 @@ export function tree(top = 12): TreeNode {
   )
 
   const gems: TreeNode[] = []
-  for (const p of list) {
+  // Карту строит обходчик; до него разворачивать нечего, и падать незачем.
+  for (const p of hasMap(db) ? list : []) {
     const rows = p.kind === 'team'
       ? db.prepare(`select match_id, league_id from vmatch where radiant = ? or dire = ?`).all(p.id, p.id)
       : db.prepare(`select v.match_id, v.league_id from vmatch v join vplayer pl on pl.match_id = v.match_id where pl.account_id = ?`).all(p.id)
@@ -225,7 +228,7 @@ export function burnedList(limit = 500) {
 
   // Кому этот матч служил: сверяем с наборами гемов из инвентаря.
   const sets = new Map<string, Set<string>>()
-  for (const p of picks()) {
+  for (const p of hasMap(db) ? picks() : []) {
     const ids = p.kind === 'team'
       ? db.prepare(`select match_id from vmatch where radiant = ? or dire = ?`).all(p.id, p.id)
       : db.prepare(
@@ -252,6 +255,29 @@ export function burnedList(limit = 500) {
       }
     }),
   }
+}
+
+// ── приходы ──
+//
+// Сканер слепых лотов: что лежало в купленной вещи до нас. Список идёт
+// с текущим числом и отметкой «ушло» — вещь могли уже продать, и тогда
+// строка остаётся историей, а не делом.
+export function arrivalList() {
+  const acc = ACCOUNT()
+  const now = new Map(invOf(acc).rows.map(r => [r.assetid, r.value]))
+  return {
+    summary: arrivalSummary(db),
+    rows: arrivalsOf(db).map(r => ({
+      ...r,
+      now: now.get(r.assetid) ?? null,
+      gone: !now.has(r.assetid),
+    })),
+  }
+}
+
+export function arrivalAside(assetid: string, aside: boolean) {
+  setAside(db, assetid, aside)
+  return { ok: true }
 }
 
 // ── пул наборов ──
@@ -385,6 +411,7 @@ async function prices(currency: Currency, force: boolean): Promise<Cache> {
 // Матчи сущности из карты. Список нужен и для потолка, и для пересечения
 // с тем, что уже накручивается, поэтому он считается один раз на заход.
 function entityIds(kind: string, id: number): string[] {
+  if (!hasMap(db)) return []
   const rows = kind === 'team'
     ? db.prepare(`select match_id from vmatch where radiant = ? or dire = ?`).all(id, id)
     : db.prepare(

@@ -6,9 +6,19 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { TOOLS, GC, SNAPS, readJson } from './paths.ts'
 import { migrate, splitByAccount } from './migrate.ts'
+import { ARRIVALS_DDL } from './arrival.ts'
 import { ACCOUNT } from './accounts.ts'
 
-export const db = new DatabaseSync(path.join(TOOLS, 'rig.db'))
+// Рабочая база — или та, что назвали в RIG_DB.
+//
+// Модуль открывает базу прямо при импорте, и это тянет за собой всё, что
+// его импортирует: любой тест, который случайно коснулся steam.ts или
+// autopilot.ts, открывал живой rig.db на 250 МБ, гонял по нему миграции
+// и конкурировал за WAL-замок с работающей панелью. Тесты от этого падали
+// через раз, а данные оказывались в руках у процесса, которому они не нужны.
+export const DB_FILE = process.env.RIG_DB || path.join(TOOLS, 'rig.db')
+
+export const db = new DatabaseSync(DB_FILE)
 
 db.exec(`
   pragma journal_mode = wal;
@@ -69,10 +79,15 @@ db.exec(`
     primary key (ts, account, match_id)
   );
 
+  -- приход каждой вещи: с каким числом приехала и чем оно объясняется.
+  -- Заводится сканером прихода (arrival.ts) при первом взгляде на вещь.
+  ${ARRIVALS_DDL}
+
   create index if not exists idx_em on entity_matches (kind, entity_id);
   create index if not exists idx_counters_gem on counters (gem, ts);
   create index if not exists idx_counters_ts on counters (ts);
   create index if not exists idx_events_ts on events (ts desc);
+  create index if not exists idx_arrivals_aside on arrivals (aside, account);
 `)
 
 // Схема догоняется до текущей при каждом старте. Идемпотентно.

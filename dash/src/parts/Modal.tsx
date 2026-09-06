@@ -48,12 +48,51 @@ export function Modal({
   const close = useRef(onClose)
   close.current = onClose
 
+  // Фокус остаётся внутри окна и возвращается туда, откуда пришёл.
+  //
+  // role="dialog" aria-modal="true" — это обещание, а не механизм: браузер
+  // сам ничего не запирает. Фокус уводился в окно один раз, а дальше Tab
+  // спокойно уходил на страницу позади — в форму, которую окно закрывает
+  // собой, и к кнопкам, которые в этот момент нажимать нельзя. За такими
+  // кнопками здесь необратимые действия.
   useEffect(() => {
     if (!open) return
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') close.current() }
-    document.addEventListener('keydown', esc)
-    box.current?.focus()
-    return () => document.removeEventListener('keydown', esc)
+    const from = document.activeElement as HTMLElement | null
+
+    const focusable = () => {
+      const el = box.current
+      if (!el) return [] as HTMLElement[]
+      return [...el.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )].filter(n => n.offsetParent !== null || n === document.activeElement)
+    }
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { close.current(); return }
+      if (e.key !== 'Tab') return
+      const list = focusable()
+      if (!list.length) { e.preventDefault(); box.current?.focus(); return }
+      const first = list[0]
+      const last = list[list.length - 1]
+      const here = document.activeElement
+      // Пришли извне — заворачиваем на край, а не выпускаем.
+      if (!box.current?.contains(here)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return }
+      if (e.shiftKey && here === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && here === last) { e.preventDefault(); first.focus() }
+    }
+
+    document.addEventListener('keydown', onKey)
+    // Первым делом — первое поле, а не сама коробка: иначе первый Tab
+    // тратится впустую.
+    const first = focusable()[0]
+    ;(first ?? box.current)?.focus()
+
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      // Вернуть фокус туда, откуда открыли: без этого он падает в начало
+      // страницы, и после закрытия окна человек начинает обход заново.
+      if (from && document.contains(from)) from.focus()
+    }
   }, [open])
 
   if (!open) return null

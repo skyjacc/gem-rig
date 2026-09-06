@@ -22,6 +22,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { GC, TOOLS } from './paths.ts'
 import { burnedCount, db } from './db.ts'
+import { asideSet } from './arrival.ts'
 import { decide, freshSendAt, type Action } from './worker.ts'
 import { queueFor, sendsNeeded, type Pick } from './queue.ts'
 import { invOf, refreshInventory } from './steam.ts'
@@ -108,10 +109,15 @@ function gemMap(): any[] {
 // Наибольший счётчик по каждому гему ЭТОГО аккаунта: по нему видно, дошёл ли
 // он до своего потолка. Чужие счётчики здесь были бы прямой ложью — потолок
 // решает, когда перестать тратить матчи.
+//
+// Отложенное на продажу не решает ничьих потолков: вещь уйдёт, и жечь
+// под неё матчи — тратить запас впустую.
 function counters(steamid: string): Map<string, number> {
+  const aside = asideSet(db, steamid)
   const by = new Map<string, number>()
   for (const r of invOf(steamid).rows) {
     if (!r.gem || r.gem === '—') continue
+    if (aside.has(r.assetid)) continue
     by.set(r.gem, Math.max(by.get(r.gem) ?? 0, r.value))
   }
   return by
@@ -134,13 +140,18 @@ const fingerprint = (steamid: string) => invOf(steamid).rows.map(r => r.assetid)
 
 // Что жечь: всё, чьи гемы лежат в инвентаре ЭТОГО аккаунта и чья сущность
 // известна. Выбирать вручную не нужно — состав и есть выбор.
+//
+// Отложенное на продажу не считается: гем, у которого отложены все вещи,
+// выпадает из очереди целиком, и его запас остаётся тем, что купят позже.
 export function picks(steamid: string = ACCOUNT()): (Pick & { objects: number })[] {
   const map = gemMap()
   if (!map.length) return []
 
+  const aside = asideSet(db, steamid)
   const byGem = new Map<string, number>()
   for (const r of invOf(steamid).rows) {
     if (!r.gem || r.gem === '—') continue
+    if (aside.has(r.assetid)) continue
     byGem.set(r.gem, (byGem.get(r.gem) ?? 0) + 1)
   }
 
@@ -213,17 +224,39 @@ function made(a: Account, u: Unit): number {
 }
 
 // Замеры для подбора паузы: последние отправки этого аккаунта с их темпом.
-function samples(id: string, delay: number): Sample[] {
-  const st = status(id)
-  const recent: any[] = st?.recent ?? []
-  return recent
+// Замеры для подбора паузы: каждая отправка с ТОЙ паузой, на которой она
+// действительно ушла.
+//
+// Раньше сюда подставлялась нынешняя пауза панели — одна и та же на все
+// записи. Из-за этого фильтр в advise() («судим только по текущему темпу»)
+// не отсекал ничего: замеры со вчерашней паузы в 5 секунд попадали в одну
+// кучу с сегодняшними, и советчик считал чистыми те отправки, которые
+// на нынешнем темпе никогда не делались. Отправщик пишет свою паузу
+// в каждую запись отчёта — берём её.
+export function toSamples(recent: any[], fallback: number): Sample[] {
+  return (Array.isArray(recent) ? recent : [])
     .filter(e => e?.result)
-    .map(e => ({ delay, ts: Number(e.ts) || 0, result: e.result as Sample['result'] }))
+    .map(e => ({
+      delay: Number(e.delay) > 0 ? Number(e.delay) : fallback,
+      ts: Number(e.ts) || 0,
+      result: e.result as Sample['result'],
+    }))
     .reverse()
+}
+
+function samples(id: string, delay: number): Sample[] {
+  return toSamples(status(id)?.recent ?? [], delay)
 }
 
 export function paceAdvice(id: string) {
   return advise(samples(id, unit(id).delay), settings().pace)
+}
+
+// Доля отправок, за которые действительно начислили. По ней и растяжка
+// по сроку, и оценка «сколько осталось» — иначе оба числа врут одинаково.
+function credit(id: string): number {
+  const t = status(id)?.tally ?? { update: 0, dup: 0 }
+  return creditRate(Number(t.update) || 0, Number(t.dup) || 0)
 }
 
 // Сколько отправок ещё предстоит: посчитанное при пересборке минус
@@ -330,8 +363,7 @@ async function tickOne(a: Account, push: () => void) {
     if (u.even && u.until) {
       // Долг считается в начислениях, а отправок на него уйдёт больше:
       // часть отвечает пустым. Делим срок на отправки, а не на долг.
-      const t = status(a.id)?.tally ?? { update: 0, dup: 0 }
-      const rate = creditRate(Number(t.update) || 0, Number(t.dup) || 0)
+      const rate = credit(a.id)
       const want = evenDelay(u.until - Date.now(), Math.round(sendsLeft(u, count) / rate), settings().pace.floor)
       if (want !== u.delay) {
         u.delay = writePace(a.id, want)
@@ -443,10 +475,17 @@ export function unitState(a: Account) {
       age: box.ts ? Math.round((Date.now() - box.ts) / 1000) : null,
       items: box.rows.length,
     },
-    // Сколько осталось на самом деле: до потолков, а не до конца очереди.
-    // По длине очереди выходило 28 часов там, где работы на восемь.
+    // Сколько осталось на самом деле.
+    //
+    // Два поправочных множителя, и оба взяты из работы, а не из головы.
+    // Первый: считаем до потолков, а не до конца очереди — по длине очереди
+    // выходило 28 часов там, где работы на восемь. Второй: часть отправок
+    // отвечает пустым и долг не уменьшает, поэтому их нужно больше, чем
+    // начислений. Без этого множителя срок расходился ровно во столько раз,
+    // во сколько пустых больше нуля: при половине пустых час превращался
+    // в два, а панель до последнего обещала час.
     etaMinutes: u.queueLength
-      ? Math.round(((u.needSends ? sendsLeft(u, made(a, u)) : u.queueLength) * u.delay) / 60_000)
+      ? Math.round(((u.needSends ? sendsLeft(u, made(a, u)) : u.queueLength) / credit(a.id)) * u.delay / 60_000)
       : 0,
     log: u.log.slice(0, 20),
   }

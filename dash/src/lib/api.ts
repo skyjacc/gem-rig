@@ -35,15 +35,20 @@ export type Gem = {
   supplyKind: SupplyKind
   bare: number
   socketed: number
+  // Сколько вещей гема отложено из фарма на продажу.
+  aside: number
+  // Значка у отдельной вещи нет: он один на весь гем и лежит выше, в icon
+  // группы. Хеш картинки Steam — полторы сотни знаков на вещь, и на шестистах
+  // вещах это сто килобайт одного и того же текста в каждом снимке.
   rows: {
     assetid: string
     name: string
     hero: string
     value: number
     equipped: boolean
-    icon: string
     // Чем несётся счётчик: голый самоцвет или предмет с вставленным.
     carrier: 'gem' | 'item'
+    aside: boolean
   }[]
 }
 
@@ -51,16 +56,11 @@ export type CatalogRow = {
   name: string
   short: string
   price: string
-  listings: number
   icon: string
   market: string
-  kind: Kind
-  entityName: string | null
   supply: number | null
   supplyKind: SupplyKind
-  per1000: number | null
   ownedItems: number
-  ownedValue: number | null
 }
 
 export type SendEvent = {
@@ -178,6 +178,8 @@ export type State = {
   inv: InvState
   burned: number
   keys: { opendota: boolean; steam: boolean }
+  // Сканер прихода: open — выигрыши, ждущие решения.
+  arrivals: { open: number; wins: number; fresh: number }
 }
 
 export type AccountRow = {

@@ -55,3 +55,31 @@ export function ingestOne(
   ).run(String(account), String(e.match), e.league ? String(e.league) : null, Math.trunc(e.ts), 'live', state)
   return true
 }
+
+export type Recent = { ts: number; match?: string; league?: string | null; result: string }
+
+// Разбор отчёта отправщика: что нового с прошлого раза.
+//
+// Жил внутри index.ts и потому не проверялся ничем, хотя это единственное
+// место, где расход попадает в журнал. Здесь без ввода-вывода: на вход
+// список из status-<id>.json и прошлая метка, на выход — что записать
+// и какая метка теперь.
+//
+// Метка берётся по МАКСИМУМУ разобранного, а не по первой строке отчёта.
+// Порядок в recent — дело отправщика, и одна переставленная запись отрезала
+// бы всё, что легло после неё: расход просто не попал бы в журнал, а очередь
+// на следующей пересборке выдала бы уже потраченные матчи по второму разу.
+export function fresh(recent: Recent[], seen: number): { rows: Recent[]; watermark: number } {
+  const rows: Recent[] = []
+  let watermark = seen
+  for (const e of Array.isArray(recent) ? recent : []) {
+    const ts = Number(e?.ts) || 0
+    if (!ts || ts <= seen) continue
+    rows.push(e)
+    if (ts > watermark) watermark = ts
+  }
+  // Разбираем от старых к новым: журнал должен ложиться в том же порядке,
+  // в каком отправлялось.
+  rows.sort((a, b) => Number(a.ts) - Number(b.ts))
+  return { rows, watermark }
+}

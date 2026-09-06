@@ -38,6 +38,7 @@ type Server struct {
 	Steam     *steam.Client
 	Scanner   *scanner.Scanner
 	DMarket   *scanner.DMarketScanner
+	LisSkins  *scanner.LisScanner
 	Guard     *guard.Guard
 	Hub       *hub.Hub
 	Limiter   *ratelimit.Limiter
@@ -229,6 +230,9 @@ func (s *Server) handleFindings(w http.ResponseWriter, r *http.Request) {
 	findings := s.Scanner.Findings()
 	if s.DMarket != nil {
 		findings = append(findings, s.DMarket.Findings()...)
+	}
+	if s.LisSkins != nil {
+		findings = append(findings, s.LisSkins.Findings()...)
 	}
 	sort.Slice(findings, func(i, j int) bool { return findings[i].NetSpread > findings[j].NetSpread })
 	if src := r.URL.Query().Get("source"); src != "" {

@@ -182,11 +182,30 @@ func (l *LisSkins) Lots(ctx context.Context) ([]LisLot, error) {
 	return body.Items, nil
 }
 
+// Scan downloads the export once and returns both halves of it: the lots, and
+// the loose-gem quotes derived from them.
+//
+// The export is 20 MB and carries every lot's sockets, but only the gems sold
+// as gems were ever read out of it — the eighty items actually carrying a
+// kinetic gem were downloaded and discarded on every refresh. Fetching twice
+// to recover them would be absurd, so both readings come from one download.
+func (l *LisSkins) Scan(ctx context.Context) ([]LisLot, map[string]pricing.Quote, error) {
+	lots, err := l.Lots(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	return lots, l.quotesFrom(lots), nil
+}
+
 func (l *LisSkins) GemQuotes(ctx context.Context) (map[string]pricing.Quote, error) {
 	lots, err := l.Lots(ctx)
 	if err != nil {
 		return nil, err
 	}
+	return l.quotesFrom(lots), nil
+}
+
+func (l *LisSkins) quotesFrom(lots []LisLot) map[string]pricing.Quote {
 	rate := l.FX.Rate()
 	cheapest := make(map[string]float64)
 	count := make(map[string]int)
@@ -208,5 +227,17 @@ func (l *LisSkins) GemQuotes(ctx context.Context) (map[string]pricing.Quote, err
 			Volume: count[name],
 		}
 	}
-	return out, nil
+	return out
+}
+
+// KineticGems lists the real kinetic gems physically in this lot, using the
+// same sprite test applied to Valve's own markup.
+func (lot LisLot) KineticGems() []string {
+	var out []string
+	for _, g := range lot.Gems {
+		if g.Kinetic() && g.Name != "" && !strings.EqualFold(g.Name, "Empty Socket") {
+			out = append(out, g.Name)
+		}
+	}
+	return out
 }

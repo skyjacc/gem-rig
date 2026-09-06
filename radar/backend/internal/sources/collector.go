@@ -38,6 +38,13 @@ type Collector struct {
 	Log *journal.Journal
 	// Past records how each gem's valuation moves over time.
 	Past *history.Store
+	// OnLisLots receives the Lis-Skins export after every refresh.
+	//
+	// The export carries every lot's sockets and is downloaded here anyway;
+	// handing it on costs nothing and turns a price-only source into a third
+	// place to find carriers.
+	OnLisLots func(lots []LisLot, err error)
+
 	// OrderBook reports the best standing buy order for a gem, when known.
 	// Plotted alongside the median, it shows the gap between what sellers ask
 	// and what buyers actually pay.
@@ -129,7 +136,7 @@ func (c *Collector) Refresh(ctx context.Context) {
 	// empty while 51 gems had prices.
 	defer c.recordHistory()
 
-	free := []quoteFetcher{c.Waxpeer, c.LootFarm, c.LisSkins, c.Steam}
+	free := []quoteFetcher{c.Waxpeer, c.LootFarm, c.Steam}
 	var wg sync.WaitGroup
 	for _, s := range free {
 		wg.Add(1)
@@ -142,6 +149,21 @@ func (c *Collector) Refresh(ctx context.Context) {
 			c.record(src.Name(), len(quotes), true, err)
 		}(s)
 	}
+
+	// Lis-Skins runs apart from the others because its one download serves two
+	// purposes: the loose-gem quotes below, and the carriers handed to OnLisLots.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		lots, quotes, err := c.LisSkins.Scan(ctx)
+		if len(quotes) > 0 {
+			c.Book.SetAll(c.LisSkins.Name(), quotes)
+		}
+		c.record(c.LisSkins.Name(), len(quotes), true, err)
+		if c.OnLisLots != nil {
+			c.OnLisLots(lots, err)
+		}
+	}()
 	wg.Wait()
 
 	if c.DMarket == nil || !c.DMarket.Configured() {

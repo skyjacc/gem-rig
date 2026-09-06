@@ -109,6 +109,11 @@ func main() {
 	}
 	dmScan := scanner.NewDMarketScanner(dmarket, book, events, scan)
 	dmScan.SetJournal(audit)
+	// Lis-Skins publishes every lot's sockets in an export the price collector
+	// already downloads. Reading the carriers out of it costs no extra request.
+	lisScan := scanner.NewLisScanner(book, events, scan, fx.Rate)
+	lisScan.SetJournal(audit)
+	collector.OnLisLots = lisScan.Ingest
 	tradeGuard := guard.New(steamClient, marketClient, events, audit, cfg.SteamKey)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -127,6 +132,7 @@ func main() {
 		Steam:     steamClient,
 		Scanner:   scan,
 		DMarket:   dmScan,
+		LisSkins:  lisScan,
 		Guard:     tradeGuard,
 		Hub:       events,
 		Limiter:   limiter,

@@ -45,6 +45,7 @@ export function sourceLabel(name: string): string {
 export const marketTone: Record<string, 'info' | 'violet' | 'default'> = {
   'tm.net': 'info',
   dmarket: 'violet',
+  'lis-skins': 'default',
 }
 
 /** How each journal event kind reads to a person, and how loud it should look. */

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"radar/internal/secrets"
 )
 
 // AssetKey identifies one item variant in the Steam economy.
@@ -41,6 +43,12 @@ type Client struct {
 	HTTP    *http.Client
 	KeyFunc func() string
 
+	// hide strips the API key out of anything this client returns. Steam takes
+	// its key in the query string, so a plain transport failure prints the
+	// whole URL — key included — and that text used to travel straight into
+	// the dashboard, the journal and the diagnostic bundle.
+	hide *secrets.Redactor
+
 	mu    sync.RWMutex
 	cache map[string]Asset
 }
@@ -49,9 +57,13 @@ func NewClient(keyFunc func() string) *Client {
 	return &Client{
 		HTTP:    &http.Client{Timeout: 25 * time.Second},
 		KeyFunc: keyFunc,
+		hide:    secrets.New(keyFunc),
 		cache:   make(map[string]Asset),
 	}
 }
+
+// safe is the only way an error leaves this client.
+func (c *Client) safe(err error) error { return c.hide.Error(err) }
 
 // maxAssetsPerCall is Valve's practical ceiling for one GetAssetClassInfo call.
 const maxAssetsPerCall = 100
@@ -116,11 +128,11 @@ func (c *Client) fetchBatch(ctx context.Context, keys []AssetKey) (map[string]As
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return nil, err
+		return nil, c.safe(err)
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, c.safe(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -130,7 +142,7 @@ func (c *Client) fetchBatch(ctx context.Context, keys []AssetKey) (map[string]As
 		Result map[string]json.RawMessage `json:"result"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return nil, fmt.Errorf("steam GetAssetClassInfo: %w", err)
+		return nil, c.safe(fmt.Errorf("steam GetAssetClassInfo: %w", err))
 	}
 	return DecodeAssets(raw.Result), nil
 }
@@ -208,18 +220,18 @@ func (c *Client) DescriptionHTML(ctx context.Context, k AssetKey) (string, strin
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		"https://api.steampowered.com/ISteamEconomy/GetAssetClassInfo/v0001?"+q.Encode(), nil)
 	if err != nil {
-		return "", "", err
+		return "", "", c.safe(err)
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return "", "", err
+		return "", "", c.safe(err)
 	}
 	defer resp.Body.Close()
 	var raw struct {
 		Result map[string]json.RawMessage `json:"result"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return "", "", err
+		return "", "", c.safe(err)
 	}
 	rec, ok := raw.Result[k.String()]
 	if !ok {
@@ -232,7 +244,7 @@ func (c *Client) DescriptionHTML(ctx context.Context, k AssetKey) (string, strin
 		} `json:"descriptions"`
 	}
 	if err := json.Unmarshal(rec, &parsed); err != nil {
-		return "", "", err
+		return "", "", c.safe(err)
 	}
 	var b strings.Builder
 	for i := 0; i < len(parsed.Descriptions); i++ {

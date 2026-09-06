@@ -74,6 +74,33 @@ type Event struct {
 	Fields  map[string]any `json:"fields,omitempty"`
 }
 
+// redactFields scrubs string values, including those inside string slices.
+// The map is copied rather than edited in place: the caller may still be
+// holding it, and quietly mutating an argument is its own kind of bug.
+func redactFields(fields map[string]any, redact func(string) string) map[string]any {
+	if len(fields) == 0 {
+		return fields
+	}
+	out := make(map[string]any, len(fields))
+	for k, v := range fields {
+		switch typed := v.(type) {
+		case string:
+			out[k] = redact(typed)
+		case []string:
+			cleaned := make([]string, len(typed))
+			for i, s := range typed {
+				cleaned[i] = redact(s)
+			}
+			out[k] = cleaned
+		case error:
+			out[k] = redact(typed.Error())
+		default:
+			out[k] = v
+		}
+	}
+	return out
+}
+
 // Sink receives every event as it is written.
 type Sink func(Event)
 
@@ -86,6 +113,14 @@ type Journal struct {
 
 	sinkMu sync.RWMutex
 	sinks  []Sink
+
+	// Redact is the last line of defence against a credential reaching disk.
+	//
+	// Clients already strip their own keys, but the journal is written to daily
+	// files and packed into a diagnostic bundle meant to be sent to someone
+	// else. A secret that slips through one client must not become a permanent
+	// artefact, so everything is scrubbed on the way in — not on the way out.
+	Redact func(string) string
 }
 
 func New(limit int) *Journal {
@@ -117,6 +152,11 @@ func (j *Journal) Write(level Level, kind, subject, reason, message string, fiel
 
 // WriteRun records an event belonging to a named run.
 func (j *Journal) WriteRun(run string, level Level, kind, subject, reason, message string, fields map[string]any) Event {
+	if j.Redact != nil {
+		message = j.Redact(message)
+		subject = j.Redact(subject)
+		fields = redactFields(fields, j.Redact)
+	}
 	e := Event{
 		ID:      j.nextID.Add(1),
 		At:      time.Now(),

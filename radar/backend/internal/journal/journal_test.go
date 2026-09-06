@@ -149,3 +149,62 @@ func TestFileSinkSurvivesAnUnwritableEvent(t *testing.T) {
 		t.Fatal("the good event must still reach the file")
 	}
 }
+
+// The journal is written to daily files and packed into a bundle meant to be
+// sent to someone else. A credential that reaches it is a credential on disk,
+// so scrubbing has to happen on the way in.
+func TestSecretsAreScrubbedBeforeTheyAreRecorded(t *testing.T) {
+	const key = "A1B2C3D4E5F60718293A4B5C6D7E8F90"
+	j := New(10)
+	j.Redact = func(s string) string { return strings.ReplaceAll(s, key, "[СКРЫТО]") }
+
+	var sunk Event
+	j.Subscribe(func(e Event) { sunk = e })
+
+	j.Write(LevelError, "api.error", "steam?key="+key, "", `Get "https://api.steampowered.com/x?key=`+key+`": timeout`,
+		map[string]any{
+			"url":      "https://api.steampowered.com/x?key=" + key,
+			"attempts": 3,
+			"tried":    []string{"first?key=" + key, "second"},
+		})
+
+	stored := j.Events(Query{})
+	if len(stored) != 1 {
+		t.Fatalf("expected one event, got %d", len(stored))
+	}
+	for _, where := range []struct {
+		what string
+		text string
+	}{
+		{"message", stored[0].Message},
+		{"subject", stored[0].Subject},
+		{"field", stored[0].Fields["url"].(string)},
+		{"slice field", strings.Join(stored[0].Fields["tried"].([]string), " ")},
+		{"sink copy", sunk.Message},
+	} {
+		if strings.Contains(where.text, key) {
+			t.Fatalf("the key survived in the %s: %s", where.what, where.text)
+		}
+	}
+	// Redaction must not eat the rest of the payload.
+	if stored[0].Fields["attempts"] != 3 {
+		t.Fatalf("non-string fields must pass through untouched, got %v", stored[0].Fields["attempts"])
+	}
+	if !strings.Contains(stored[0].Message, "timeout") {
+		t.Fatalf("the diagnosis must survive: %s", stored[0].Message)
+	}
+}
+
+// Scrubbing copies the field map rather than editing the caller's.
+func TestRedactionDoesNotMutateTheCallersFields(t *testing.T) {
+	const key = "A1B2C3D4E5F60718293A4B5C6D7E8F90"
+	j := New(10)
+	j.Redact = func(s string) string { return strings.ReplaceAll(s, key, "x") }
+
+	fields := map[string]any{"url": "?key=" + key}
+	j.Write(LevelInfo, "k", "", "", "m", fields)
+
+	if fields["url"] != "?key="+key {
+		t.Fatalf("the caller's map was modified: %v", fields["url"])
+	}
+}

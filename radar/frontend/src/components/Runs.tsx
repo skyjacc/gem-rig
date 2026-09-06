@@ -37,6 +37,7 @@ const excludedLabel: Record<string, string> = {
   below_min_spread: 'гем не перекрывает цену лота',
   delisted: 'лот ушёл с площадки',
   no_order_book: 'нет стакана — выход не оценить',
+  steam_unknown: 'Steam не описывает этот вариант — перестали спрашивать',
 }
 
 const clock = (iso: string) => {
@@ -113,7 +114,7 @@ function RunRow({ run, live, onJournal }: { run: Run; live?: boolean; onJournal:
             <h4 className="mb-2 text-[10px] font-semibold tracking-[0.14em] text-faint uppercase">
               что проход посмотрел
             </h4>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 lg:grid-cols-7">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 lg:grid-cols-8">
               <Cell label="строк каталога" value={run.catalogue_rows} hint="сколько строк отдала площадка" />
               <Cell label="кандидатов" value={run.candidates} hint="прошли по цене и типу" />
               <Cell label="из кэша" value={run.from_cache} hint="сокеты уже были известны, Steam не спрашивали" />
@@ -121,6 +122,11 @@ function RunRow({ run, live, onJournal }: { run: Run; live?: boolean; onJournal:
               <Cell label="ответов Steam" value={run.sockets_ok} hint="описаний реально получено и разобрано" />
               <Cell label="вызовов Steam" value={run.steam_calls} hint="пакетных запросов, не предметов" />
               <Cell label="стаканов" value={run.order_books} hint="имён с прочитанным стаканом ордеров" />
+              <Cell
+                label="не знает Steam"
+                value={run.steam_unknown}
+                hint="варианты, которые Steam отказался описывать трижды подряд — их перестали спрашивать. Это не очередь: сколько ни жди, они не разрешатся"
+              />
             </div>
           </div>
 
@@ -135,6 +141,13 @@ function RunRow({ run, live, onJournal }: { run: Run; live?: boolean; onJournal:
               <Cell label="добавлено" value={run.added} />
               <Cell label="убрано" value={run.removed} />
             </div>
+            {run.steam_unknown > 0 && (
+              <p className="mt-2 text-xs text-faint">
+                <span className="font-mono">{run.steam_unknown.toLocaleString('ru-RU')}</span> вариантов
+                пропущено намеренно: Steam Economy API их не описывает. Повторная попытка — раз в 30 проходов,
+                вдруг Valve добавит запись.
+              </p>
+            )}
             {run.deferred > 0 && (
               <p className="mt-2 text-xs text-warn">
                 Отложено на следующий проход: <span className="font-mono">{run.deferred.toLocaleString('ru-RU')}</span>{' '}

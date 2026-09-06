@@ -188,6 +188,33 @@ func (s *Scanner) applyDeals(ctx context.Context, budget int) {
 		s.note(journal.LevelDebug, journal.KindOrderBook, "", "", "обновлены стаканы ордеров",
 			map[string]any{"fetched": warmed, "budget": budget, "names": len(names)})
 	}
+
+	// Tally the exclusions once, from the state the sweep actually ended in.
+	//
+	// priceFindings runs again after every warmed chunk, so counting inside it
+	// counted each finding on its way through: a lot that starts unpriced,
+	// becomes priced-but-incomplete, then completes was added to two different
+	// exclusion buckets and subtracted from neither. A sweep could report
+	// "22 offers, 20 priced" alongside "22 gem_unpriced". This runs after the
+	// loop whether it finished or broke early on cancellation, so a cut-short
+	// sweep still reports where it really stopped.
+	unpriced, incomplete := 0, 0
+	s.mu.RLock()
+	for _, key := range keys {
+		f, still := s.findings[key]
+		if !still || f.Deal == nil {
+			continue
+		}
+		if !f.Deal.Priced {
+			unpriced++
+		} else if !f.Deal.Complete {
+			incomplete++
+		}
+	}
+	s.mu.RUnlock()
+	// Emitted after the lock: exclude takes the same mutex for reading.
+	s.exclude(ExcludedGemUnpriced, unpriced)
+	s.exclude(ExcludedNoOrderBook, incomplete)
 	// Report the whole cache, not just this sweep's fetches: the table asks how
 	// many names the radar can price right now, and a book stays usable between
 	// sweeps.
@@ -218,11 +245,6 @@ func (s *Scanner) priceFindings(keys []string) {
 				level, kind = journal.LevelWarn, journal.KindDealFailed
 				reason = journal.ReasonNoOrderBook
 				message = "расчёт неполный, часть выходов не оценена"
-			}
-			if !deal.Priced {
-				s.exclude(ExcludedGemUnpriced, 1)
-			} else if !deal.Complete {
-				s.exclude(ExcludedNoOrderBook, 1)
 			}
 			s.note(level, kind, f.ItemName, reason, message, map[string]any{
 				"key": key, "invested": deal.Invested, "proceeds": deal.Proceeds,

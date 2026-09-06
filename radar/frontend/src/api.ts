@@ -22,6 +22,7 @@ export type ScannerStats = {
   resolved: number
   current_resolved?: number
   current_gem_variants?: number
+  steam_unknown?: number
   pending_resolve: number
   findings: number
   steam_calls: number
@@ -213,6 +214,7 @@ export type Run = {
   from_cache: number
   requested: number
   steam_calls: number
+  steam_unknown: number
   sockets_ok: number
   order_books: number
   findings: number

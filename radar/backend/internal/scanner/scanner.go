@@ -548,7 +548,6 @@ func (s *Scanner) sweep(ctx context.Context) {
 			r.DurationMS = finished.Sub(start).Milliseconds()
 			r.CatalogueRows = st.CatalogueSize
 			r.Candidates = st.Candidates
-			r.SteamCalls = st.SteamCalls
 			r.OrderBooks = books
 			r.Findings = st.Findings
 			r.Priced = priced
@@ -722,6 +721,11 @@ func (s *Scanner) recordSocketBatch(batch []steam.AssetKey, assets map[string]st
 	s.mu.Lock()
 	s.stats.SteamCalls++
 	s.mu.Unlock()
+	// The run keeps its own count. Stats.SteamCalls is a process-lifetime
+	// counter, so copying it into the run made a sweep that spent nothing look
+	// like it had spent every call made since the radar started. Incremented
+	// outside the lock above: tallyRun takes the same non-reentrant mutex.
+	s.tallyRun(func(r *Run) { r.SteamCalls++ })
 	verified := make(map[string]steam.Asset, len(assets))
 	sweepNo := s.Stats().SweepsDone
 	for _, key := range batch {

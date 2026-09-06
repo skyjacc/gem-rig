@@ -27,6 +27,7 @@ import (
 	"radar/internal/pricing"
 	"radar/internal/ratelimit"
 	"radar/internal/scanner"
+	"radar/internal/secrets"
 	"radar/internal/sources"
 	"radar/internal/steam"
 	"radar/web"
@@ -45,6 +46,16 @@ func main() {
 	steamClient := steam.NewClient(cfg.SteamKey)
 	events := hub.New()
 	audit := journal.New(5000)
+	// Every credential the process holds, scrubbed from anything the journal
+	// records. The daily files and the diagnostic bundle are both meant to be
+	// read by someone else, so this has to happen before the write, not before
+	// the download.
+	audit.Redact = secrets.New(
+		cfg.SteamKey,
+		cfg.MarketKey,
+		cfg.DMarketPublicKey,
+		cfg.DMarketSecretKey,
+	).String
 	// The journal also lands on disk, one file per day, one JSON object per
 	// line. The dashboard's ring buffer disappears on restart; a lot that
 	// vanished last night has to still be explainable this morning.

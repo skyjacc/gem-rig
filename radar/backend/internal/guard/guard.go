@@ -25,6 +25,7 @@ import (
 
 	"radar/internal/hub"
 	"radar/internal/market"
+	"radar/internal/secrets"
 	"radar/internal/steam"
 )
 
@@ -66,6 +67,10 @@ type Guard struct {
 	hub     *hub.Hub
 	http    *http.Client
 	keyFunc func() string
+	// hide keeps the Steam key out of every error this guard reports. Guard
+	// errors are the ones most likely to be read and forwarded: they appear on
+	// the Обмены tab whenever a check fails.
+	hide *secrets.Redactor
 
 	mu     sync.RWMutex
 	alerts map[string]Alert
@@ -80,6 +85,7 @@ func New(s *steam.Client, m *market.Client, h *hub.Hub, keyFunc func() string) *
 		hub:     h,
 		http:    &http.Client{Timeout: 25 * time.Second},
 		keyFunc: keyFunc,
+		hide:    secrets.New(keyFunc),
 		alerts:  make(map[string]Alert),
 	}
 }
@@ -283,6 +289,9 @@ type tradeDescription struct {
 	MarketHashName string `json:"market_hash_name"`
 }
 
+// safe is the only way an error leaves the guard.
+func (g *Guard) safe(err error) error { return g.hide.Error(err) }
+
 // receivedOffers fetches active incoming offers plus their descriptions.
 func (g *Guard) receivedOffers(ctx context.Context) ([]tradeOffer, map[string]tradeDescription, error) {
 	key := g.keyFunc()
@@ -298,11 +307,14 @@ func (g *Guard) receivedOffers(ctx context.Context) ([]tradeOffer, map[string]tr
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		"https://api.steampowered.com/IEconService/GetTradeOffers/v1/?"+q.Encode(), nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, g.safe(err)
 	}
 	resp, err := g.http.Do(req)
 	if err != nil {
-		return nil, nil, err
+		// The key rides in the query string, so the URL Go prints on a
+		// transport failure carries it. This error is surfaced on the dashboard
+		// and written to the journal.
+		return nil, nil, g.safe(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -315,7 +327,7 @@ func (g *Guard) receivedOffers(ctx context.Context) ([]tradeOffer, map[string]tr
 		} `json:"response"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return nil, nil, fmt.Errorf("steam GetTradeOffers: %w", err)
+		return nil, nil, g.safe(fmt.Errorf("steam GetTradeOffers: %w", err))
 	}
 	descs := make(map[string]tradeDescription, len(payload.Response.Descriptions))
 	for _, d := range payload.Response.Descriptions {

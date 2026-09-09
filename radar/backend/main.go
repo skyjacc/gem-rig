@@ -128,7 +128,16 @@ func main() {
 	go econ.Run(ctx, time.Hour)
 	go collector.Run(ctx, 30*time.Minute)
 	go scan.Run(ctx)
-	go dmScan.Run(ctx, 5*time.Minute)
+	// Fifteen minutes, not five. A DMarket pass with the price bands costs about
+	// two minutes of requests, so running it every five held the key at a 40%
+	// duty cycle for a marketplace that contributes a handful of offers.
+	//
+	// Measured: 500 pages reach 50 000 offers and 739 gemmed items in 2m07s;
+	// 3 000 pages reach 300 000 and 2 939 in 13m57s, still without exhausting
+	// the catalogue. Full coverage is not reachable at any sane budget, and the
+	// yield per page falls as the budget grows, so the sweep is bounded and says
+	// so rather than pretending otherwise.
+	go dmScan.Run(ctx, 15*time.Minute)
 	go tradeGuard.Run(ctx, 30*time.Second)
 	go watchNewLots(ctx, scan)
 

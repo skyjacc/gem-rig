@@ -287,6 +287,11 @@ func (s *Scanner) applyDeals(ctx context.Context, budget int) {
 	// every half hour — so without this a lot found while the books were still
 	// cold stayed unpriced until its next export, and the offers table showed
 	// only market.dota2.net.
+	// Last: ask the marketplace whether the lots it is selling actually contain
+	// what Steam says the variant contains. Anything it will not confirm loses
+	// its plan here, before it can be presented as an opportunity.
+	s.verifyFindings(ctx)
+
 	s.repriceSatellites()
 	// Report the whole cache, not just this sweep's fetches: the table asks how
 	// many names the radar can price right now, and a book stays usable between

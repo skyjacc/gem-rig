@@ -38,6 +38,7 @@ const excludedLabel: Record<string, string> = {
   delisted: 'лот ушёл с площадки',
   no_order_book: 'нет стакана — выход не оценить',
   steam_unknown: 'Steam не описывает этот вариант — перестали спрашивать',
+  socket_mismatch: 'площадка не подтвердила гем в этом лоте',
 }
 
 const clock = (iso: string) => {

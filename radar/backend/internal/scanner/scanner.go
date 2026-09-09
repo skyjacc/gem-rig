@@ -25,27 +25,30 @@ import (
 
 // Finding is a lot whose physical sockets are worth more than the asking price.
 type Finding struct {
-	Key        string    `json:"key"`
-	ClassID    string    `json:"classid"`
-	InstanceID string    `json:"instanceid"`
-	ItemName   string    `json:"item_name"`
-	ItemType   string    `json:"item_type"`
-	IconURL    string    `json:"icon_url"`
-	HeroName   string    `json:"hero_name"`
-	HeroIcon   string    `json:"hero_icon"`
-	Rarity     string    `json:"rarity"`
-	NameColor  string    `json:"name_color"`
-	Price      float64   `json:"price"`
-	Offers     int       `json:"offers"`
-	Gems       []string  `json:"gems"`
-	GemValue   float64   `json:"gem_value"`
-	Spread     float64   `json:"spread"`
-	NetSpread  float64   `json:"net_spread"`
-	ROI        float64   `json:"roi"`
-	Priced     bool      `json:"priced"`
-	MarketURL  string    `json:"market_url"`
-	InspectURL string    `json:"inspect_url"`
-	FoundAt    time.Time `json:"found_at"`
+	Key        string   `json:"key"`
+	ClassID    string   `json:"classid"`
+	InstanceID string   `json:"instanceid"`
+	ItemName   string   `json:"item_name"`
+	ItemType   string   `json:"item_type"`
+	IconURL    string   `json:"icon_url"`
+	HeroName   string   `json:"hero_name"`
+	HeroIcon   string   `json:"hero_icon"`
+	Rarity     string   `json:"rarity"`
+	NameColor  string   `json:"name_color"`
+	Price      float64  `json:"price"`
+	Offers     int      `json:"offers"`
+	Gems       []string `json:"gems"`
+	GemValue   float64  `json:"gem_value"`
+	Spread     float64  `json:"spread"`
+	NetSpread  float64  `json:"net_spread"`
+	ROI        float64  `json:"roi"`
+	Priced     bool     `json:"priced"`
+	// Proof records whether the marketplace confirms the gem Steam reports.
+	// A lot only the Steam variant vouches for is not an opportunity.
+	Proof      SocketProof `json:"proof"`
+	MarketURL  string      `json:"market_url"`
+	InspectURL string      `json:"inspect_url"`
+	FoundAt    time.Time   `json:"found_at"`
 
 	// Source is the marketplace the lot sits on.
 	Source string `json:"source"`
@@ -213,6 +216,9 @@ type Scanner struct {
 	// dashboard's source table. Optional: nil simply reports nothing.
 	ReportSource func(name string, gems int, err error)
 
+	// proofs remembers what the marketplace said about each lot.
+	proofs *proofCache
+
 	// satellites are the other marketplaces' scanners. They share these order
 	// books and are re-priced whenever this sweep warms them.
 	satellites []Satellite
@@ -258,6 +264,7 @@ func New(m *market.Client, s *steam.Client, book *pricing.Book, h *hub.Hub, opts
 		resolved:    make(map[string]bool),
 		gemVariants: make(map[string]variantInfo),
 		unknown:     make(map[string]unknownAsset),
+		proofs:      newProofCache(20 * time.Minute),
 		findings:    make(map[string]Finding),
 		kick:        make(chan struct{}, 1),
 	}

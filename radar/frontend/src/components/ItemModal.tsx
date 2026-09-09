@@ -19,7 +19,7 @@ import { LineChart, type Series } from './Chart'
 import { GemMark, SocketIcon, rarityColor, socketColor } from './icons'
 import { confidenceMeta, journalFields, kindMeta, levelTone, reasonMeta } from './meta'
 import { Badge, Button, ItemThumb } from './ui'
-import { dealDisplay, offerMarketURL } from '../lib/dealDisplay'
+import { dealDisplay, offerMarketURL, proofState } from '../lib/dealDisplay'
 
 const socketLabel: Record<string, string> = {
   kinetic: 'Кинетический',
@@ -123,6 +123,11 @@ function Summary({ finding }: { finding?: Finding }) {
         </div>
       </div>
       <div className="ml-auto flex flex-wrap items-center gap-1.5">
+        {finding && (
+          <Badge tone={proofState(finding).tone} title={proofState(finding).hint}>
+            {proofState(finding).label}
+          </Badge>
+        )}
         {display.wallet && <Badge tone="violet" title="Итог и ROI учитывают вес кошелька; это не выводимые деньги">есть кошелёк</Badge>}
         <Badge tone={conf.tone} title={conf.hint}>
           {conf.label}
@@ -493,6 +498,16 @@ export function ItemModal({
         </header>
 
         <Summary finding={finding} />
+
+        {finding && !proofState(finding).ok && (
+          <div className="border-b border-line-soft bg-danger/8 px-5 py-3 text-sm text-danger">
+            <div className="font-medium">{proofState(finding).label}</div>
+            <p className="mt-1 text-xs">
+              {proofState(finding).hint} Steam описывает вариант, площадка — лот, который реально
+              продаётся. Пока они не сошлись, расчёт прибыли снят: покупать по нему нельзя.
+            </p>
+          </div>
+        )}
 
         <nav className="flex gap-1 overflow-x-auto border-b border-line-soft px-3 pt-2">
           {TABS.map(({ id, label, Icon }) => (

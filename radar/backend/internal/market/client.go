@@ -217,6 +217,26 @@ type ItemInfo struct {
 		Price string `json:"o_price"`
 		Count string `json:"c"`
 	} `json:"buy_offers"`
+	// Description is the marketplace's own account of what this lot contains,
+	// in Valve's markup. It is not the same authority as Steam's economy API:
+	// Steam describes a variant, this describes the lot actually on sale, and
+	// when a seller hangs an empty item under a gemmed variant the two differ.
+	// That difference is the whole point of reading it.
+	Description []struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+		Name  string `json:"name"`
+	} `json:"description"`
+}
+
+// DescriptionHTML joins the marketplace's description into one block, so it can
+// be parsed by the same socket reader used on Steam's markup.
+func (i ItemInfo) DescriptionHTML() string {
+	var b strings.Builder
+	for _, d := range i.Description {
+		b.WriteString(d.Value)
+	}
+	return b.String()
 }
 
 // ItemInfo fetches offers and the purchase hash for one item variant.

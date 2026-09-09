@@ -52,6 +52,17 @@ export type Status = {
   fx_updated: string
 }
 
+/** What each authority says about a lot's sockets. */
+export type SocketProof = {
+  checked: boolean
+  steam_gems: string[] | null
+  market_gems: string[] | null
+  agree: boolean
+  note?: string
+  at: string
+  error?: string
+}
+
 export type Finding = {
   key: string
   classid: string
@@ -71,6 +82,7 @@ export type Finding = {
   net_spread: number
   roi: number
   priced: boolean
+  proof: SocketProof
   market_url: string
   inspect_url: string
   found_at: string
@@ -221,6 +233,7 @@ export type Run = {
   requested: number
   steam_calls: number
   steam_unknown: number
+  socket_mismatch: number
   sockets_ok: number
   order_books: number
   findings: number

@@ -36,8 +36,11 @@ type Run struct {
 	// SteamUnknown is how many candidates were skipped because Steam has
 	// repeatedly refused to describe them.
 	SteamUnknown int `json:"steam_unknown"`
-	SocketsOK    int `json:"sockets_ok"`
-	OrderBooks   int `json:"order_books"`
+	// SocketMismatch counts lots the marketplace would not confirm: Steam
+	// describes a gem in the variant, the marketplace describes an empty lot.
+	SocketMismatch int `json:"socket_mismatch"`
+	SocketsOK      int `json:"sockets_ok"`
+	OrderBooks     int `json:"order_books"`
 
 	// What came out.
 	Findings   int `json:"findings"`
@@ -57,15 +60,16 @@ type Run struct {
 // Exclusion reasons tallied per run. These deliberately mirror the journal's
 // reason codes: a number in the run summary must be openable as events.
 const (
-	ExcludedPriceCap     = "above_price_cap"
-	ExcludedLooseGem     = "loose_gem"
-	ExcludedNoInstance   = "no_instance_id"
-	ExcludedNoSocket     = "no_kinetic_socket"
-	ExcludedGemUnpriced  = "gem_unpriced"
-	ExcludedBelowSpread  = "below_min_spread"
-	ExcludedDelisted     = "delisted"
-	ExcludedNoOrderBook  = "no_order_book"
-	ExcludedSteamUnknown = "steam_unknown"
+	ExcludedPriceCap       = "above_price_cap"
+	ExcludedLooseGem       = "loose_gem"
+	ExcludedNoInstance     = "no_instance_id"
+	ExcludedNoSocket       = "no_kinetic_socket"
+	ExcludedGemUnpriced    = "gem_unpriced"
+	ExcludedBelowSpread    = "below_min_spread"
+	ExcludedDelisted       = "delisted"
+	ExcludedNoOrderBook    = "no_order_book"
+	ExcludedSteamUnknown   = "steam_unknown"
+	ExcludedSocketMismatch = "socket_mismatch"
 )
 
 // runTally accumulates a sweep's counters while it is still in flight.

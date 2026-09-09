@@ -46,15 +46,16 @@ const (
 
 // Reasons explain a state change in one stable token.
 const (
-	ReasonNewLot        = "new_lot"          // впервые увидели лот с гемом
-	ReasonDelisted      = "delisted"         // лот пропал из каталога
-	ReasonAbovePriceCap = "above_price_cap"  // цена выше потолка сканирования
-	ReasonBelowSpread   = "below_min_spread" // спред по объявлениям ниже порога
-	ReasonPriceChanged  = "price_changed"    // продавец изменил цену
-	ReasonGemUnpriced   = "gem_unpriced"     // ни один рынок не знает цену гема
-	ReasonNoOrderBook   = "no_order_book"    // нет стакана для выхода
-	ReasonRestored      = "restored"         // поднято из сохранённого состояния
-	ReasonSteamUnknown  = "steam_unknown"    // Steam не описывает этот вариант
+	ReasonNewLot         = "new_lot"          // впервые увидели лот с гемом
+	ReasonDelisted       = "delisted"         // лот пропал из каталога
+	ReasonAbovePriceCap  = "above_price_cap"  // цена выше потолка сканирования
+	ReasonBelowSpread    = "below_min_spread" // спред по объявлениям ниже порога
+	ReasonPriceChanged   = "price_changed"    // продавец изменил цену
+	ReasonGemUnpriced    = "gem_unpriced"     // ни один рынок не знает цену гема
+	ReasonNoOrderBook    = "no_order_book"    // нет стакана для выхода
+	ReasonRestored       = "restored"         // поднято из сохранённого состояния
+	ReasonSteamUnknown   = "steam_unknown"    // Steam не описывает этот вариант
+	ReasonSocketMismatch = "socket_mismatch"  // площадка и Steam расходятся о лоте
 )
 
 // Event is one recorded fact.

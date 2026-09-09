@@ -11,7 +11,7 @@ import { ago, rub, type Deal, type Exit, type Finding } from '../api'
 import { GemMark, HammerMark, rarityColor } from './icons'
 import { Badge, ItemThumb, Panel } from './ui'
 import { confidenceMeta, marketTone, sourceLabel } from './meta'
-import { dealDisplay, dealFilterReason } from '../lib/dealDisplay'
+import { dealDisplay, dealFilterReason, proofState } from '../lib/dealDisplay'
 
 type SortKey = 'net' | 'roi' | 'buy' | 'found_at'
 
@@ -305,6 +305,7 @@ export function Offers({
                 const gemExit = d?.gems.find((g) => g.best)?.best
                 const display = dealDisplay(d)
                 const conf = confidenceMeta[f.confidence]
+                const proof = proofState(f)
 
                 return (
                   <tr
@@ -360,6 +361,11 @@ export function Offers({
                       <div className="flex flex-col items-start gap-1">
                         <Badge tone={marketTone[f.source] ?? 'default'}>
                           {sourceLabel(f.source)}
+                        </Badge>
+                        {/* Whether the marketplace confirms the lot it is
+                            selling actually holds the gem Steam describes. */}
+                        <Badge tone={proof.tone} title={proof.hint}>
+                          {proof.label}
                         </Badge>
                         <span className="text-[11px] text-faint">{ago(f.found_at)}</span>
                       </div>

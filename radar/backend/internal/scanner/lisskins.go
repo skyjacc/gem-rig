@@ -235,6 +235,16 @@ func (l *LisScanner) Ingest(lots []sources.LisLot, err error) {
 			}
 		}
 
+		// The gems came out of this lot's own listing, not out of a Steam
+		// variant lookup, so there is no variant/lot split to fall through:
+		// the marketplace selling it is the one that described it.
+		f.Proof = SocketProof{
+			Checked:    true,
+			Agree:      true,
+			MarketGems: append([]string(nil), f.Gems...),
+			Note:       "сокеты взяты из экспорта Lis-Skins — площадка сама описала этот лот",
+			At:         time.Now(),
+		}
 		f.Deal = l.plan(f)
 
 		l.mu.RLock()

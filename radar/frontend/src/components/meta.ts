@@ -79,6 +79,8 @@ export const reasonMeta: Record<string, string> = {
   gem_unpriced: 'ни один рынок не знает цену гема',
   no_order_book: 'нет стакана для выхода',
   restored: 'поднято из сохранённого состояния',
+  socket_mismatch: 'площадка не подтверждает гем, который Steam описывает у этого варианта',
+  steam_unknown: 'Steam не описывает этот вариант',
 }
 
 export const levelTone: Record<string, string> = {

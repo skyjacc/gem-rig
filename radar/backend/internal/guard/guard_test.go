@@ -191,3 +191,58 @@ func TestVerdictReachesTheJournal(t *testing.T) {
 		t.Fatalf("the entry must record that purchases were unread: %v", e.Fields)
 	}
 }
+
+// The swap that actually happened, replayed.
+//
+// Paid on market.dota2.net for 200339871_1337149273 — a Diffusal Lance whose
+// variant carries Serene Honor, worth some 387 RUB in standing orders. The
+// trade that arrived carried 200339871_3361756675: the same lance, one empty
+// socket. The seller's public inventory held six empty lances, no copy of the
+// paid-for variant, and twenty loose gems including that Serene Honor.
+//
+// Both listings are honest about their own variant. The lie is in the delivery,
+// which is the only thing this guard can see — so it has to see it.
+func TestTheRealSwapIsGradedCritical(t *testing.T) {
+	g := guardWith(t, stubTransport{fail: errors.New("sockets not needed for this verdict")})
+
+	paid := map[string]map[string]string{
+		"200339871": {"1337149273": "Diffusal Lance"},
+	}
+	offer := tradeOffer{
+		TradeOfferID:    "9355850214",
+		AccountIDOther:  408316077,
+		TradeOfferState: 2,
+		ItemsToReceive: []tradeItem{
+			{AssetID: "a1", ClassID: "200339871", InstanceID: "3361756675"},
+		},
+	}
+
+	alert := g.evaluate(context.Background(), offer, nil, paid, nil)
+
+	if alert.Severity != SeverityCritical {
+		t.Fatalf("a swapped instanceid on a paid-for item must be critical, got %q (%s)",
+			alert.Severity, alert.Headline)
+	}
+	if len(alert.Items) != 1 || alert.Items[0].Expected {
+		t.Fatal("the delivered item must not be marked as expected")
+	}
+	joined := strings.Join(alert.Details, " ")
+	if !strings.Contains(joined, "3361756675") || !strings.Contains(joined, "1337149273") {
+		t.Fatalf("the alert must name both instanceids so the swap is checkable: %s", joined)
+	}
+	if !strings.Contains(alert.Headline, "не тот предмет") {
+		t.Fatalf("unexpected headline %q", alert.Headline)
+	}
+}
+
+// The honest delivery of the same purchase still passes.
+func TestTheMatchingDeliveryIsAccepted(t *testing.T) {
+	g := guardWith(t, stubTransport{body: okSteamBody})
+
+	paid := map[string]map[string]string{"100": {"200": "Diffusal Lance"}}
+	alert := g.evaluate(context.Background(), offerOf("100", "200"), nil, paid, nil)
+
+	if alert.Severity != SeverityOK {
+		t.Fatalf("the item that was paid for must pass, got %q (%s)", alert.Severity, alert.Headline)
+	}
+}

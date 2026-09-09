@@ -41,3 +41,57 @@ export function offerMarketURL(
 ): string | undefined {
   return finding?.market_url?.trim() || detail?.market_url?.trim() || undefined
 }
+
+/**
+ * Whether a lot may be presented as something to buy.
+ *
+ * Steam describes a variant; the marketplace describes the lot it is selling.
+ * A seller can hammer the gem out and leave the emptied item listed under the
+ * gemmed variant's id — Steam keeps reporting the gem, truthfully, about a
+ * variant the seller no longer owns. Only agreement between the two is proof,
+ * and an unanswered check is not agreement.
+ */
+export function proofState(f: Pick<Finding, 'proof'>): {
+  ok: boolean
+  label: string
+  tone: 'good' | 'warn' | 'bad'
+  hint: string
+} {
+  const p = f.proof
+  if (!p || !p.checked) {
+    return {
+      ok: false,
+      label: 'не сверен',
+      tone: 'warn',
+      hint: 'Площадку ещё не спрашивали, что она продаёт под этим вариантом.',
+    }
+  }
+  if (p.error) {
+    return {
+      ok: false,
+      label: 'сверка не прошла',
+      tone: 'warn',
+      hint: `Площадка не ответила: ${p.error}. Это не подтверждение и не опровержение.`,
+    }
+  }
+  if (!p.agree) {
+    return {
+      ok: false,
+      label: 'лот не подтверждён',
+      tone: 'bad',
+      hint:
+        p.note ??
+        `Steam описывает ${(p.steam_gems ?? []).join(', ') || '—'}, площадка — ${
+          (p.market_gems ?? []).join(', ') || 'ничего'
+        }.`,
+    }
+  }
+  return {
+    ok: true,
+    label: 'лот подтверждён',
+    tone: 'good',
+    hint:
+      p.note ||
+      'Steam и площадка называют один и тот же кинетик в этом лоте.',
+  }
+}

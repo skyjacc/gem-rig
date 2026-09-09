@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"radar/internal/dota"
+	"radar/internal/economics"
 	"radar/internal/hub"
 	"radar/internal/journal"
 	"radar/internal/pricing"
@@ -48,10 +49,33 @@ type LisScanner struct {
 	// source the gem quotes were converted with.
 	rate func() float64
 
+	// planner prices a finding against the standing order books. Without it a
+	// Lis-Skins lot reached the table carrying only a rough listing spread and
+	// no Deal at all — and the default "только прибыльные" filter hides anything
+	// unpriced, so the whole marketplace was invisible.
+	planner func() *Planner
+
 	mu       sync.RWMutex
 	findings map[string]Finding
 	stats    LisStats
 	log      *journal.Journal
+}
+
+// SetPlanner supplies the shared deal calculation.
+func (l *LisScanner) SetPlanner(p func() *Planner) {
+	l.mu.Lock()
+	l.planner = p
+	l.mu.Unlock()
+}
+
+func (l *LisScanner) plan(f Finding) *economics.Deal {
+	l.mu.RLock()
+	p := l.planner
+	l.mu.RUnlock()
+	if p == nil {
+		return nil
+	}
+	return p().Plan(f)
 }
 
 // LisStats is a snapshot of the last export pass.
@@ -211,6 +235,8 @@ func (l *LisScanner) Ingest(lots []sources.LisLot, err error) {
 			}
 		}
 
+		f.Deal = l.plan(f)
+
 		l.mu.RLock()
 		prev, existed := l.findings[key]
 		l.mu.RUnlock()
@@ -258,4 +284,51 @@ func (l *LisScanner) Ingest(lots []sources.LisLot, err error) {
 			len(lots), withGems, len(next)),
 		fields)
 	l.hub.Publish("lis_stats", l.Stats())
+}
+
+// Names lists every item and gem name whose order book this scanner needs, so
+// the main sweep warms them alongside its own.
+func (l *LisScanner) Names() []string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	seen := make(map[string]bool, len(l.findings)*2)
+	out := make([]string, 0, len(l.findings)*2)
+	for _, f := range l.findings {
+		for _, g := range f.Gems {
+			if n := marketGemName(g); n != "" && !seen[n] {
+				seen[n] = true
+				out = append(out, n)
+			}
+		}
+		if f.ItemName != "" && !seen[f.ItemName] {
+			seen[f.ItemName] = true
+			out = append(out, f.ItemName)
+		}
+	}
+	return out
+}
+
+// Reprice recomputes every finding against the books the main sweep just
+// warmed. Without it a lot found while the books were cold kept its empty plan
+// until this marketplace's own, much slower refresh came round again.
+func (l *LisScanner) Reprice() {
+	l.mu.RLock()
+	current := make(map[string]Finding, len(l.findings))
+	for k, f := range l.findings {
+		current[k] = f
+	}
+	l.mu.RUnlock()
+
+	for key, f := range current {
+		deal := l.plan(f)
+		if deal == nil {
+			continue
+		}
+		l.mu.Lock()
+		if live, still := l.findings[key]; still {
+			live.Deal = deal
+			l.findings[key] = live
+		}
+		l.mu.Unlock()
+	}
 }

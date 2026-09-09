@@ -8,6 +8,7 @@ import (
 	"radar/internal/economics"
 	"radar/internal/journal"
 	"radar/internal/market"
+	"radar/internal/pricing"
 )
 
 // SetEconomics attaches the order book cache and the operator's terms.
@@ -54,25 +55,57 @@ func (s *Scanner) registerBooks(lots []market.Lot) {
 // would fire off a hundred rate-limited lookups and stall the whole sweep.
 // Warming is the only place allowed to hit the network, and it is budgeted.
 func (s *Scanner) planDeal(f Finding) *economics.Deal {
+	return s.Planner().Plan(f)
+}
+
+// Planner exposes the deal calculation to the other marketplaces' scanners.
+//
+// Where a lot was bought changes only its price. The gems come out the same and
+// are sold in the same places, so the plan is identical machinery — but it used
+// to live as a method on this scanner alone. DMarket and Lis-Skins findings
+// therefore reached the table with no plan at all, and the default
+// "только прибыльные" filter, which hides anything unpriced, made two of the
+// three marketplaces invisible.
+func (s *Scanner) Planner() *Planner {
 	books, settings, ok := s.economicsReady()
 	if !ok {
+		return nil
+	}
+	return &Planner{books: books, prices: s.book, settings: settings}
+}
+
+// Planner turns a finding from any marketplace into a buy-extract-sell plan.
+type Planner struct {
+	books    *economics.BookCache
+	prices   *pricing.Book
+	settings economics.Settings
+}
+
+// Plan prices one finding. Nil when the economics are not configured yet.
+//
+// It reads only what the caches already hold. Fetching here would bypass the
+// sweep's request budget: with two dozen findings and three names apiece it
+// would fire off a hundred rate-limited lookups and stall the whole sweep.
+// Warming is the only place allowed to hit the network, and it is budgeted.
+func (p *Planner) Plan(f Finding) *economics.Deal {
+	if p == nil {
 		return nil
 	}
 
 	gems := make([]economics.Leg, 0, len(f.Gems))
 	for _, gemName := range f.Gems {
-		exits, why := s.exitsFor(books, marketGemName(gemName), settings)
+		exits, why := p.exitsFor(marketGemName(gemName))
 		gems = append(gems, economics.Leg{Name: gemName, Exits: exits, Reason: why})
 	}
 
 	var shell *economics.Leg
 	// The emptied item is sold under the same name, so the host order book
 	// applies to it unchanged.
-	if exits, why := s.exitsFor(books, f.ItemName, settings); len(exits) > 0 {
+	if exits, why := p.exitsFor(f.ItemName); len(exits) > 0 {
 		shell = &economics.Leg{Name: f.ItemName, Exits: exits, Reason: why}
 	}
 
-	deal := economics.Plan(f.Price, gems, shell, settings)
+	deal := economics.Plan(f.Price, gems, shell, p.settings)
 	return &deal
 }
 
@@ -85,17 +118,18 @@ func (s *Scanner) planDeal(f Finding) *economics.Deal {
 // exitsFor returns every way this name can be turned into money, and — when
 // there are none — why. The caller cannot tell an unsold name from an unasked
 // one without that second value.
-func (s *Scanner) exitsFor(books *economics.BookCache, name string, settings economics.Settings) ([]economics.Exit, string) {
+func (p *Planner) exitsFor(name string) ([]economics.Exit, string) {
+	settings := p.settings
 	var exits []economics.Exit
 
 	// The standing buy order on the market: cash, and it fills immediately.
-	book, bookRead := books.Lookup(name)
+	book, bookRead := p.books.Lookup(name)
 	if bookRead && book.Best > 0 {
 		exits = append(exits, economics.NewExit(economics.VenueMarket, book.Best, settings,
 			economics.PayoutCash, economics.SpeedInstant, book.Orders))
 	}
 
-	priced, quoted := s.book.Price(name)
+	priced, quoted := p.prices.Price(name)
 	if !quoted {
 		return exits, whyNoExit(bookRead, book.Best > 0, false, len(exits))
 	}
@@ -184,6 +218,17 @@ func (s *Scanner) applyDeals(ctx context.Context, budget int) {
 	}
 	s.mu.RUnlock()
 
+	// The other marketplaces sell the same items and the same gems, so their
+	// names belong in the same warm list. Leaving them out meant an order book
+	// was never fetched for a name only DMarket or Lis-Skins carries, and those
+	// legs could never be priced at all.
+	for _, n := range s.satelliteNames() {
+		if n != "" && !seen[n] {
+			seen[n] = true
+			names = append(names, n)
+		}
+	}
+
 	// Price from whatever is already cached first, so the table fills as soon
 	// as the sweep starts rather than only after every lookup has finished.
 	s.setPhase(PhaseOrders, "читаем стаканы ордеров", 0, len(names))
@@ -236,6 +281,13 @@ func (s *Scanner) applyDeals(ctx context.Context, budget int) {
 	// Emitted after the lock: exclude takes the same mutex for reading.
 	s.exclude(ExcludedGemUnpriced, unpriced)
 	s.exclude(ExcludedNoOrderBook, incomplete)
+
+	// The other marketplaces' findings are priced from the same warmed books.
+	// They refresh on their own, much slower schedules — the Lis-Skins export
+	// every half hour — so without this a lot found while the books were still
+	// cold stayed unpriced until its next export, and the offers table showed
+	// only market.dota2.net.
+	s.repriceSatellites()
 	// Report the whole cache, not just this sweep's fetches: the table asks how
 	// many names the radar can price right now, and a book stays usable between
 	// sweeps.
@@ -277,5 +329,42 @@ func (s *Scanner) priceFindings(keys []string) {
 			s.findings[key] = f
 		}
 		s.mu.Unlock()
+	}
+}
+
+// Satellite is a marketplace scanner that owns its own findings but shares this
+// scanner's order books and settings.
+type Satellite interface {
+	// Names lists the item and gem names whose order books it needs.
+	Names() []string
+	// Reprice recomputes its findings against the current books.
+	Reprice()
+}
+
+// AddSatellite registers another marketplace's scanner for warming and
+// re-pricing alongside this one.
+func (s *Scanner) AddSatellite(sat Satellite) {
+	s.mu.Lock()
+	s.satellites = append(s.satellites, sat)
+	s.mu.Unlock()
+}
+
+func (s *Scanner) satelliteNames() []string {
+	s.mu.RLock()
+	sats := append([]Satellite(nil), s.satellites...)
+	s.mu.RUnlock()
+	var out []string
+	for _, sat := range sats {
+		out = append(out, sat.Names()...)
+	}
+	return out
+}
+
+func (s *Scanner) repriceSatellites() {
+	s.mu.RLock()
+	sats := append([]Satellite(nil), s.satellites...)
+	s.mu.RUnlock()
+	for _, sat := range sats {
+		sat.Reprice()
 	}
 }

@@ -109,10 +109,16 @@ func main() {
 	}
 	dmScan := scanner.NewDMarketScanner(dmarket, book, events, scan)
 	dmScan.SetJournal(audit)
+	dmScan.SetPlanner(scan.Planner)
 	// Lis-Skins publishes every lot's sockets in an export the price collector
 	// already downloads. Reading the carriers out of it costs no extra request.
 	lisScan := scanner.NewLisScanner(book, events, scan, fx.Rate)
 	lisScan.SetJournal(audit)
+	lisScan.SetPlanner(scan.Planner)
+	// Both satellites share the main sweep's order books: their names are warmed
+	// with it and their findings re-priced when it finishes.
+	scan.AddSatellite(dmScan)
+	scan.AddSatellite(lisScan)
 	collector.OnLisLots = lisScan.Ingest
 	tradeGuard := guard.New(steamClient, marketClient, events, audit, cfg.SteamKey)
 

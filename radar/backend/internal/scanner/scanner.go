@@ -213,6 +213,10 @@ type Scanner struct {
 	// dashboard's source table. Optional: nil simply reports nothing.
 	ReportSource func(name string, gems int, err error)
 
+	// satellites are the other marketplaces' scanners. They share these order
+	// books and are re-priced whenever this sweep warms them.
+	satellites []Satellite
+
 	// unknown remembers variants Steam declines to describe, so the sweep
 	// stops re-asking about them every two minutes.
 	unknown map[string]unknownAsset

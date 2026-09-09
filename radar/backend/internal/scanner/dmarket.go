@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"radar/internal/dota"
+	"radar/internal/economics"
 	"radar/internal/hub"
 	"radar/internal/journal"
 	"radar/internal/pricing"
@@ -37,9 +38,31 @@ type DMarketScanner struct {
 	// had no history at all.
 	log *journal.Journal
 
+	// planner prices a finding against the standing order books, the same way
+	// the market.dota2.net sweep does. Where a lot was bought changes only its
+	// price; the gems come out the same and sell in the same places.
+	planner func() *Planner
+
 	mu       sync.RWMutex
 	findings map[string]Finding
 	stats    DMarketStats
+}
+
+// SetPlanner supplies the shared deal calculation.
+func (d *DMarketScanner) SetPlanner(p func() *Planner) {
+	d.mu.Lock()
+	d.planner = p
+	d.mu.Unlock()
+}
+
+func (d *DMarketScanner) plan(f Finding) *economics.Deal {
+	d.mu.RLock()
+	p := d.planner
+	d.mu.RUnlock()
+	if p == nil {
+		return nil
+	}
+	return p().Plan(f)
 }
 
 // SetJournal attaches the audit record. Optional: nil records nothing.
@@ -306,6 +329,8 @@ func (d *DMarketScanner) rebuild(offers []sources.DMOffer, opts Options) ([]Find
 			f.ROI = net / o.PriceRUB * 100
 		}
 
+		f.Deal = d.plan(f)
+
 		d.mu.RLock()
 		prev, existed := d.findings[key]
 		d.mu.RUnlock()
@@ -331,4 +356,51 @@ func titleCase(s string) string {
 		words[i] = strings.ToUpper(w[:1]) + w[1:]
 	}
 	return strings.Join(words, " ")
+}
+
+// Names lists every item and gem name whose order book this scanner needs, so
+// the main sweep warms them alongside its own.
+func (d *DMarketScanner) Names() []string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	seen := make(map[string]bool, len(d.findings)*2)
+	out := make([]string, 0, len(d.findings)*2)
+	for _, f := range d.findings {
+		for _, g := range f.Gems {
+			if n := marketGemName(g); n != "" && !seen[n] {
+				seen[n] = true
+				out = append(out, n)
+			}
+		}
+		if f.ItemName != "" && !seen[f.ItemName] {
+			seen[f.ItemName] = true
+			out = append(out, f.ItemName)
+		}
+	}
+	return out
+}
+
+// Reprice recomputes every finding against the books the main sweep just
+// warmed. Without it a lot found while the books were cold kept its empty plan
+// until this marketplace's own, much slower refresh came round again.
+func (d *DMarketScanner) Reprice() {
+	d.mu.RLock()
+	current := make(map[string]Finding, len(d.findings))
+	for k, f := range d.findings {
+		current[k] = f
+	}
+	d.mu.RUnlock()
+
+	for key, f := range current {
+		deal := d.plan(f)
+		if deal == nil {
+			continue
+		}
+		d.mu.Lock()
+		if live, still := d.findings[key]; still {
+			live.Deal = deal
+			d.findings[key] = live
+		}
+		d.mu.Unlock()
+	}
 }

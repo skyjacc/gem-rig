@@ -198,7 +198,7 @@ func TestExitsCoverEveryVenueWeCanActuallySellOn(t *testing.T) {
 	s := exitScanner(t)
 	books, settings, _ := s.economicsReady()
 
-	exits, _ := s.exitsFor(books, "Kinetic: Serene Honor", settings)
+	exits, _ := (&Planner{books: books, prices: s.book, settings: settings}).exitsFor("Kinetic: Serene Honor")
 	byVenue := map[economics.Venue]economics.Exit{}
 	for _, e := range exits {
 		byVenue[e.Venue] = e
@@ -232,7 +232,7 @@ func TestListedExitsAreNotChosenWithoutOptIn(t *testing.T) {
 	// profit nobody has agreed to pay.
 	s := exitScanner(t)
 	books, settings, _ := s.economicsReady()
-	legExits, _ := s.exitsFor(books, "Kinetic: Serene Honor", settings)
+	legExits, _ := (&Planner{books: books, prices: s.book, settings: settings}).exitsFor("Kinetic: Serene Honor")
 	leg := economics.Leg{Name: "gem", Exits: legExits}
 
 	deal := economics.Plan(100, []economics.Leg{leg}, nil, settings)
@@ -248,7 +248,7 @@ func TestAllowingListingsPicksTheDearestCashOne(t *testing.T) {
 	settings.MarketFeePercent = 5
 	settings.AllowListedExit = true
 
-	legExits, _ := s.exitsFor(books, "Kinetic: Serene Honor", settings)
+	legExits, _ := (&Planner{books: books, prices: s.book, settings: settings}).exitsFor("Kinetic: Serene Honor")
 	leg := economics.Leg{Name: "gem", Exits: legExits}
 	deal := economics.Plan(100, []economics.Leg{leg}, nil, settings)
 	best := deal.Gems[0].Best
@@ -275,7 +275,7 @@ func TestRaisingSteamWalletValueChangesTheChosenExit(t *testing.T) {
 	settings.SteamWalletValue = 1
 	settings.AllowListedExit = true
 
-	legExits, _ := s.exitsFor(books, "Kinetic: Serene Honor", settings)
+	legExits, _ := (&Planner{books: books, prices: s.book, settings: settings}).exitsFor("Kinetic: Serene Honor")
 	leg := economics.Leg{Name: "gem", Exits: legExits}
 	deal := economics.Plan(100, []economics.Leg{leg}, nil, settings)
 	if deal.Gems[0].Best.Venue != economics.VenueSteam {

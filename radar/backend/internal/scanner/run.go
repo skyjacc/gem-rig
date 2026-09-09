@@ -39,8 +39,10 @@ type Run struct {
 	// SocketMismatch counts lots the marketplace would not confirm: Steam
 	// describes a gem in the variant, the marketplace describes an empty lot.
 	SocketMismatch int `json:"socket_mismatch"`
-	SocketsOK      int `json:"sockets_ok"`
-	OrderBooks     int `json:"order_books"`
+	// NoGemPremium counts lots priced as if they held no gem at all.
+	NoGemPremium int `json:"no_gem_premium"`
+	SocketsOK    int `json:"sockets_ok"`
+	OrderBooks   int `json:"order_books"`
 
 	// What came out.
 	Findings   int `json:"findings"`
@@ -70,6 +72,7 @@ const (
 	ExcludedNoOrderBook    = "no_order_book"
 	ExcludedSteamUnknown   = "steam_unknown"
 	ExcludedSocketMismatch = "socket_mismatch"
+	ExcludedNoGemPremium   = "no_gem_premium"
 )
 
 // runTally accumulates a sweep's counters while it is still in flight.

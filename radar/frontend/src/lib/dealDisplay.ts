@@ -95,3 +95,45 @@ export function proofState(f: Pick<Finding, 'proof'>): {
       'Steam и площадка называют один и тот же кинетик в этом лоте.',
   }
 }
+
+/**
+ * Whether the seller is charging for the gem at all.
+ *
+ * A listing can be perfectly honest about its variant and still be a trap: the
+ * seller hammered the gem out, sells it separately, and leaves the emptied
+ * shell under the gemmed variant's id. Metadata cannot see that. The price can
+ * — an empty shell is priced like the other empty shells.
+ *
+ * Measured live: a Diffusal Lance claiming a 557 RUB gem cost 35 kopeks more
+ * than its empty siblings. Honest listings in the same sweep carried premiums
+ * of 24, 37 and 79 per cent of the gem's value.
+ */
+export function premiumState(f: Pick<Finding, 'premium' | 'gem_value'>): {
+  ok: boolean
+  label: string
+  tone: 'good' | 'warn' | 'bad'
+  hint: string
+} | null {
+  const p = f.premium
+  if (!p || !p.measured) return null
+  const pct = Math.round(p.share * 100)
+  if (p.share < 0.1) {
+    return {
+      ok: false,
+      label: 'гем не заложен в цену',
+      tone: 'bad',
+      hint:
+        `Лот дороже самого дешёвого другого варианта всего на ${p.amount.toFixed(2)} ₽ ` +
+        `— ${pct}% от стоимости гема. Продавец, у которого гем есть, закладывает его в цену. ` +
+        `Либо гема в лоте нет, либо это редкая ошибка продавца: проверяй до покупки.`,
+    }
+  }
+  return {
+    ok: true,
+    label: `+${p.amount.toFixed(0)} ₽ за гем`,
+    tone: 'good',
+    hint:
+      `Лот дороже пустого варианта на ${p.amount.toFixed(2)} ₽ — ${pct}% стоимости гема. ` +
+      `Продавец гем в цену заложил, значит он у него есть.`,
+  }
+}

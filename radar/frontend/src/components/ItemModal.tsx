@@ -19,7 +19,7 @@ import { LineChart, type Series } from './Chart'
 import { GemMark, SocketIcon, rarityColor, socketColor } from './icons'
 import { confidenceMeta, journalFields, kindMeta, levelTone, reasonMeta } from './meta'
 import { Badge, Button, ItemThumb } from './ui'
-import { dealDisplay, offerMarketURL, proofState } from '../lib/dealDisplay'
+import { dealDisplay, offerMarketURL, premiumState, proofState } from '../lib/dealDisplay'
 
 const socketLabel: Record<string, string> = {
   kinetic: 'Кинетический',
@@ -498,6 +498,13 @@ export function ItemModal({
         </header>
 
         <Summary finding={finding} />
+
+        {finding && premiumState(finding) && !premiumState(finding)!.ok && (
+          <div className="border-b border-line-soft bg-danger/8 px-5 py-3 text-sm text-danger">
+            <div className="font-medium">{premiumState(finding)!.label}</div>
+            <p className="mt-1 text-xs">{premiumState(finding)!.hint}</p>
+          </div>
+        )}
 
         {finding && !proofState(finding).ok && (
           <div className="border-b border-line-soft bg-danger/8 px-5 py-3 text-sm text-danger">

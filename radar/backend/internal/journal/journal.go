@@ -56,6 +56,7 @@ const (
 	ReasonRestored       = "restored"         // поднято из сохранённого состояния
 	ReasonSteamUnknown   = "steam_unknown"    // Steam не описывает этот вариант
 	ReasonSocketMismatch = "socket_mismatch"  // площадка и Steam расходятся о лоте
+	ReasonNoGemPremium   = "no_gem_premium"   // продавец не заложил гем в цену
 )
 
 // Event is one recorded fact.

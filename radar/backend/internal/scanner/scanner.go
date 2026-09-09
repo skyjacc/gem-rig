@@ -43,6 +43,10 @@ type Finding struct {
 	NetSpread  float64  `json:"net_spread"`
 	ROI        float64  `json:"roi"`
 	Priced     bool     `json:"priced"`
+	// Premium is what this lot costs over the same item without a gem. It is
+	// the one signal a swapped listing cannot fake: an empty shell is priced
+	// like the other empty shells.
+	Premium PricePremium `json:"premium"`
 	// Proof records whether the marketplace confirms the gem Steam reports.
 	// A lot only the Steam variant vouches for is not an opportunity.
 	Proof      SocketProof `json:"proof"`
@@ -876,6 +880,10 @@ func (s *Scanner) price(byKey map[string]market.Lot) {
 		}
 
 		f := buildFinding(key, lot, info, value, net, priced, gemPrices)
+		// What the seller charges for the gem, compared with the same item
+		// without one. A gem worth hundreds that costs pennies extra is not
+		// being sold — see premium.go.
+		f.Premium = premiumFor(lot, value, byKey)
 		s.mu.Lock()
 		prev, existed := s.findings[key]
 		if existed {

@@ -63,6 +63,16 @@ export type SocketProof = {
   error?: string
 }
 
+/** What the seller charges for the gem, over the same item without one. */
+export type PricePremium = {
+  measured: boolean
+  cheapest_sibling: number
+  siblings: number
+  amount: number
+  /** Premium as a fraction of the gem's value. Near zero means it isn't priced. */
+  share: number
+}
+
 export type Finding = {
   key: string
   classid: string
@@ -82,6 +92,7 @@ export type Finding = {
   net_spread: number
   roi: number
   priced: boolean
+  premium: PricePremium
   proof: SocketProof
   market_url: string
   inspect_url: string

@@ -192,6 +192,27 @@ func (s *Scanner) verifyFindings(ctx context.Context) {
 		}
 		s.mu.Unlock()
 
+		// A seller who is not charging for the gem is not selling one. This is
+		// separate from the metadata check and catches what it cannot: a listing
+		// whose description is perfectly honest about a variant the seller does
+		// not hold.
+		if !f.Premium.Priced() {
+			// The plan was already withheld in priceFindings; this records why,
+			// once per sweep, where it can be read afterwards.
+			s.exclude(ExcludedNoGemPremium, 1)
+			s.tallyRun(func(r *Run) { r.NoGemPremium++ })
+			s.note(journal.LevelWarn, journal.KindFindingDrop, f.ItemName,
+				journal.ReasonNoGemPremium,
+				"продавец не заложил гем в цену — расчёт снят",
+				map[string]any{
+					"key": f.Key, "price": f.Price,
+					"gem_value":        f.GemValue,
+					"cheapest_sibling": f.Premium.Cheapest,
+					"premium":          f.Premium.Amount,
+					"premium_share":    f.Premium.Share,
+				})
+		}
+
 		if !proof.Agree && proof.Error == "" {
 			mismatched++
 			s.exclude(ExcludedSocketMismatch, 1)

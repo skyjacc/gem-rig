@@ -11,7 +11,7 @@ import { ago, rub, type Deal, type Exit, type Finding } from '../api'
 import { GemMark, HammerMark, rarityColor } from './icons'
 import { Badge, ItemThumb, Panel } from './ui'
 import { confidenceMeta, marketTone, sourceLabel } from './meta'
-import { dealDisplay, dealFilterReason, proofState } from '../lib/dealDisplay'
+import { dealDisplay, dealFilterReason, premiumState, proofState } from '../lib/dealDisplay'
 
 type SortKey = 'net' | 'roi' | 'buy' | 'found_at'
 
@@ -306,6 +306,7 @@ export function Offers({
                 const display = dealDisplay(d)
                 const conf = confidenceMeta[f.confidence]
                 const proof = proofState(f)
+                const premium = premiumState(f)
 
                 return (
                   <tr
@@ -367,6 +368,11 @@ export function Offers({
                         <Badge tone={proof.tone} title={proof.hint}>
                           {proof.label}
                         </Badge>
+                        {premium && (
+                          <Badge tone={premium.tone} title={premium.hint}>
+                            {premium.label}
+                          </Badge>
+                        )}
                         <span className="text-[11px] text-faint">{ago(f.found_at)}</span>
                       </div>
                     </td>

@@ -308,6 +308,21 @@ func (s *Scanner) priceFindings(keys []string) {
 		if !still {
 			continue
 		}
+		// A lot whose seller is not charging for the gem gets no profit claim at
+		// all. This costs no request, so it is decided here rather than waiting
+		// for the marketplace round-trip in verifyFindings — otherwise the offer
+		// sits at the top of the table for the twenty seconds that takes.
+		if !f.Premium.Priced() {
+			if f.Deal != nil {
+				s.mu.Lock()
+				if live, ok := s.findings[key]; ok {
+					live.Deal = nil
+					s.findings[key] = live
+				}
+				s.mu.Unlock()
+			}
+			continue
+		}
 		deal := s.planDeal(f)
 		if deal == nil {
 			continue

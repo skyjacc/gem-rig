@@ -18,6 +18,7 @@ import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph,
 import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase.ts'
 import { ACCOUNT, active as activeAccount, activeId as activeAccountId, byId as accountById, list as accountList2 } from './accounts.ts'
 import { buyKey, checkKey, removeKey, setKey } from './marketkeys.ts'
+import { checkSession } from './steamweb.ts'
 import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
 import { reset as resetSettings, settings, update as updateSettings } from './settings.ts'
 
@@ -201,7 +202,15 @@ app.post('/api/accounts/active', async (req: any) => {
 })
 
 app.post('/api/accounts/link', async (req: any) => {
-  const r = accountsApi.linkStart(String(req.body?.label ?? ''), () => push())
+  // relink — обновить сессию существующего аккаунта (протухший токен).
+  // Работник этого аккаунта на время входа гасится: он бы стучался
+  // со старым токеном и выбивал новую сессию.
+  const relink = req.body?.relink ? String(req.body.relink) : null
+  if (relink && accountById(relink)) {
+    setAutopilot(relink, { on: false })
+    if (senderState(relink).running) stop(relink)
+  }
+  const r = accountsApi.linkStart(String(req.body?.label ?? ''), () => push(), relink)
   push()
   return r
 })
@@ -304,6 +313,15 @@ app.post('/api/accounts/market-key/remove', async (req: any) => {
   return r
 })
 
+// Жива ли сессия Steam аккаунта — без входа в сеть Steam.
+app.post('/api/accounts/session-check', async (req: any) => {
+  const a = accountById(String(req.body?.id ?? ''))
+  if (!a) return { error: 'нет такого аккаунта' }
+  const r = await checkSession(a)
+  push()
+  return r
+})
+
 app.post('/api/accounts/market-key/check', async (req: any) => {
   const a = accountById(String(req.body?.id ?? ''))
   if (!a) return { error: 'нет такого аккаунта' }
@@ -386,6 +404,17 @@ console.log('гемов в базе:', supplyRows().length)
 
 ingestStatus()
 watchSender()
+
+// Сессии проверяются при запуске: отозванный токен выглядит как живой файл,
+// и панель честно покажет «сессия отозвана» до того, как работник упрётся.
+void (async () => {
+  for (const a of accountList2()) {
+    if (!fs.existsSync(path.join(GC, a.token))) continue
+    const st = await checkSession(a)
+    if (st.state === 'revoked') console.log('сессия Steam «' + a.label + '» отозвана — обновите её по QR на экране аккаунтов')
+    push()
+  }
+})()
 
 // Остаток жилы считается по матчам сущности, поэтому их надо один раз выкачать.
 // Греем всё, что есть в инвентаре, начиная с самой представленной сущности.

@@ -192,6 +192,8 @@ export type AccountRow = {
   added: number
   session: boolean
   burned: number
+  // Жива ли сессия Steam: файл токена лежит и у отозванной.
+  sessionState?: { state: 'unknown' | 'ok' | 'revoked' | 'error' | 'missing'; checkedAt: number; error: string | null }
   // Статус ключа площадки этого аккаунта. Самого ключа сервер не отдаёт.
   market: MarketKeyStatus
 }
@@ -222,7 +224,7 @@ export type Settings = {
 
 export type Accounts = {
   active: string | null
-  link: { id: string; label: string; url: string | null; steamid: string | null; error: string | null; done: boolean; lines: string[] } | null
+  link: { id: string; label: string; url: string | null; steamid: string | null; error: string | null; done: boolean; relink?: string | null; lines: string[] } | null
   list: AccountRow[]
 }
 

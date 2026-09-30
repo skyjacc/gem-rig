@@ -21,10 +21,13 @@ export function LinkAccount({
   open,
   onClose,
   accounts,
+  relink = null,
 }: {
   open: boolean
   onClose: () => void
   accounts: Accounts | null
+  // Обновить сессию существующего аккаунта (Steam её отозвал), а не завести новый.
+  relink?: { id: string; label: string } | null
 }) {
   const [label, setLabel] = useState('')
   const asked = useRef(false)
@@ -37,14 +40,14 @@ export function LinkAccount({
     if (!open) { asked.current = false; return }
     if (asked.current) return
     asked.current = true
-    post('/api/accounts/link', { label: label.trim() || defaultLabel(accounts) })
-  }, [open, accounts, label])
+    post('/api/accounts/link', relink ? { relink: relink.id } : { label: label.trim() || defaultLabel(accounts) })
+  }, [open, accounts, label, relink])
 
   // Вошёл — применяем метку, если её вписали, и закрываемся.
   useEffect(() => {
     if (!open || !link?.done || !link.steamid || link.error) return
     const name = label.trim()
-    if (name && name !== link.label) post('/api/accounts/rename', { id: link.id, label: name })
+    if (!relink && name && name !== link.label) post('/api/accounts/rename', { id: link.id, label: name })
     const t = setTimeout(onClose, 1200)
     return () => clearTimeout(t)
   }, [open, link?.done, link?.steamid, link?.error, link?.id, link?.label, label, onClose])
@@ -52,7 +55,7 @@ export function LinkAccount({
   const close = () => { post('/api/accounts/link/cancel', {}); onClose() }
   const again = () => {
     post('/api/accounts/link/cancel', {})
-      .then(() => post('/api/accounts/link', { label: label.trim() || defaultLabel(accounts) }))
+      .then(() => post('/api/accounts/link', relink ? { relink: relink.id } : { label: label.trim() || defaultLabel(accounts) }))
   }
 
   const done = link?.done && link.steamid && !link.error
@@ -60,7 +63,7 @@ export function LinkAccount({
   return (
     <Modal
       open={open}
-      title="Привязать аккаунт"
+      title={relink ? 'Обновить сессию «' + relink.label + '»' : 'Привязать аккаунт'}
       note="вход по QR из приложения Steam"
       onClose={close}
       footer={
@@ -84,6 +87,11 @@ export function LinkAccount({
             <li><span className="text-foreground">4</span> — подтвердить вход</li>
           </ol>
 
+          {relink ? (
+            <p className="text-[12px] text-muted-foreground">
+              Войдите тем же Steam, что и раньше. Другой аккаунт сессию не заменит.
+            </p>
+          ) : (
           <label className="block">
             <Label>метка</Label>
             <Field
@@ -96,6 +104,7 @@ export function LinkAccount({
               можно вписать пока код ждёт — применится после входа
             </span>
           </label>
+          )}
 
           {link?.error ? (
             <p className="text-[12px]" style={{ color: 'var(--stop)' }}>{link.error}</p>

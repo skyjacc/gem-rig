@@ -13,6 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { GC, TOOLS, STEAMID, readJson } from './paths.ts'
+import { forgetWeb } from './steamweb.ts'
 
 export type Account = {
   id: string
@@ -99,30 +100,44 @@ type Link = {
   done: boolean
   child: ChildProcess | null
   lines: string[]
+  // Обновление сессии уже привязанного аккаунта: id этого аккаунта.
+  // Токен тогда пишется во временный файл и заменяет прежний, только если
+  // вошли тем же Steam.
+  relink: string | null
 }
 
 let link: Link | null = null
 
 export function linkState() {
   if (!link) return null
-  const { id, label, url, steamid, error, done } = link
-  return { id, label, url, steamid, error, done, lines: link.lines.slice(-12) }
+  const { id, label, url, steamid, error, done, relink } = link
+  return { id, label, url, steamid, error, done, relink, lines: link.lines.slice(-12) }
 }
 
-export function linkStart(label: string, onChange: () => void) {
+// Сессия протухает: смена пароля, «выйти на всех устройствах», сброс
+// Steam Guard — и refresh-токен Steam отзывает. Отправщик тогда не войдёт,
+// а привязать тот же Steam заново как новый аккаунт нельзя (он уже есть).
+// Поэтому relink: тот же вход по QR, но для существующей строки реестра.
+export function linkStart(label: string, onChange: () => void, relink: string | null = null) {
   if (link && !link.done && link.child && link.child.exitCode === null) {
     return { error: 'привязка уже идёт' }
   }
-  const clean = String(label || '').trim() || 'второй'
-  const id = slug(clean, reg.list.map(a => a.id))
-  const token = 'token-' + id + '.json'
+  const target = relink ? byId(relink) : null
+  if (relink && !target) return { error: 'нет такого аккаунта' }
+  const clean = target ? target.label : (String(label || '').trim() || 'второй')
+  const id = target ? target.id : slug(clean, reg.list.map(a => a.id))
+  // Новый токен — во временный файл: прежний не трогаем, пока не убедимся,
+  // что вошли тем же Steam. Старый хвост от прошлой попытки убираем, иначе
+  // отправщик вошёл бы по нему без QR — возможно, чужим аккаунтом.
+  const token = target ? 'token-relink-' + target.id + '.json' : 'token-' + id + '.json'
+  if (target) { try { fs.unlinkSync(path.join(GC, token)) } catch { } }
 
   const child = spawn(process.execPath, ['index.js', '--dry', '--save-token', '--token', token], {
     cwd: GC,
     windowsHide: true,
   })
 
-  link = { id, label: clean, token, url: null, steamid: null, error: null, done: false, child, lines: [] }
+  link = { id, label: clean, token, url: null, steamid: null, error: null, done: false, child, lines: [], relink: target?.id ?? null }
 
   const read = (b: Buffer) => {
     for (const raw of String(b).split(/\r?\n/)) {
@@ -141,6 +156,24 @@ export function linkStart(label: string, onChange: () => void) {
   const finish = () => {
     if (!link || link.done) return
     if (!link.steamid) return
+    if (link.relink) {
+      const a = byId(link.relink)
+      const tmp = path.join(GC, link.token)
+      if (!a || a.steamid !== link.steamid) {
+        try { fs.unlinkSync(tmp) } catch { }
+        link.error = a
+          ? 'вошли другим Steam (' + link.steamid + '), а сессия обновлялась для «' + a.label + '» (' + a.steamid + ')'
+          : 'аккаунт пропал из реестра'
+      } else {
+        // Тот же Steam — новый токен становится сессией аккаунта.
+        fs.renameSync(tmp, path.join(GC, a.token))
+        forgetWeb(a.id)   // старый статус и куки относились к отозванной сессии
+      }
+      link.done = true
+      try { link.child?.kill() } catch { }
+      onChange()
+      return
+    }
     // Тот же аккаунт дважды не заводим: сессия перезапишется, а строк станет две.
     const already = reg.list.find(a => a.steamid === link!.steamid)
     if (already) {
@@ -161,6 +194,8 @@ export function linkStart(label: string, onChange: () => void) {
   child.stderr?.on('data', read)
   child.on('exit', () => {
     if (link && !link.done) {
+      // Недоделанное обновление не должно оставить временный токен.
+      if (link.relink) { try { fs.unlinkSync(path.join(GC, link.token)) } catch { } }
       link.error = link.error ?? 'вход не подтверждён'
       link.done = true
       onChange()

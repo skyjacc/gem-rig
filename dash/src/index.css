@@ -342,12 +342,12 @@ button, a, input, summary { transition: color var(--t-fast), background-color va
 .lg-scene-in {
   position: absolute;
   inset: 0;
-  filter: brightness(0.9) saturate(1);
+  filter: brightness(0.8) saturate(0.95);
   transition: filter 600ms ease, transform 900ms cubic-bezier(.5, 0, .2, 1), opacity 900ms ease;
 }
 .lg-bg, .lg-scene-in > * { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
 .lg-scene iframe { width: 100% !important; height: 100% !important; border: 0; pointer-events: none; }
-.is-focus .lg-scene-in { filter: brightness(1.18) saturate(1.15); }
+.is-focus .lg-scene-in { filter: brightness(1.05) saturate(1.1); }
 .lg-scene-in.pulse-0 { animation: lg-pulse-a 700ms cubic-bezier(.3, .7, .2, 1); }
 .lg-scene-in.pulse-1 { animation: lg-pulse-b 700ms cubic-bezier(.3, .7, .2, 1); }
 .is-ok .lg-scene-in { transform: scale(1.9); filter: brightness(1.6) saturate(1.2); opacity: 0.35; }
@@ -369,7 +369,7 @@ button, a, input, summary { transition: color var(--t-fast), background-color va
   flex-direction: column;
   align-items: center;
   border-radius: 18px;
-  background: rgb(8 9 13 / 0.64);
+  background: rgb(9 10 13 / 0.86);
   border: 1px solid var(--line);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 30px 70px rgb(0 0 0 / 0.55);
   backdrop-filter: blur(16px);
@@ -513,11 +513,9 @@ button, a, input, summary { transition: color var(--t-fast), background-color va
 .lg-spin { animation: lg-spin 800ms linear infinite; }
 
 .lg-eye:focus-visible, .lg-go:focus-visible { outline: 2px solid var(--portal); outline-offset: 2px; }
-.is-bad .lg-card { animation: lg-shake 360ms cubic-bezier(.36, .07, .19, .97); }
 
 @keyframes lg-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
 @keyframes lg-spin { to { rotate: 360deg; } }
-@keyframes lg-shake { 20%, 60% { translate: -5px 0; } 40%, 80% { translate: 5px 0; } }
 @keyframes lg-pulse-a { 40% { transform: scale(0.94); filter: brightness(1.45) saturate(1.2); } }
 @keyframes lg-pulse-b { 40% { transform: scale(0.94); filter: brightness(1.45) saturate(1.2); } }
 
@@ -526,7 +524,60 @@ button, a, input, summary { transition: color var(--t-fast), background-color va
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lg-card, .lg-scene-in, .lg-spin, .is-bad .lg-card { animation: none !important; }
+  .lg-card, .lg-scene-in, .lg-spin { animation: none !important; }
   .lg-scene-in, .lg-card, .lg-go::before { transition: none; }
 }
 .lg-field input::selection { background: rgb(143 178 255 / 0.35); color: #fff; }
+
+/* ── язык входа в самой панели ──
+   Холодный синий портала — акцент навигации и фокуса. Цвета состояний
+   (идёт, ждёт, стоп) не трогаем: они несут смысл, а не оформление. */
+:root { --portal: #8fb2ff; }
+
+.dark {
+  --background: oklch(12.5% 0.012 265);
+  --muted-foreground: oklch(70% 0.015 265);
+}
+
+.side {
+  background: rgb(5 6 10 / 0.85);
+  border-right: 1px solid rgb(255 255 255 / 0.06);
+}
+.side-brand { display: flex; align-items: center; gap: 10px; }
+.side-brand svg { color: var(--portal); }
+.side-brand span {
+  font-family: 'Unbounded', var(--font-sans);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.side-item {
+  position: relative;
+  border-radius: 8px;
+  margin: 1px 8px;
+  width: calc(100% - 16px) !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+.side-item[aria-current='page'] {
+  background: rgb(143 178 255 / 0.1) !important;
+  color: #fff;
+}
+.side-item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--portal);
+  box-shadow: 0 0 10px rgb(143 178 255 / 0.6);
+}
+.side-item[aria-current='page'] > span:first-child { color: var(--portal); }
+
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid rgb(143 178 255 / 0.75);
+  outline-offset: 2px;
+}

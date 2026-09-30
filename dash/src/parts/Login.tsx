@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState, type ComponentType } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Check, Eye, EyeOff, Gem, LoaderCircle, Lock } from 'lucide-react'
 
 // Вход. Фон — шейдерная сцена Portal Field из ThreeUI (MIT); выбран из шести
@@ -13,15 +13,8 @@ import { Check, Eye, EyeOff, Gem, LoaderCircle, Lock } from 'lucide-react'
 
 type Phase = 'idle' | 'busy' | 'ok' | 'bad'
 
-// ThreeUI грузится подпутём: вся библиотека весит 7 МБ, а панель открывают
-// издалека. Его стили — вместе с компонентом, чтобы не задеть панель.
-const PortalFieldCollection = lazy(async () => {
-  const [m] = await Promise.all([
-    import('@designcodeio/threeui/components/PortalFieldCollection') as Promise<any>,
-    import('@designcodeio/threeui/style.css'),
-  ])
-  return { default: m.PortalFieldCollection as ComponentType<any> }
-})
+// Сцена портала — отдельным куском: основная панель за неё не платит.
+const PortalScene = lazy(() => import('./PortalScene.tsx').then(m => ({ default: m.PortalScene })))
 
 export function Login() {
   const [token, setToken] = useState('')
@@ -69,7 +62,7 @@ export function Login() {
       <div className="lg-scene" aria-hidden="true">
         <div className={'lg-scene-in' + (pulse ? ' pulse-' + (pulse % 2) : '')}>
           <Suspense fallback={null}>
-            <PortalFieldCollection variant="portal-field" mode="dark" className="lg-bg" />
+            <PortalScene className="lg-bg" />
           </Suspense>
         </div>
       </div>

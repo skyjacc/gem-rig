@@ -17,7 +17,6 @@
 // дешевле, чем планировали. Выросла выше допуска — не берём вовсе
 // и переходим к следующей позиции, а в журнале видно обе цены.
 
-import { marketKey } from './paths.ts'
 import { settings } from './settings.ts'
 import { balance, bestOffer, buyOne, type Currency } from './market.ts'
 
@@ -135,10 +134,13 @@ type Job = {
   positions: { gem: string; asked: number; got: number; done: boolean; why: string }[]
   log: Entry[]
   error: string | null
+  // На чей аккаунт идёт закупка: у каждого свой ключ площадки, и лоты
+  // приходят на тот Steam, к которому привязан этот ключ.
+  account: { id: string; label: string } | null
 }
 
 const EMPTY: Job = {
-  active: false, cancel: false, startedAt: 0, finishedAt: 0, currency: 'RUB',
+  active: false, cancel: false, startedAt: 0, finishedAt: 0, currency: 'RUB', account: null,
   planned: 0, done: 0, ok: 0, spent: 0, current: '', pass: 0,
   positions: [], log: [], error: null,
 }
@@ -181,12 +183,16 @@ function classify(error: string): Entry['reason'] {
 // и вернуть их нельзя: лоты уже куплены.
 let starting = false
 
-export async function startPurchase(lines: Line[], currency: Currency, push: () => void) {
+// Ключ и аккаунт приходят снаружи: их выбирает и проверяет marketkeys.buyKey.
+// Здесь закупка только тратит тем ключом, который ей дали.
+export type Target = { key: string; id: string; label: string }
+
+export async function startPurchase(lines: Line[], currency: Currency, push: () => void, target: Target) {
   if (job.active || starting) return { error: 'закупка уже идёт' }
   starting = true
   try {
-    const key = marketKey()
-    if (!key) return { error: 'нет ключа площадки — положите его в tools/market.key' }
+    const key = String(target?.key ?? '')
+    if (!key) return { error: 'нет ключа площадки' }
     if (!lines.length) return { error: 'нечего покупать' }
 
     const acc: any = await balance(key)
@@ -209,13 +215,14 @@ export async function startPurchase(lines: Line[], currency: Currency, push: () 
       currency: accCur,
       planned,
       log: [],
+      account: { id: target.id, label: target.label },
     }
     push()
 
     // Работа идёт своим чередом, ответ уходит сразу: панель дальше смотрит
     // на состояние, а не ждёт конца.
     void run(lines, key, accCur, settings().priceTolerance, push)
-    return { started: true, planned, total, currency: accCur }
+    return { started: true, planned, total, currency: accCur, account: target.label }
   } finally {
     // Снимаем замок только после того, как job.active поднят: дальше
     // от второго запуска защищает уже он.

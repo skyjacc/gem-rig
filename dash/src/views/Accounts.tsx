@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, Link2, Pencil, Play, Square, Unlink } from 'lucide-react'
 import {
   ago, nf, plural, post, span, useAction, useJson,
-  type AccountRow, type Accounts as AccountsData, type Settings, type State, type Unit,
+  type AccountRow, type Accounts as AccountsData, type MarketKeyStatus, type Settings, type State, type Unit,
 } from '../lib/api.ts'
 import { Bar, Button, Card, Dot, Field, Head, ItemIcon, Label, Note, Num, PageHead, Segmented } from '../parts/ui.tsx'
 import { Modal } from '../parts/Modal.tsx'
@@ -190,6 +190,8 @@ function Row({
         <Cell k="падений подряд" v={String(u?.failures ?? 0)} tone={u?.failures ? 'stop' : undefined} />
         <Cell k="выбило сессией" v={String(u?.displaced ?? 0)} tone={u?.displaced ? 'stop' : undefined} />
       </div>
+
+      <MarketKey a={a} />
 
       {u?.fatal ? (
         <div className="mt-3">
@@ -466,6 +468,73 @@ function Common({ state }: { state: State }) {
           ))}
         </div>
       </Card>
+    </div>
+  )
+}
+
+// Ключ площадки аккаунта. Показывается только статус: сам ключ сервер
+// не отдаёт, поле ввода всегда пустое. Лоты площадка шлёт на тот Steam,
+// к которому привязан её профиль, — поэтому чужой ключ помечается отдельно
+// и покупать с ним панель не даст.
+const KEY_WORD: Record<MarketKeyStatus['state'], string> = {
+  missing: 'не задан',
+  unchecked: 'не проверен',
+  ok: 'проверен, этот аккаунт',
+  mismatch: 'чужой Steam',
+  invalid: 'площадка отвергла',
+}
+
+function MarketKey({ a }: { a: AccountRow }) {
+  const [key, setKey] = useState('')
+  const act = useAction()
+  const st = a.market
+  const bad = st?.state === 'mismatch' || st?.state === 'invalid'
+
+  return (
+    <div className="mt-3 border-t border-white/[0.06] pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[12px] text-muted-foreground">ключ market.dota2.net:</span>
+        <span className={'text-[12px] ' + (bad ? 'text-[var(--stop)]' : st?.state === 'ok' ? '' : 'text-muted-foreground')}>
+          {KEY_WORD[st?.state ?? 'missing']}
+        </span>
+        <span className="ml-auto flex flex-wrap items-center gap-2">
+          <Field
+            value={key}
+            onChange={setKey}
+            placeholder={st?.state === 'missing' ? 'вставьте ключ' : 'новый ключ'}
+            type="password"
+            autoComplete="off"
+            width="w-48"
+          />
+          <Button
+            loading={act.busy}
+            disabled={act.busy || !key.trim()}
+            onClick={async () => {
+              const r: any = await act.run('/api/accounts/market-key', { id: a.id, key })
+              if (!r?.error) setKey('')
+            }}
+          >
+            сохранить
+          </Button>
+          {st && st.state !== 'missing' ? (
+            <>
+              <Button disabled={act.busy} onClick={() => act.run('/api/accounts/market-key/check', { id: a.id })}>проверить</Button>
+              <Button tone="danger" disabled={act.busy} onClick={() => act.run('/api/accounts/market-key/remove', { id: a.id })}>убрать</Button>
+            </>
+          ) : null}
+        </span>
+      </div>
+      {st?.state === 'mismatch' ? (
+        <div className="mt-2">
+          <Note title="ключ от другого Steam">
+            Профиль площадки привязан к {st.marketSteamid}, а этот аккаунт — {a.steamid}.
+            Купленные лоты ушли бы туда, поэтому закупка на этот аккаунт закрыта.
+          </Note>
+        </div>
+      ) : st?.state === 'invalid' || (st?.state === 'unchecked' && st.error) ? (
+        <p className="mt-1.5 text-[12px] text-muted-foreground">{st.error}</p>
+      ) : null}
+      {act.error ? <div className="mt-2"><Note title="ключ не сохранился">{act.error}</Note></div> : null}
     </div>
   )
 }

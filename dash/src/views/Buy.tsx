@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Minus, Plus, RefreshCw, ShoppingCart, SlidersHorizontal, Square, Wand2 } from 'lucide-react'
-import { nf, plural, post, useAction, useJson, type PurchaseRun, type State } from '../lib/api.ts'
+import { nf, plural, post, useAction, useJson, type MarketKeyStatus, type PurchaseRun, type State } from '../lib/api.ts'
 import { Bar, Button, Card, Dot, Empty, Field, ItemIcon, Label, Note, PageHead, RowsSkeleton, Segmented } from '../parts/ui.tsx'
 import { Modal } from '../parts/Modal.tsx'
 import { Reveal } from '../parts/Reveal.tsx'
@@ -53,6 +53,9 @@ type Scan = {
   balance: number | null
   balanceCurrency: string | null
   balanceError: string | null
+  // На чей аккаунт считается план и уйдёт закупка, и состояние его ключа.
+  account?: { id: string; label: string }
+  key?: MarketKeyStatus
   offers: Offer[]
 }
 
@@ -281,6 +284,12 @@ export function Buy({ state }: { state: State }) {
         <Kpi k="цена лота" v={money(kpi[0]?.price ?? 0, cur)} note={data.converted ? 'пересчёт по курсу НБУ ' + data.rate.toFixed(2) : 'минимальная'} />
         <Kpi k="продажа" v={money(data.sell, cur)} note="за готовую вещь" />
         <Kpi
+          k="покупка на"
+          v={data.account?.label ?? '—'}
+          note={data.key ? 'ключ: ' + ({ missing: 'не задан', unchecked: 'не проверен', ok: 'этого аккаунта', mismatch: 'чужой Steam', invalid: 'отвергнут' } as const)[data.key.state] : undefined}
+          tone={data.key?.state === 'ok' ? 'ok' : undefined}
+        />
+        <Kpi
           k="на счету"
           v={data.balance != null ? money(data.balance, (data.balanceCurrency as Cur) ?? cur) : '—'}
           note={data.balanceError ?? 'на market.dota2.net'}
@@ -291,7 +300,7 @@ export function Buy({ state }: { state: State }) {
       {data.balanceError ? (
         <Note tone={data.balance == null ? 'warn' : 'ok'} title="покупать пока нельзя">
           {data.balanceError === 'нет ключа'
-            ? 'Ключ площадки не найден. Положите его в tools/market.key — без него виден список цен, но не покупка. Список цен открытый, ключ нужен только чтобы списывать деньги.'
+            ? 'У аккаунта «' + (data.account?.label ?? '') + '» нет ключа площадки. Задайте его на экране «Аккаунты» — без него виден список цен, но не покупка. Список цен открытый, ключ нужен только чтобы списывать деньги.'
             : 'Площадка не отдала баланс: ' + data.balanceError + '. Список цен ниже мог устареть.'}
         </Note>
       ) : null}
@@ -516,6 +525,9 @@ export function Buy({ state }: { state: State }) {
                 setBusy(true)
                 const r = await post('/api/market/buy', {
                   lines: cart.lines.map(x => ({ name: x.o.name, take: x.n, price: x.o.price })),
+                  // Аккаунт, по которому считался план: переключение в панели
+                  // между разбором и покупкой не должно увести лоты на другой.
+                  id: data.account?.id,
                   currency: cur,
                 })
                 setResult(r?.error ? String(r.error) : null)

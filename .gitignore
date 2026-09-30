@@ -6,6 +6,7 @@ tools/opendota.key
 tools/steam.key
 tools/stratz.key
 tools/market.key
+tools/market-*.key
 tools/panel.token
 tools/gcwatch/token.json
 tools/gcwatch/token-*.json

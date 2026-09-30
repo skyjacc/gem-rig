@@ -16,7 +16,8 @@ import { senderState, statusFile, stop } from './sender.ts'
 import { allowedHosts, bearer, cookieValue, gate, loadToken, loginCookie, logoutCookie, sameToken } from './auth.ts'
 import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph, itemPool, marketScan, queuePreview, tree } from './api.ts'
 import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase.ts'
-import { ACCOUNT, activeId as activeAccountId, list as accountList2 } from './accounts.ts'
+import { ACCOUNT, active as activeAccount, activeId as activeAccountId, byId as accountById, list as accountList2 } from './accounts.ts'
+import { buyKey, checkKey, removeKey, setKey } from './marketkeys.ts'
 import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
 import { reset as resetSettings, settings, update as updateSettings } from './settings.ts'
 
@@ -229,6 +230,11 @@ app.post('/api/accounts/unlink', async (req: any) => {
     setAutopilot(id, { on: false })
     if (senderState(id).running) stop(id)
     ingestStatus()
+    // Ключ площадки уходит вместе с аккаунтом: он тратит деньги на его Steam,
+    // и оставлять его без хозяина незачем. tools/market.key основного
+    // не трогаем: это прежнее место ключа, его человек удаляет сам.
+    const a = accountById(id)
+    if (a && a.id !== 'main' && accountList2().length > 1) removeKey(a)
   }
   const r = accountsApi.unlink(id)
   push()
@@ -261,14 +267,47 @@ app.get('/api/queue', async (req: any) => queuePreview(Number(req.query?.limit) 
 app.post('/api/market/buy', async (req: any) => {
   const b = req.body ?? {}
   const currency = String(b.currency ?? 'RUB') as any
+  // Покупаем на конкретный аккаунт: план считался по нему, и лоты должны
+  // прийти туда же. Без явного id — активный, как видит панель.
+  const who = b.id ? accountById(String(b.id)) : activeAccount()
+  if (!who) return { error: 'нет такого аккаунта' }
   // Цены сверяются с разбором площадки в той же валюте: сервер покупает
   // только то и не дороже того, что видел сам.
-  const scan: any = await marketScan(false, currency)
+  const scan: any = await marketScan(false, currency, who)
   const seen = new Map<string, number>((scan?.offers ?? []).map((o: any) => [String(o.name), Number(o.price)]))
   const s = settings()
   const vet = vetLines(b.lines ?? [], seen, s.priceTolerance, s.purchaseCap)
   if ('error' in vet) return vet
-  const r = await startPurchase(vet.lines, currency, () => push())
+  // Ключ этого аккаунта и проверка, что площадка шлёт лоты именно ему.
+  const k = await buyKey(who)
+  if ('error' in k) return k
+  const r = await startPurchase(vet.lines, currency, () => push(), { key: k.key, id: who.id, label: who.label })
+  push()
+  return r
+})
+
+// Ключ площадки аккаунта: записать, удалить, перепроверить. В ответ —
+// только статус; сам ключ сервер не отдаёт никогда.
+app.post('/api/accounts/market-key', async (req: any) => {
+  const a = accountById(String(req.body?.id ?? ''))
+  if (!a) return { error: 'нет такого аккаунта' }
+  const r = await setKey(a, String(req.body?.key ?? ''))
+  push()
+  return r
+})
+
+app.post('/api/accounts/market-key/remove', async (req: any) => {
+  const a = accountById(String(req.body?.id ?? ''))
+  if (!a) return { error: 'нет такого аккаунта' }
+  const r = removeKey(a)
+  push()
+  return r
+})
+
+app.post('/api/accounts/market-key/check', async (req: any) => {
+  const a = accountById(String(req.body?.id ?? ''))
+  if (!a) return { error: 'нет такого аккаунта' }
+  const r = await checkKey(a, true)
   push()
   return r
 })

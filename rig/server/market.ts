@@ -177,6 +177,10 @@ async function call(method: string, key: string, params: Record<string, string |
 
 export const balance = (key: string) => call('get-money', key, {})
 
+// Чей это ключ. Площадка отдаёт steamid64 аккаунта, на который уходят
+// купленные лоты, — по нему видно, совпадает ли ключ с аккаунтом панели.
+export const steamIdOf = (key: string) => call('get-my-steam-id', key, {})
+
 // Нынешние предложения по предмету. Нужны, чтобы покупать по самой низкой
 // цене на момент покупки, а не по той, что была в списке две минуты назад:
 // дешёвые лоты кончаются по мере скупки, и цена ползёт вверх.

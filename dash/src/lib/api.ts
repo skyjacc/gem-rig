@@ -192,6 +192,15 @@ export type AccountRow = {
   added: number
   session: boolean
   burned: number
+  // Статус ключа площадки этого аккаунта. Самого ключа сервер не отдаёт.
+  market: MarketKeyStatus
+}
+
+export type MarketKeyStatus = {
+  state: 'missing' | 'unchecked' | 'ok' | 'mismatch' | 'invalid'
+  marketSteamid: string | null
+  checkedAt: number
+  error: string | null
 }
 
 export type Settings = {

@@ -13,6 +13,9 @@ import { startPurchase, stopPurchase, purchaseState, purchaseBusy } from './purc
 
 const real = globalThis.fetch
 
+// Ключ подставной: тест не должен читать настоящий tools/market.key.
+const T = { key: 'test-key-0123456789', id: 'main', label: 'тест' }
+
 // Закупка живёт своим чередом после ответа, поэтому между проверками её
 // надо дожидаться: иначе состояние протекает в следующий тест.
 async function settle() {
@@ -41,8 +44,8 @@ test('два одновременных запуска дают одну зак�
   try {
     const lines = [{ name: 'Spectator: Alliance', take: 1, price: 0.01 }]
     const [a, b]: any[] = await Promise.all([
-      startPurchase(lines, 'RUB', () => { }),
-      startPurchase(lines, 'RUB', () => { }),
+      startPurchase(lines, 'RUB', () => { }, T),
+      startPurchase(lines, 'RUB', () => { }, T),
     ])
     const started = [a, b].filter(r => r?.started).length
     const refused = [a, b].filter(r => r?.error === 'закупка уже идёт').length
@@ -59,11 +62,11 @@ test('пока идут проверки, закупка уже считаетс
   slowMarket(80, calls)
   try {
     const lines = [{ name: 'Spectator: Alliance', take: 1, price: 0.01 }]
-    const first = startPurchase(lines, 'RUB', () => { })
+    const first = startPurchase(lines, 'RUB', () => { }, T)
     // Флаг job.active ещё не поднят — работа стоит на балансе.
     assert.equal(purchaseState().active, false)
     assert.equal(purchaseBusy(), true, 'замок держится с первой строки, а не с job.active')
-    const second: any = await startPurchase(lines, 'RUB', () => { })
+    const second: any = await startPurchase(lines, 'RUB', () => { }, T)
     assert.equal(second?.error, 'закупка уже идёт')
     await first
   } finally {
@@ -77,10 +80,10 @@ test('отказ на проверках снимает замок — след�
     new Response(JSON.stringify({ success: false, error: 'нет ответа' }))) as any
   try {
     const lines = [{ name: 'Spectator: Alliance', take: 1, price: 0.01 }]
-    const a: any = await startPurchase(lines, 'RUB', () => { })
+    const a: any = await startPurchase(lines, 'RUB', () => { }, T)
     assert.ok(a?.error, 'площадка не отдала баланс — запуска нет')
     assert.equal(purchaseBusy(), false, 'замок обязан сняться, иначе закупка мертва до перезапуска панели')
-    const b: any = await startPurchase(lines, 'RUB', () => { })
+    const b: any = await startPurchase(lines, 'RUB', () => { }, T)
     assert.ok(b?.error, 'вторая попытка доходит до той же проверки, а не до «уже идёт»')
     assert.notEqual(b?.error, 'закупка уже идёт')
   } finally {
@@ -90,7 +93,7 @@ test('отказ на проверках снимает замок — след�
 })
 
 test('пустой список денег не тратит', async () => {
-  const r: any = await startPurchase([], 'RUB', () => { })
+  const r: any = await startPurchase([], 'RUB', () => { }, T)
   assert.equal(r?.error, 'нечего покупать')
   assert.equal(purchaseBusy(), false)
 })

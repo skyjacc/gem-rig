@@ -134,3 +134,10 @@ func TestHostname(t *testing.T) {
 		}
 	}
 }
+
+func TestCrossOriginLoginRejectedBeforeTokenCheck(t *testing.T) {
+	w := do(t, "POST", "/api/login", map[string]string{"_body": tok, "Origin": "https://evil.example"})
+	if w.Code != 403 {
+		t.Fatalf("login from a foreign page must be refused even with the right token, got %d", w.Code)
+	}
+}

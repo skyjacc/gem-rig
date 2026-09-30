@@ -596,8 +596,8 @@ powershell -ExecutionPolicy Bypass -File rig\autostart\install-task.ps1
 
 - Задача «Gemtrack panel» стартует при запуске Windows, даже без входа пользователя. Пароль не хранится.
 - Если панель упала, `run-panel.cmd` поднимает её снова через 15 секунд. Вывод пишется в `tools/panel.log`.
-- Остановить: `Stop-ScheduledTask -TaskName "Gemtrack panel"`. Убрать: тот же скрипт с `-Remove`.
-- Окружение задаётся в `tools/panel.env.cmd`, файл в git не попадает. Туда вписывается `set ALLOWED_HOSTS=<имя-пк>.<сеть>.ts.net`. После правки перезапустить задачу.
+- Перезапустить: `rig\autostart\restart-panel.ps1`. Остановить: тот же скрипт с `-Stop`. Одного `Stop-ScheduledTask` мало: он гасит обёртку, а процесс панели остаётся. Убрать задачу: `install-task.ps1 -Remove`.
+- Окружение задаётся в `tools/panel.env.cmd`, файл в git не попадает. Туда вписывается `set ALLOWED_HOSTS=<имя-пк>.<сеть>.ts.net`. После правки перезапустить панель скриптом `restart-panel.ps1`.
 
 **Доступ.** Tailscale ставится на домашний ПК, ноутбук и телефон под одним аккаунтом. На домашнем ПК выполнить:
 

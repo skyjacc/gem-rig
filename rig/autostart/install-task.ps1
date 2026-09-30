@@ -36,7 +36,13 @@ if (-not (Test-Path $envFile)) {
 
 $user = "$env:USERDOMAIN\$env:USERNAME"
 $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$cmd`"" -WorkingDirectory (Split-Path $cmd)
-$trigger = New-ScheduledTaskTrigger -AtStartup
+# Два запуска: при старте Windows и сторож раз в 5 минут. Сторож нужен на
+# случай, если умерла сама обёртка с циклом перезапуска: Планировщик тогда
+# видит задачу завершённой и поднимает её снова. Пока задача идёт, повторный
+# запуск игнорируется (MultipleInstances IgnoreNew).
+$boot = New-ScheduledTaskTrigger -AtStartup
+$watch = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
+$trigger = @($boot, $watch)
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType S4U -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet `
   -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) `

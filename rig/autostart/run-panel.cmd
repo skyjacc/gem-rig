@@ -7,7 +7,7 @@ rem Keep this file ASCII with CRLF line endings: cmd.exe misreads UTF-8 text.
 rem
 rem The restart loop lives here: Task Scheduler restarts a task only when it
 rem fails to launch, not when the program inside exits with an error.
-rem Stop it with: Stop-ScheduledTask -TaskName "Gemtrack panel"
+rem Restart or stop it with restart-panel.ps1 (Stop-ScheduledTask alone leaves node running).
 
 cd /d "%~dp0.."
 :loop

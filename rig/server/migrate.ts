@@ -26,6 +26,9 @@ const ADD: [string, string, string][] = [
   // Кто отправил. Лента у аккаунтов общая по времени, но видеть, чей это
   // был матч, нужно: два работника идут одновременно.
   ['events', 'account', `alter table events add column account text`],
+  // Сколько раз матч отправлялся этим аккаунтом. Нужна очереди: dup, не
+  // засчитанный и после повтора, больше не гоняется по кругу.
+  ['burned', 'tries', `alter table burned add column tries integer default 1`],
 ]
 
 // Развязка ленты отправок по метке + аккаунту + матчу.
@@ -68,6 +71,23 @@ export function splitEvents(target: DatabaseSync): boolean {
   return true
 }
 
+// Попытки для уже накопленных dup восстанавливаются по ленте отправок:
+// 22 августа часть dup уходила по пять-девять раз, и ни один не засчитался.
+function backfillTries(target: DatabaseSync) {
+  const ev = target.prepare(`pragma table_info(events)`).all() as any[]
+  const bu = target.prepare(`pragma table_info(burned)`).all() as any[]
+  // До развязки по аккаунтам сверять не с чем: такой журнал ещё не знает,
+  // чей он, и после пересборки попытки начнутся с единицы.
+  if (!ev.some(c => c.name === 'account') || !bu.some(c => c.name === 'account')) return
+  target.exec(`
+    update burned set tries = max(1, (
+      select count(*) from events e
+      where e.account = burned.account and e.match_id = burned.match_id and e.result = 'dup'
+    ))
+    where state = 'dup'
+  `)
+}
+
 export function migrate(target: DatabaseSync): string[] {
   const applied: string[] = []
 
@@ -79,6 +99,7 @@ export function migrate(target: DatabaseSync): string[] {
     if (info.some(c => c.name === column)) continue
     target.exec(sql)
     applied.push(`${table}.${column}`)
+    if (table === 'burned' && column === 'tries') backfillTries(target)
   }
 
   // Таблицы может не быть вовсе: у обходчика своя база, а тест приносит

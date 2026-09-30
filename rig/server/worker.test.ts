@@ -276,3 +276,12 @@ test('остановка: цель ещё не взята — продолжае
   const d = decide({ ...base, senderAlive: true, target: 500, done: 499 })
   assert.notEqual(d.action, 'halt')
 })
+
+test('очередь пройдена — пересобираем, а не ждём тишины', () => {
+  const d = decide({ ...base, senderAlive: true, drained: true, lastSendAt: 90_000, senderStartedAt: 1 })
+  assert.equal(d.action, 'rebuild')
+})
+
+test('пройденная очередь не отменяет срок', () => {
+  assert.equal(decide({ ...base, drained: true, until: 50_000 }).action, 'halt')
+})

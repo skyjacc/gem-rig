@@ -259,3 +259,19 @@ test('пробованный общий матч уступает нетрону
 
   assert.deepEqual(rows.map(r => r.match), ['9', '5'])
 })
+
+// ── повторы dup ──
+
+test('dup после второй безответной попытки из очереди выходит', () => {
+  const db = fresh()
+  db.exec(`alter table burned add column tries integer default 1`)
+  db.prepare('insert into burned values (?,?,?,?,?,?,?)').run('A', '1', null, 1, 'live', 'dup', 2)
+  assert.deepEqual(queueFor(db, [EMPIRE], 'A').map(r => r.match), ['2'])
+})
+
+test('dup с одной попыткой ещё повторяется — в хвосте', () => {
+  const db = fresh()
+  db.exec(`alter table burned add column tries integer default 1`)
+  db.prepare('insert into burned values (?,?,?,?,?,?,?)').run('A', '1', null, 1, 'live', 'dup', 1)
+  assert.deepEqual(queueFor(db, [EMPIRE], 'A').map(r => r.match), ['2', '1'])
+})

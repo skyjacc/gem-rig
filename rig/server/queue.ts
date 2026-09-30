@@ -94,6 +94,25 @@ export function triedSet(target: DatabaseSync, account: string): Set<string> {
   return new Set(rows.map(r => String(r.match_id)))
 }
 
+// Сколько раз пробовать dup, прежде чем бросить.
+//
+// Один повтор — не больше. Замер по журналу 22 августа: из 1351 dup сто
+// тридцать с лишним отправлялись повторно, до девяти раз, и не засчитался
+// ни один. Бесконечный повтор делал бы из хвоста очереди вечный круг:
+// очередь кончилась — пересобрали — снова те же dup — снова пусто.
+export const DUP_TRIES = 2
+
+export function exhaustedSet(target: DatabaseSync, account: string): Set<string> {
+  try {
+    const rows = target.prepare(
+      `select match_id from burned where account = ? and state = 'dup' and coalesce(tries, 1) >= ?`,
+    ).all(String(account), DUP_TRIES) as any[]
+    return new Set(rows.map(r => String(r.match_id)))
+  } catch {
+    return new Set() // колонки попыток ещё нет — повторяем, как раньше
+  }
+}
+
 export function burnedSet(target: DatabaseSync, account: string): Set<string> {
   const rows = target.prepare(
     `select match_id from burned where account = ? and state = 'confirmed'`).all(String(account)) as any[]
@@ -244,7 +263,9 @@ export function sendsNeeded(rows: QueueRow[], need: Map<string, number>): number
 export function queueFor(target: DatabaseSync, picks: Pick[], account: string): QueueRow[] {
   const sets = new Map<string, Match[]>()
   for (const p of picks) sets.set(p.key, matchesOf(target, p))
-  return rotate(buildQueue(sets, burnedSet(target, account), triedSet(target, account)))
+  const skip = burnedSet(target, account)
+  for (const m of exhaustedSet(target, account)) skip.add(m)
+  return rotate(buildQueue(sets, skip, triedSet(target, account)))
 }
 
 // Потолок сущности — не оценка со стороны, а число матчей, которые реально

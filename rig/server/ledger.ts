@@ -50,10 +50,56 @@ export function ingestOne(
   if (!account) throw new Error('журнал расхода ведётся по аккаунту, аккаунт не указан')
   const state = classify(e.result)
   if (!state) return false
-  target.prepare(
+  const ins = target.prepare(
     `insert or ignore into burned (account, match_id, league_id, ts, source, state) values (?,?,?,?,?,?)`,
   ).run(String(account), String(e.match), e.league ? String(e.league) : null, Math.trunc(e.ts), 'live', state)
+  if (Number(ins.changes) > 0) return true
+
+  // Запись уже есть. Раньше `insert or ignore` на этом останавливался, и dup,
+  // засчитанный со второй попытки, навсегда оставался dup: матч снова и снова
+  // уходил в хвост очереди, хотя был израсходован.
+  //
+  // Теперь повтор поднимает dup до confirmed, но не наоборот: засчитанное
+  // не отменяется пустым ответом. Число попыток растёт — по нему очередь
+  // перестаёт гонять безнадёжные dup по кругу.
+  const tries = hasTries(target) ? `, tries = coalesce(tries, 1) + 1` : ''
+  target.prepare(
+    `update burned set
+       source = case when ? = 'confirmed' and state = 'dup' then 'resolved' else source end,
+       state = case when ? = 'confirmed' then 'confirmed' else state end,
+       ts    = case when ? = 'confirmed' and state != 'confirmed' then ? else ts end
+       ${tries}
+     where account = ? and match_id = ?`,
+  ).run(state, state, state, Math.trunc(e.ts), String(account), String(e.match))
   return true
+}
+
+// Судьба dup по аккаунту — чтобы было видно, ушла ли беда после починки.
+//   waiting    dup с одной попыткой, повтор ещё впереди
+//   exhausted  dup, не засчитанный и после повтора, — из очереди выведен
+//   resolved   был dup, засчитался со второй попытки (source = 'resolved')
+export function dupStats(target: DatabaseSync, account: string, maxTries: number) {
+  const tries = hasTries(target)
+  const r = target.prepare(`
+    select
+      sum(case when state = 'dup' and ${tries ? 'coalesce(tries, 1) < ?' : '1'} then 1 else 0 end) waiting,
+      sum(case when state = 'dup' and ${tries ? 'coalesce(tries, 1) >= ?' : '0'} then 1 else 0 end) exhausted,
+      sum(case when state = 'confirmed' and source = 'resolved' then 1 else 0 end) resolved
+    from burned where account = ?
+  `).get(...(tries ? [maxTries, maxTries] : []), String(account)) as any
+  return { waiting: r?.waiting ?? 0, exhausted: r?.exhausted ?? 0, resolved: r?.resolved ?? 0 }
+}
+
+// Колонка попыток добавляется миграцией. Тестовые базы и старые копии могут
+// её не иметь — тогда повышаем только состояние.
+const triesCache = new WeakMap<DatabaseSync, boolean>()
+function hasTries(target: DatabaseSync): boolean {
+  let v = triesCache.get(target)
+  if (v === undefined) {
+    v = (target.prepare(`pragma table_info(burned)`).all() as any[]).some(c => c.name === 'tries')
+    triesCache.set(target, v)
+  }
+  return v
 }
 
 export type Recent = { ts: number; match?: string; league?: string | null; result: string }

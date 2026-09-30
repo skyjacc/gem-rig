@@ -24,13 +24,14 @@ type Sender = {
   crashes: number     // сколько раз подряд процесс умер сам, не по нашей просьбе
   stopping: boolean   // мы сами его останавливаем — это не падение
   fatal: string | null // причина, по которой возвращаться бессмысленно
+  drained: boolean    // отправщик прошёл весь список и собрал ответы
 }
 
 const S = new Map<string, Sender>()
 
 const blank = (): Sender => ({
   child: null, file: null, delay: null, limit: null, startedAt: null,
-  lines: [], exit: null, displaced: 0, crashes: 0, stopping: false, fatal: null,
+  lines: [], exit: null, displaced: 0, crashes: 0, stopping: false, fatal: null, drained: false,
 })
 
 const slot = (id: string): Sender => {
@@ -61,6 +62,7 @@ function digest(s: Sender, line: string) {
   if (!m) return
   const kind = m[1]
   if (kind === 'displaced') s.displaced++
+  if (kind === 'drained') s.drained = true
   if (FATAL[kind]) s.fatal = FATAL[kind]
 }
 
@@ -108,6 +110,7 @@ export function senderState(id = 'main') {
     displaced: s.displaced,
     crashes: s.crashes,
     fatal: s.fatal,
+    drained: s.drained,
     lines: s.lines.slice(-60),
   }
 }
@@ -192,8 +195,14 @@ export function start(
     '--token', token,
     '--status', statusFile(id),
     '--delay-file', paceFile(id),
+    // Очередь режима keep-alive — тот же файл. Без флага все отправщики
+    // читали бы один общий queue.csv, мимо журнала своего аккаунта.
+    '--queue', file,
   ]
   if (limit && limit > 0) args.push('--limit', String(limit))
+  // Строгий разбор msg 26 — только когда схема сверена живым прогоном
+  // (см. soSummary в tools/gcwatch/lib.js).
+  if (process.env.GC_STRICT_SO === '1') args.push('--strict-so')
 
   const child = spawn(process.execPath, args, { cwd: GC, windowsHide: true })
 
@@ -207,6 +216,7 @@ export function start(
   s.displaced = 0
   s.stopping = false
   s.fatal = null
+  s.drained = false
   remember(s, `запущен: node ${args.join(' ')}`)
 
   child.stdout?.on('data', b => { remember(s, String(b)); onLine() })
@@ -240,6 +250,9 @@ export function stop(id = 'main') {
   const child = s?.child ?? null
   if (!isAlive(child)) return { error: 'отправщик не запущен' }
   s!.stopping = true
+  // Признак «список пройден» относится к этому процессу. Оставь его —
+  // и работник пересобирал бы очередь каждый такт, не запуская нового.
+  s!.drained = false
   child!.kill()
   return { ok: true }
 }

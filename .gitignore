@@ -43,5 +43,6 @@ radar/backend/*.new.exe
 
 # Сборка фронта попадает в бинарь через go:embed, но в репозитории не нужна.
 # Плейсхолдер ниже оставлен, чтобы `go build` работал на свежем клоне.
+!radar/backend/web/dist/
 radar/backend/web/dist/*
 !radar/backend/web/dist/.gitkeep

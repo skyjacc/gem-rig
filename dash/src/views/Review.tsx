@@ -212,6 +212,11 @@ function Used({ state }: { state: State }) {
         <p className="text-[12px] text-muted-foreground">
           {nf(data.total)} матчей израсходовано на этом аккаунте · на другом они остались бы свежими
         </p>
+        {state.dups ? (
+          <p className="text-[12px] text-muted-foreground">
+            спорных: ждут повтора {nf(state.dups.waiting)} · брошены после повтора {nf(state.dups.exhausted)} · засчитались со второй {nf(state.dups.resolved)}
+          </p>
+        ) : null}
         <div className="ml-auto"><Field value={q} onChange={setQ} placeholder="матч, турнир, гем" width="w-56" /></div>
       </div>
       <Card className="fade mt-2">

@@ -158,11 +158,21 @@ export async function fetchPrices(currency: Currency = 'USD'): Promise<{ items: 
   }
 }
 
+// Ответ, по которому нельзя понять, прошла ли операция: связь оборвалась,
+// площадка отдала не JSON. Для покупки это не «отказ», а «неизвестно» —
+// лот мог уже списаться. Раньше сетевая ошибка улетала исключением и рвала
+// всю закупку, а нечитаемый ответ считался отказом и покупка повторялась
+// с новым custom_id, то есть могла пройти дважды.
 async function call(method: string, key: string, params: Record<string, string | number>) {
   const q = new URLSearchParams({ key, ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])) })
-  const r = await fetch(API + method + '?' + q, { headers: { 'User-Agent': 'gemtrack' } })
-  const text = await r.text()
-  try { return JSON.parse(text) } catch { return { success: false, error: text.slice(0, 200) } }
+  let text = ''
+  try {
+    const r = await fetch(API + method + '?' + q, { headers: { 'User-Agent': 'gemtrack' } })
+    text = await r.text()
+  } catch (e: any) {
+    return { success: false, ambiguous: true, error: 'нет связи с площадкой: ' + String(e?.message ?? e).slice(0, 120) }
+  }
+  try { return JSON.parse(text) } catch { return { success: false, ambiguous: true, error: text.slice(0, 200) } }
 }
 
 export const balance = (key: string) => call('get-money', key, {})

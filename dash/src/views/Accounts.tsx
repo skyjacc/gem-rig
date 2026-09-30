@@ -307,7 +307,7 @@ function Tune({ a, u, icons }: { a: AccountRow; u: Unit; icons: Map<string, stri
     next.has(gem) ? next.delete(gem) : next.add(gem)
     // Отмечены все — это и есть «все», список тогда не нужен.
     const list = [...next]
-    send({ only: list.length === available.length ? [] : list })
+    send({ only: list.length === available.length ? null : list })
   }
 
   return (
@@ -360,7 +360,7 @@ function Tune({ a, u, icons }: { a: AccountRow; u: Unit; icons: Map<string, stri
 
       <Line
         k="какие гемы накручивать"
-        hint={only ? 'выбрано ' + only.length + ' из ' + available.length : 'все, что лежат в инвентаре'}
+        hint={only ? (only.length ? 'выбрано ' + only.length + ' из ' + available.length : 'ничего не выбрано — жечь нечего') : 'все, что лежат в инвентаре'}
       >
         {available.length === 0 ? (
           <span className="text-[12px] text-muted-foreground">нет гемов, по которым понятно, чьи матчи считать</span>
@@ -388,7 +388,7 @@ function Tune({ a, u, icons }: { a: AccountRow; u: Unit; icons: Map<string, stri
                 </button>
               )
             })}
-            {only ? <Button onClick={() => send({ only: [] })}>все</Button> : null}
+            {only ? <Button onClick={() => send({ only: null })}>все</Button> : null}
           </div>
         )}
       </Line>

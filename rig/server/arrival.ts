@@ -113,6 +113,30 @@ export function ingestArrivals(
     `).run()
   }
 
+  // Первый взгляд на ЭТОТ аккаунт — то же самое, только по аккаунту.
+  //
+  // Раньше застёжка была одна на всю базу: второй привязанный аккаунт
+  // приходил в таблицу, где уже есть записи первого, и весь его инвентарь
+  // считался приходом. Вещи с накопленным числом и нулевым вкладом
+  // объявлялись выигрышем, а отложенные на продажу выпадали из фарма.
+  //
+  // Записи без аккаунта — застёжка по истории счётчиков, сделанная, пока
+  // аккаунт был один. Они принадлежат тому, кто пришёл первым, если чужих
+  // записей в таблице ещё нет.
+  const own = (target.prepare(`select count(*) c from arrivals where account = ?`).get(String(account)) as any).c
+  const others = (target.prepare(
+    `select count(*) c from arrivals where account is not null and account != ?`).get(String(account)) as any).c
+  if (!own && !others) {
+    target.prepare(`update arrivals set account = ? where account is null`).run(String(account))
+  } else if (!own && rows.length) {
+    const seed = target.prepare(
+      `insert into arrivals (assetid, account, gem, item, carrier, value, expected, verdict, aside, ts)
+       values (?,?,?,?,?,null,null,'старое',0,null)
+       on conflict(assetid) do update set account = coalesce(arrivals.account, excluded.account)`)
+    for (const r of rows) seed.run(String(r.assetid), String(account), r.gem, r.name, r.carrier ?? 'item')
+    return 0
+  }
+
   const seen = new Set(
     (target.prepare(`select assetid from arrivals`).all() as any[]).map(r => String(r.assetid)))
   const ts = Date.now()

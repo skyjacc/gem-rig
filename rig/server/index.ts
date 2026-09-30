@@ -12,7 +12,7 @@ import { fresh, ingestOne } from './ledger.ts'
 import { refreshEquipped, refreshInventory } from './steam.ts'
 import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
-import { statusFile, stop } from './sender.ts'
+import { senderState, statusFile, stop } from './sender.ts'
 import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph, itemPool, marketScan, queuePreview, tree } from './api.ts'
 import { purchaseState, startPurchase, stopPurchase } from './purchase.ts'
 import { ACCOUNT, activeId as activeAccountId, list as accountList2 } from './accounts.ts'
@@ -105,10 +105,16 @@ app.get('/api/state', async () => buildState())
 // необратимые сообщения. Отправщиком владеет работник: он знает, что за
 // файл, чья сессия и сколько отправок заказано. Остановка оставлена —
 // она ничего не тратит и нужна при разборе.
+// Стоп выключает и работника. Раньше гасился только процесс, а включённый
+// работник на следующем такте видел мёртвый отправщик и поднимал его снова:
+// кнопка «стоп» останавливала отправку секунд на двадцать.
 app.post('/api/sender/stop', async (req: any) => {
-  const r = stop(String(req.body?.id ?? activeAccountId()))
+  const id = String(req.body?.id ?? activeAccountId())
+  const was = senderState(id).running
+  setAutopilot(id, { on: false })
+  if (senderState(id).running) stop(id)
   push()
-  return r
+  return was ? { ok: true } : { error: 'отправщик не запущен' }
 })
 
 app.get('/api/autopilot', async () => autopilotState())
@@ -167,8 +173,18 @@ app.post('/api/accounts/rename', async (req: any) => {
 
 // Отвязка удаляет сохранённую сессию: вернуть аккаунт можно только новым QR.
 // Журнал расхода остаётся — матчи на нём действительно израсходованы.
+// Сначала гасим работу аккаунта и забираем его последний отчёт, потом
+// отвязываем. Раньше отвязка удаляла только сессию и строку реестра:
+// запущенный отправщик продолжал слать, а его отчёт больше никто не
+// разбирал — расход шёл мимо журнала.
 app.post('/api/accounts/unlink', async (req: any) => {
-  const r = accountsApi.unlink(String(req.body?.id ?? ''))
+  const id = String(req.body?.id ?? '')
+  if (accountList2().some(a => a.id === id)) {
+    setAutopilot(id, { on: false })
+    if (senderState(id).running) stop(id)
+    ingestStatus()
+  }
+  const r = accountsApi.unlink(id)
   push()
   return r
 })

@@ -167,7 +167,7 @@ export function picks(steamid: string = ACCOUNT()): (Pick & { objects: number })
 // Что жжёт именно этот аккаунт: либо всё из его инвентаря, либо выбранное.
 export function picksFor(u: { only: string[] | null; cap?: number }, steamid: string = ACCOUNT()) {
   const all = picks(steamid)
-  const chosen = u.only?.length ? all.filter(p => new Set(u.only).has(p.key)) : all
+  const chosen = u.only ? all.filter(p => new Set(u.only).has(p.key)) : all
   if (!u.cap) return chosen
   // Добравшиеся до потолка выбывают: их матчи больше не жжём, запас
   // остаётся для тех гемов этой же команды, что купят позже.
@@ -342,6 +342,7 @@ async function tickOne(a: Account, push: () => void) {
     senderStartedAt: sender.startedAt ?? 0,
     displaced: sender.displaced ?? 0,
     until: u.until,
+    drained: !!sender.drained,
   }, {
     silentLimit: silenceLimit(settings().silentLimit, u.delay),
     startLimit: settings().startLimit,
@@ -386,7 +387,7 @@ async function tickOne(a: Account, push: () => void) {
     const n = rebuild(a, u)
     note(u, 'rebuild', n
       ? 'очередь пересобрана: ' + n + ' матчей'
-      : (u.only?.length ? 'выбранные гемы ничего не дают' : 'в инвентаре нет гемов, по которым понятно, чьи матчи считать'))
+      : (u.only ? (u.only.length ? 'выбранные гемы ничего не дают' : 'ни один гем не выбран') : 'в инвентаре нет гемов, по которым понятно, чьи матчи считать'))
     if (sender.running) stopSender(a.id)
     push()
     return
@@ -561,9 +562,10 @@ export function setAutopilot(
   }
   if (patch.waves !== undefined) u.waves = Math.max(1, Math.min(8, Math.trunc(patch.waves)))
   if (patch.only !== undefined) {
-    const list = Array.isArray(patch.only) ? patch.only.map(String).filter(Boolean) : []
-    // Пустой выбор означает «все»: аккаунт без единого гема просто стоял бы.
-    u.only = list.length ? list : null
+    // «Все» — это null. Пустой список — «ничего»: раньше он тоже значил
+    // «все», и снятая последняя галочка включала прожиг каждого гема
+    // в инвентаре — ровно обратное тому, что человек просил.
+    u.only = Array.isArray(patch.only) ? patch.only.map(String).filter(Boolean) : null
     u.fingerprint = ''   // состав изменился — очередь пересобрать
   }
   if (patch.target !== undefined) {

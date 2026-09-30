@@ -22,7 +22,7 @@ test('состояние собирается на базе без карты м
 test('снимок состояния несёт ровно то, что объявлено фронту', () => {
   const keys = Object.keys(buildState()).sort()
   assert.deepEqual(keys, [
-    'arrivals', 'autopilot', 'burned', 'catalog', 'confirmed',
+    'arrivals', 'autopilot', 'burned', 'catalog', 'confirmed', 'dups',
     'events', 'inv', 'keys', 'mine', 'purchase', 'rate', 'ts',
   ], 'поле, которого нет в типе State, — это либо мёртвый груз, либо as any на фронте')
 })

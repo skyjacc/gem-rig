@@ -1,4 +1,5 @@
 backend/radar.exe
-backend/web/dist/
+backend/web/dist/*
+!backend/web/dist/.gitkeep
 frontend/node_modules/
 radar-data/

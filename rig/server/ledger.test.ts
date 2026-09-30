@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
-import { classify, ingestOne } from './ledger.ts'
+import { classify, dupStats, ingestOne } from './ledger.ts'
 import { splitByAccount } from './migrate.ts'
 
 test('update означает засчитанный матч — пишем в журнал', () => {
@@ -147,4 +147,45 @@ test('silent по-прежнему ничего не пишет', () => {
   splitByAccount(db, '765')
   assert.equal(ingestOne(db, { match: '9', league: '10', ts: 1, result: 'silent' }, '765'), false)
   assert.equal((db.prepare('select count(*) c from burned').get() as any).c, 2)
+})
+
+// ── повтор уточняет запись ──
+
+test('dup, засчитанный со второй попытки, становится confirmed', () => {
+  const db = fresh()
+  ingestOne(db, { match: '888', league: '9', result: 'dup', ts: 1 }, 'A')
+  ingestOne(db, { match: '888', league: '9', result: 'update', ts: 2 }, 'A')
+  const r = db.prepare('select state, ts from burned').get() as any
+  assert.equal(r.state, 'confirmed')
+  assert.equal(r.ts, 2)
+})
+
+test('пустой ответ не отменяет засчитанное', () => {
+  const db = fresh()
+  ingestOne(db, { match: '999', league: '9', result: 'update', ts: 1 }, 'A')
+  ingestOne(db, { match: '999', league: '9', result: 'dup', ts: 2 }, 'A')
+  const r = db.prepare('select state, ts from burned').get() as any
+  assert.equal(r.state, 'confirmed')
+  assert.equal(r.ts, 1)
+})
+
+test('повтор считает попытки, если колонка есть', () => {
+  const db = fresh()
+  db.exec(`alter table burned add column tries integer default 1`)
+  ingestOne(db, { match: '1000', league: '9', result: 'dup', ts: 1 }, 'A')
+  ingestOne(db, { match: '1000', league: '9', result: 'dup', ts: 2 }, 'A')
+  const r = db.prepare('select state, tries from burned').get() as any
+  assert.equal(r.state, 'dup')
+  assert.equal(r.tries, 2)
+})
+test('судьба dup: ждёт, брошен, засчитан со второй', () => {
+  const db = fresh()
+  db.exec(`alter table burned add column tries integer default 1`)
+  ingestOne(db, { match: 'w', league: '9', result: 'dup', ts: 1 }, 'A')
+  ingestOne(db, { match: 'x', league: '9', result: 'dup', ts: 1 }, 'A')
+  ingestOne(db, { match: 'x', league: '9', result: 'dup', ts: 2 }, 'A')
+  ingestOne(db, { match: 'r', league: '9', result: 'dup', ts: 1 }, 'A')
+  ingestOne(db, { match: 'r', league: '9', result: 'update', ts: 2 }, 'A')
+  ingestOne(db, { match: 'c', league: '9', result: 'update', ts: 1 }, 'A')
+  assert.deepEqual(dupStats(db, 'A', 2), { waiting: 1, exhausted: 1, resolved: 1 })
 })

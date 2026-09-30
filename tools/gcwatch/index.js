@@ -25,9 +25,10 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { mergeLedger, effectiveDelay, validateRow, createTracker,
-        classifyError, isRecoverable, retryDelay } = require('./lib.js');
+        classifyError, isRecoverable, retryDelay,
+        soSummary, creditsSend, gcStatus, GC_STATUS_HAVE_SESSION } = require('./lib.js');
 
-const EMsg = { CacheSubscribed: 24, UpdateMultiple: 26, ClientWelcome: 4004, ClientHello: 4006, UpgradeLeagueItem: 7203, UpgradeResponse: 7204, WatchDownloadedReplay: 7206 };
+const EMsg = { CacheSubscribed: 24, UpdateMultiple: 26, ClientWelcome: 4004, ClientHello: 4006, ConnectionStatus: 4009, UpgradeLeagueItem: 7203, UpgradeResponse: 7204, WatchDownloadedReplay: 7206 };
 const APPID = 570;
 const argv = process.argv.slice(2);
 const flag = n => argv.includes(n);
@@ -48,6 +49,10 @@ const SAVE_TOKEN = !flag('--no-save-token');
 const RESUME = !flag('--no-resume');
 const KEEP_ALIVE = flag('--keep-alive');
 const QUEUE_FILE = opt('--queue', path.join(__dirname, 'queue.csv'));
+// Засчитывать msg 26 только если в нём изменились вещи (см. soSummary в lib.js).
+// Выключено, пока схема не сверена живым прогоном: разбор пишется в отчёт
+// в поле so, и по нему видно, какие msg 26 приходят на настоящие начисления.
+const STRICT_SO = flag('--strict-so');
 
 // QR требует steam-session и qrcode-terminal. Нет их — уходим на логин с паролем,
 // чтобы обновление зависимостей не ломало рабочий запуск.
@@ -229,14 +234,24 @@ async function main() {
   const recent = [];
 
   function report(r) {
+    // Опоздавший ответ уточняет тишину, объявленную раньше: это та же
+    // отправка, а не новая.
+    if (r.late) { tally.silent = Math.max(0, tally.silent - 1); resolved--; }
     tally[r.result]++;
     resolved++;
+
+    // В журнал — только то, на что GC ответил. Раньше матч записывался
+    // в момент отправки, и безответный при перезапуске пропускался навсегда.
+    if (r.result === 'update' || r.result === 'dup') {
+      ledger.add(r.match);
+      saveLedger(ledger);
+    }
     if (r.latency !== null) lat.push(r.latency);
     if (r.creditLatency !== null) credLat.push(r.creditLatency);
 
-    const mark = r.result === 'update' ? 'ОБНОВЛЕНО, ' + r.bytes + ' байт'
+    const mark = (r.late ? 'ОПОЗДАЛ, ' : '') + (r.result === 'update' ? 'ОБНОВЛЕНО, ' + r.bytes + ' байт'
       : r.result === 'dup' ? 'ответ есть, обновления нет'
-      : 'ТИШИНА — GC не ответил';
+      : 'ТИШИНА — GC не ответил');
     const num = String(resolved).padStart(String(total).length, ' ');
     console.log('  [' + num + '/' + total + '] match ' + r.match +
       '  лига ' + (r.league || '—') + '  -> ' + mark +
@@ -246,6 +261,7 @@ async function main() {
     recent.unshift({
       n: resolved, total, match: r.match, league: r.league, result: r.result, bytes: r.bytes,
       latency: r.latency, creditLatency: r.creditLatency,
+      late: !!r.late, so: r.so ?? null,
       updates, responses, delay: currentDelay(), startedAt, ts: Date.now(),
       other: [...other].map(x => ({ type: x[0], count: x[1] })),
     });
@@ -334,11 +350,14 @@ async function main() {
     }, wait);
   });
 
-  // Успешный вход обнуляет счётчик попыток: следующий обрыв начнёт
-  // отсчёт заново, а не с пятиминутной паузы.
-  user.on('loggedOn', () => { attempt = 0; });
+  // Счётчик попыток обнуляет ответ GC на отправку, а не сам вход. Раньше его
+  // обнулял loggedOn, и цикл «вошёл — выбило — вошёл» не доходил до потолка
+  // никогда: каждый вход удавался, выбивали после.
   user.on('disconnected', (eresult, msg) => {
     gcReady = false;
+    // Ответы на отправленное до обрыва уже не придут. Держать их места
+    // в очереди значит сдвинуть ответы после переподключения.
+    for (const dead of tracker.lost()) report(dead);
     console.log('  ! связь потеряна (' + (msg || eresult) + '), жду переподключения');
   });
 
@@ -369,13 +388,29 @@ async function main() {
       gcReady = true;
       return;
     }
+    // GC сообщает о своей сессии. Без этого падение GC при живой связи
+    // со Steam оставляло gcReady = true, и отправки уходили в пустоту.
+    if (type === EMsg.ConnectionStatus) {
+      const st = gcStatus(payload);
+      if (st !== null && st !== GC_STATUS_HAVE_SESSION) {
+        console.log('  ! GC потерял сессию (статус ' + st + '), здороваюсь заново');
+        gcReady = false;
+        for (const dead of tracker.lost()) report(dead);
+        clearTimeout(helloTimer);
+        hello();
+      }
+      return;
+    }
     if (type === EMsg.UpdateMultiple) {
       updates++; lastBytes = payload.length;
-      tracker.onUpdate(Date.now(), payload.length);
+      const so = soSummary(payload);
+      if (creditsSend(so, STRICT_SO)) tracker.onUpdate(Date.now(), payload.length, so);
+      else other.set('26-skip', (other.get('26-skip') || 0) + 1);
       return;
     }
     if (type === EMsg.UpgradeResponse) {
       responses++;
+      attempt = 0;
       const r = tracker.onResponse(Date.now());
       if (r) report(r);
       return;
@@ -397,7 +432,7 @@ async function main() {
       if (gcReady) { clearInterval(t); return resolve(); }
       if (Date.now() - started > GC_TIMEOUT) {
         clearInterval(t);
-        reject(new Error('GC не ответил Welcome за 90 секунд — закрой Steam и Dota, они занимают сессию'));
+        reject(new Error('GC не ответил Welcome за 15 минут — закрой Steam и Dota, они занимают сессию'));
       }
     }, 1000);
   });
@@ -425,8 +460,7 @@ async function main() {
     if (MSG === 'watch') user.sendToGC(APPID, EMsg.WatchDownloadedReplay, {}, encodeWatch(row.match));
     else user.sendToGC(APPID, EMsg.UpgradeLeagueItem, {}, encodeUpgrade(row.match, row.league));
 
-    ledger.add(row.match);
-    saveLedger(ledger);   // каждый матч, иначе перезапуск теряет отправленное
+    // В журнал матч попадёт из report(), когда GC ответит.
     tracker.send(row.match, row.league, Date.now());
 
     // Пауза — это ТЕМП, а не измеритель. Отчёт придёт из обработчика 7204,
@@ -473,6 +507,10 @@ async function main() {
     return;
   }
 
+  // Метка для панели: список пройден и ответы собраны. Без неё работник
+  // видел только тишину и через минуту убивал отправщик как зависший.
+  console.log('EVENT drained');
+
   // Держим одну сессию и разбираем очередь: Steam ограничивает частоту ВХОДОВ,
   // поэтому дешевле не выходить, чем логиниться на каждый тест.
   console.log('\nсессия остаётся открытой. Дописывай строки «match_id,league_id» в ' + QUEUE_FILE);
@@ -486,7 +524,7 @@ async function main() {
     const rows = readText(QUEUE_FILE).split(String.fromCharCode(10))
       .map(l => l.trim()).filter(l => /^[0-9]{6,}/.test(l))
       .map(l => { const [m, lg] = l.split(','); return { match: m.trim(), league: (lg || '').trim() }; })
-      .filter(r => !done.has(r.match));
+      .filter(r => !done.has(r.match) && !ledger.has(r.match));
 
     for (const row of rows) {
       await waitGC();
@@ -497,7 +535,6 @@ async function main() {
       else user.sendToGC(APPID, EMsg.UpgradeLeagueItem, {}, encodeUpgrade(row.match, row.league));
 
       done.add(row.match);
-      ledger.add(row.match);
       total++;
       // Отчёт придёт из обработчика 7204 — здесь только темп.
       tracker.send(row.match, row.league, Date.now());

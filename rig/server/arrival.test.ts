@@ -163,3 +163,23 @@ test('отложенное видно множеством и возвращае
   setAside(db, 'win', false)
   assert.equal(asideSet(db, 'A').size, 0)
 })
+
+test('второй аккаунт: первый взгляд застёгивает его инвентарь, выигрышей нет', () => {
+  const db = fresh()
+  db.prepare(`insert into counters values (1, 'X', 'a-1', 'Spectator: X', 0, 'item')`).run()
+  ingestArrivals(db, 'A', [{ assetid: 'a-1', gem: 'X', name: 'Spectator: X', value: 0 }])
+
+  // Второй аккаунт приходит с уже прокачанными вещами — это его история, не приход.
+  const wins = ingestArrivals(db, 'B', [
+    { assetid: 'b-1', gem: 'X', name: 'Spectator: X', value: 900 },
+    { assetid: 'b-2', gem: 'X', name: 'Spectator: X', value: 400 },
+  ])
+  assert.equal(wins, 0)
+  assert.equal(arrivalsOf(db).length, 0)
+
+  // А вот новое после первого взгляда — уже приход.
+  assert.equal(ingestArrivals(db, 'B', [
+    { assetid: 'b-1', gem: 'X', name: 'Spectator: X', value: 900 },
+    { assetid: 'b-3', gem: 'X', name: 'Spectator: X', value: 700 },
+  ]), 1)
+})

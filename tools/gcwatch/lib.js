@@ -56,31 +56,52 @@ function validateRow(row) {
 // очередь FIFO сопоставляет их надёжно и без всяких окон.
 //
 // Пауза после этого становится тем, чем и должна быть: темпом, а не измерителем.
-function createTracker() {
-  const pending = [];
+//
+// Опоздание и потеря — разные вещи.
+//
+// Раньше отправка без ответа за 15 секунд закрывалась насовсем, и её 7204,
+// пришедший позже, закрывал уже СЛЕДУЮЩУЮ отправку. Дальше весь прогон
+// ехал со сдвигом на одну: ответ B записывался матчу C, начисление C — D.
+//
+// Теперь безответная отправка помечается «тишиной», но место в очереди
+// держит: опоздавший ответ достаётся ей, и отчёт уточняется. Выбрасывается
+// она только когда ответ точно не придёт — связь с GC оборвалась (lost)
+// или прошло столько, сколько GC не отвечает никогда (LOST_MS).
+const LOST_MS = 120_000;
 
-  const oldestOpen = () => pending.find(p => !p.done);
+function createTracker() {
+  let pending = [];
+
+  const open = p => !p.answered;
+  const prune = () => { while (pending.length && pending[0].answered) pending.shift(); };
 
   return {
     send(match, league, at) {
-      pending.push({ match, league, sentAt: at, credited: false, bytes: 0, updateAt: null, done: false });
+      pending.push({
+        match, league, sentAt: at, credited: false, bytes: 0, updateAt: null,
+        answered: false, expired: false,
+      });
     },
 
     // msg 26 — начисление произошло. Достаётся самой старой отправке,
-    // которая ещё не получила своего обновления.
-    onUpdate(at, bytes) {
-      const p = pending.find(x => !x.done && !x.credited);
+    // которая ещё не получила ни ответа, ни обновления.
+    onUpdate(at, bytes, so = null) {
+      const p = pending.find(x => open(x) && !x.credited);
       if (!p) return;
       p.credited = true;
       p.bytes = bytes;
       p.updateAt = at;
+      p.so = so;
     },
 
-    // 7204 — GC отработал сообщение. Закрывает самую старую открытую отправку.
+    // 7204 — GC отработал сообщение. Закрывает самую старую отправку без
+    // ответа, в том числе уже объявленную тишиной: тогда это опоздание,
+    // и отчёт по ней уточняется (late).
     onResponse(at) {
-      const p = oldestOpen();
+      const p = pending.find(open);
       if (!p) return null;
-      p.done = true;
+      p.answered = true;
+      prune();
       return {
         match: p.match,
         league: p.league,
@@ -88,26 +109,146 @@ function createTracker() {
         bytes: p.bytes,
         latency: at - p.sentAt,
         creditLatency: p.credited ? p.updateAt - p.sentAt : null,
+        late: p.expired,
+        so: p.so ?? null,
       };
     },
 
-    // Отправки, на которые GC не ответил вовсе. Это «не знаем», а не «сожжён»,
-    // поэтому в журнал они не идут.
+    // Отправки, на которые GC не ответил за grace. Это «не знаем», а не
+    // «сожжён», поэтому в журнал они не идут.
     expire(now, graceMs) {
       const out = [];
       for (const p of pending) {
-        if (p.done) continue;
-        if (now - p.sentAt <= graceMs) continue;
-        p.done = true;
-        out.push({ match: p.match, league: p.league, result: 'silent', bytes: 0, latency: null, creditLatency: null });
+        if (p.answered) continue;
+        if (!p.expired && now - p.sentAt > graceMs) {
+          p.expired = true;
+          out.push({ match: p.match, league: p.league, result: 'silent', bytes: 0, latency: null, creditLatency: null });
+        }
+        // Так поздно GC не отвечает — ответ потерян. Держать место дальше
+        // значит сдвинуть следующие ответы.
+        if (p.expired && now - p.sentAt > LOST_MS) p.answered = true;
       }
+      prune();
       return out;
     },
 
+    // Связь с GC оборвалась: всё безответное уже не получит ответа.
+    // Ещё не объявленное тишиной возвращается, чтобы отчёт его увидел.
+    lost() {
+      const out = [];
+      for (const p of pending) {
+        if (p.answered) continue;
+        if (!p.expired) out.push({ match: p.match, league: p.league, result: 'silent', bytes: 0, latency: null, creditLatency: null });
+        p.answered = true;
+      }
+      prune();
+      return out;
+    },
+
+    // Ждём ли ещё чего-то, на что стоит ждать: объявленное тишиной не в счёт.
     outstanding() {
-      return pending.filter(p => !p.done).length;
+      return pending.filter(p => open(p) && !p.expired).length;
     },
   };
+}
+
+// Разбор msg 26 (CMsgSOMultipleObjects), чтобы знать, ЧТО изменилось.
+//
+// Раньше любой msg 26 засчитывался самой старой отправке. Но он приходит
+// не только от 7203: приезд вещи трейдом с закупки, вставка гема, действие
+// из второй сессии — всё это тоже msg 26 и выглядело бы как «ОБНОВЛЕНО».
+//
+// Поля по gcsdk_gcmessages.proto:
+//   2 objects_modified, 4 objects_added, 5 objects_removed — SingleObject
+//   SingleObject: 1 type_id, 2 object_data;  type_id 1 = CSOEconItem
+//
+// Возвращает null, если сообщение не похоже на эту схему: тогда вызывающий
+// ведёт себя по-старому. Живым прогоном схема ещё не сверена — поэтому
+// строгий режим включается флагом (--strict-so), а по умолчанию разбор
+// только пишется в отчёт.
+function readVarint(buf, pos) {
+  let v = 0n, shift = 0n;
+  for (;;) {
+    if (pos >= buf.length) return null;
+    const b = buf[pos++];
+    v |= BigInt(b & 0x7f) << shift;
+    if (!(b & 0x80)) return { v, pos };
+    shift += 7n;
+    if (shift > 63n) return null;
+  }
+}
+
+function fields(buf) {
+  const out = [];
+  let pos = 0;
+  while (pos < buf.length) {
+    const key = readVarint(buf, pos);
+    if (!key) return null;
+    pos = key.pos;
+    const num = Number(key.v >> 3n), wire = Number(key.v & 7n);
+    if (num <= 0) return null;
+    if (wire === 0) {
+      const r = readVarint(buf, pos); if (!r) return null;
+      out.push({ num, wire, v: r.v }); pos = r.pos;
+    } else if (wire === 1) {
+      if (pos + 8 > buf.length) return null;
+      out.push({ num, wire }); pos += 8;
+    } else if (wire === 2) {
+      const len = readVarint(buf, pos); if (!len) return null;
+      const end = len.pos + Number(len.v);
+      if (end > buf.length) return null;
+      out.push({ num, wire, data: buf.subarray(len.pos, end) }); pos = end;
+    } else if (wire === 5) {
+      if (pos + 4 > buf.length) return null;
+      out.push({ num, wire }); pos += 4;
+    } else return null;
+  }
+  return out;
+}
+
+const ECON_ITEM = 1;
+
+function soSummary(payload) {
+  const top = fields(Buffer.from(payload || []));
+  if (!top) return null;
+  const s = { modified: 0, added: 0, removed: 0, econModified: 0, econAdded: 0, types: [] };
+  let seen = false;
+  for (const f of top) {
+    const kind = f.num === 2 ? 'modified' : f.num === 4 ? 'added' : f.num === 5 ? 'removed' : null;
+    if (!kind) continue;
+    if (f.wire !== 2) return null;
+    const inner = fields(f.data);
+    if (!inner) return null;
+    const t = inner.find(x => x.num === 1 && x.wire === 0);
+    const type = t ? Number(t.v) : null;
+    seen = true;
+    s[kind]++;
+    if (type !== null && !s.types.includes(type)) s.types.push(type);
+    if (type === ECON_ITEM && kind === 'modified') s.econModified++;
+    if (type === ECON_ITEM && kind === 'added') s.econAdded++;
+  }
+  return seen ? s : null;
+}
+
+// Засчитывать ли msg 26 отправке.
+//
+// Начисление меняет СУЩЕСТВУЮЩИЕ вещи — значит в сообщении должны быть
+// изменённые CSOEconItem. Чистое добавление или удаление — это трейд или
+// крафт, а не наш матч. Нераспознанное сообщение засчитывается по-старому:
+// отказ по догадке стоил бы живого матча.
+function creditsSend(summary, strict) {
+  if (!strict || !summary) return true;
+  return summary.econModified > 0;
+}
+
+const GC_STATUS_HAVE_SESSION = 0;
+
+// CMsgConnectionStatus { status = 1 } — GC сообщает, что сессии больше нет.
+function gcStatus(payload) {
+  const f = fields(Buffer.from(payload || []));
+  if (!f) return null;
+  const s = f.find(x => x.num === 1 && x.wire === 0);
+  return s ? Number(s.v) : GC_STATUS_HAVE_SESSION;
 }
 
 // Что делать с ошибкой Steam.
@@ -144,4 +285,5 @@ function retryDelay(attempt, kind) {
 module.exports = {
   mergeLedger, effectiveDelay, validateRow, createTracker,
   classifyError, isRecoverable, retryDelay,
+  soSummary, creditsSend, gcStatus, GC_STATUS_HAVE_SESSION, LOST_MS,
 };

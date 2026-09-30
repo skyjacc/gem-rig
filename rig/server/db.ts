@@ -98,6 +98,13 @@ if (migrated.length) console.log('миграция:', migrated.join(', '))
 // принадлежит первому аккаунту — другого тогда не было.
 if (splitByAccount(db, ACCOUNT())) console.log('миграция: журнал расхода развязан по аккаунтам')
 
+// Лента до появления колонки account — тоже первого аккаунта. Без этого
+// она пропала бы из панели, когда лента стала показываться по аккаунту.
+{
+  const orphan = db.prepare(`update events set account = ? where account is null`).run(String(ACCOUNT()))
+  if (Number(orphan.changes) > 0) console.log('миграция: ленте без аккаунта приписан первый, строк ' + orphan.changes)
+}
+
 const meta = db.prepare(`select count(*) c from burned`).get() as { c: number }
 
 // ── перенос из JSON старой панели, один раз ──
@@ -177,8 +184,11 @@ export function pushEvent(e: any, account = ACCOUNT()) {
     .run(Math.trunc(Number(e.ts) || 0), e.n ?? null, e.total ?? null, String(e.match), String(e.league ?? ''), e.result, e.bytes ?? 0, String(account))
 }
 
-export function recentEvents(limit = 240) {
-  return db.prepare(`select * from events order by ts desc limit ?`).all(limit) as any[]
+// Лента, последнее подтверждение и темп — по аккаунту. Общими они
+// смешивали два работника: панель показывала темп первого, пока
+// второй стоял, и «последнее подтверждение» чужого аккаунта.
+export function recentEvents(limit = 240, account = ACCOUNT()) {
+  return db.prepare(`select * from events where account = ? order by ts desc limit ?`).all(String(account), limit) as any[]
 }
 
 export function supplyRows() {
@@ -187,15 +197,15 @@ export function supplyRows() {
 
 // Последняя отправка, которую Valve засчитала. Пульту нужна одна строка:
 // «последнее подтверждение N секунд назад» отвечает на «оно вообще живое?».
-export function lastConfirmed() {
-  return db.prepare(`select ts, match_id, league_id, bytes from events where result = 'update' order by ts desc limit 1`).get() as any ?? null
+export function lastConfirmed(account = ACCOUNT()) {
+  return db.prepare(`select ts, match_id, league_id, bytes from events where account = ? and result = 'update' order by ts desc limit 1`).get(String(account)) as any ?? null
 }
 
 // Сколько отправок засчитано за последние N минут — текущий темп по факту,
 // а не по настройке паузы.
-export function ratePerMinute(windowMs = 120_000) {
+export function ratePerMinute(windowMs = 120_000, account = ACCOUNT()) {
   const since = Date.now() - windowMs
-  const r = db.prepare(`select count(*) c from events where ts >= ? and result in ('update','dup')`).get(since) as any
+  const r = db.prepare(`select count(*) c from events where account = ? and ts >= ? and result in ('update','dup')`).get(String(account), since) as any
   return Math.round((r?.c ?? 0) / (windowMs / 60_000))
 }
 

@@ -58,6 +58,9 @@ export function decideBuy(planned: number, now: number | null, tolerance: number
 // пять сбоев отняли сто тридцать лотов.
 export function after(reason: string, failsInARow: number): 'стоп' | 'позиция' | 'ещё' | 'дальше' {
   if (reason === 'нет денег') return 'стоп'
+  // Непонятно, списались ли деньги. Повтор мог бы купить тот же лот второй
+  // раз — останавливаемся, человек сверяет историю покупок на площадке.
+  if (reason === 'неясно') return 'стоп'
   if (reason === 'цена выросла' || reason === 'нет лотов' || reason === 'цена ушла') return 'позиция'
   if (reason === 'отказ') return failsInARow >= 3 ? 'дальше' : 'ещё'
   return 'дальше'
@@ -68,7 +71,7 @@ export type Entry = {
   gem: string
   ok: boolean
   price: number
-  reason: 'куплено' | 'цена выросла' | 'нет лотов' | 'цена ушла' | 'нет денег' | 'отказ' | 'остановлено'
+  reason: 'куплено' | 'цена выросла' | 'нет лотов' | 'цена ушла' | 'нет денег' | 'отказ' | 'неясно' | 'остановлено'
   detail?: string
   planned?: number   // сколько собирались платить
 }
@@ -245,8 +248,10 @@ async function run(lines: Line[], key: string, currency: Currency, tolerance: nu
           } else {
             const r: any = await buyOne(key, w.name, call.price, currency, 'gt-' + Date.now() + '-' + w.left)
             ok = !!r?.success
-            reason = ok ? 'куплено' : classify(r?.error ?? '')
-            detail = ok ? undefined : String(r?.error ?? '').slice(0, 80)
+            reason = ok ? 'куплено' : r?.ambiguous ? 'неясно' : classify(r?.error ?? '')
+            detail = ok ? undefined
+              : r?.ambiguous ? 'ответ не получен — проверьте историю покупок, закупка остановлена'
+                : String(r?.error ?? '').slice(0, 80)
           }
 
           job.done++

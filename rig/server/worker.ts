@@ -25,6 +25,10 @@ export type Snapshot = {
   senderStartedAt: number   // когда подняли нынешний процесс, 0 = не поднимали
   displaced: number         // сколько раз аккаунт выбило другой сессией Steam
   until: number             // до какого времени работать; 0 = без срока
+  // Отправщик прошёл весь список. queueLength считается при пересборке
+  // и сам не убывает, поэтому без этого признака выжженная очередь
+  // выглядела бы живой: работник принимал бы тишину за поломку.
+  drained?: boolean
 }
 
 export type Action = 'idle' | 'start' | 'restart' | 'rebuild' | 'watch' | 'halt'
@@ -74,6 +78,12 @@ export function decide(s: Snapshot, limits: Limits = FALLBACK): Decision {
   // купленные только что гемы. Пересобираем до любых других действий.
   if (s.inventoryChanged) {
     return { action: 'rebuild', why: 'инвентарь изменился, пересобираю очередь' }
+  }
+
+  // Список пройден. Пересборка покажет, что осталось на самом деле: новые
+  // матчи, безответные на повтор или ничего — тогда работник встанет в ожидание.
+  if (s.drained) {
+    return { action: 'rebuild', why: 'очередь пройдена, пересобираю' }
   }
 
   if (s.queueLength <= 0) {

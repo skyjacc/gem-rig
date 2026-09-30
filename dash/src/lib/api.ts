@@ -180,6 +180,8 @@ export type State = {
   keys: { opendota: boolean; steam: boolean }
   // Сканер прихода: open — выигрыши, ждущие решения.
   arrivals: { open: number; wins: number; fresh: number }
+  // Судьба dup: ждут повтора, брошены после повтора, засчитались со второй.
+  dups: { waiting: number; exhausted: number; resolved: number }
 }
 
 export type AccountRow = {

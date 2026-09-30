@@ -20,7 +20,8 @@ import { invOf } from './steam.ts'
 import { burnedCount, lastConfirmed, ratePerMinute, recentEvents, supplyRows } from './db.ts'
 import { db } from './db.ts'
 import { arrivalSummary, asideSet } from './arrival.ts'
-import { entityStat } from './queue.ts'
+import { DUP_TRIES, entityStat } from './queue.ts'
+import { dupStats } from './ledger.ts'
 import { classifySupply } from './supply.ts'
 import { ACCOUNT } from './accounts.ts'
 import { autopilotState } from './autopilot.ts'
@@ -170,6 +171,8 @@ export function buildState() {
       items: box.rows.length,
     },
     burned: burnedCount(),
+    // Судьба dup активного аккаунта: ждут повтора, брошены, засчитались со второй.
+    dups: dupStats(db, ACCOUNT(), DUP_TRIES),
     keys,
     // Сводка сканера прихода: open — выигрыши, ждущие решения. Одно число
     // в состоянии дешевле, чем список: список живёт в /api/arrivals.

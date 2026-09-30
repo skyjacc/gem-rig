@@ -191,3 +191,91 @@ test('лимит входов ждёт дольше обычного', () => {
   const { retryDelay } = require('./lib.js');
   assert.ok(retryDelay(0, 'rate-limit') >= 300_000, 'Steam ловит частые входы, спешить нельзя');
 });
+
+// ── сопоставление ответов ──
+
+const { soSummary, creditsSend, gcStatus } = require('./lib.js');
+
+test('опоздавший ответ достаётся своей отправке, а не следующей', () => {
+  const t = createTracker();
+  t.send('A', '1', 0);
+  t.send('B', '1', 1000);
+  // A молчит дольше grace — объявлена тишиной
+  const dead = t.expire(16_000, 15_000);
+  assert.deepEqual(dead.map(d => d.match), ['A']);
+  // приходит опоздавший ответ A, потом ответ B
+  const ra = t.onResponse(17_000);
+  const rb = t.onResponse(17_100);
+  assert.equal(ra.match, 'A');
+  assert.equal(ra.late, true);
+  assert.equal(rb.match, 'B');
+  assert.equal(rb.late, false);
+});
+
+test('опоздавшее начисление уточняет тишину до update', () => {
+  const t = createTracker();
+  t.send('A', '1', 0);
+  t.expire(16_000, 15_000);
+  t.onUpdate(16_500, 97);
+  const r = t.onResponse(16_600);
+  assert.equal(r.result, 'update');
+  assert.equal(r.late, true);
+});
+
+test('обрыв связи освобождает очередь — ответы после переподключения не сдвигаются', () => {
+  const t = createTracker();
+  t.send('A', '1', 0);
+  t.send('B', '1', 100);
+  const lost = t.lost();
+  assert.deepEqual(lost.map(d => d.match), ['A', 'B']);
+  t.send('C', '1', 5000);
+  assert.equal(t.onResponse(5300).match, 'C');
+});
+
+test('ответ, не пришедший за LOST_MS, перестаёт держать место', () => {
+  const t = createTracker();
+  t.send('A', '1', 0);
+  t.expire(16_000, 15_000);
+  t.expire(121_000, 15_000);
+  t.send('B', '1', 121_000);
+  assert.equal(t.onResponse(121_300).match, 'B');
+});
+
+test('outstanding не ждёт объявленное тишиной', () => {
+  const t = createTracker();
+  t.send('A', '1', 0);
+  assert.equal(t.outstanding(), 1);
+  t.expire(16_000, 15_000);
+  assert.equal(t.outstanding(), 0);
+});
+
+// ── разбор msg 26 ──
+
+const vint = n => { const o = []; let v = BigInt(n); while (v >= 0x80n) { o.push(Number((v & 0x7fn) | 0x80n)); v >>= 7n; } o.push(Number(v)); return Buffer.from(o); };
+const ld = (num, data) => Buffer.concat([vint((num << 3) | 2), vint(data.length), data]);
+const single = type => Buffer.concat([vint(1 << 3), vint(type), ld(2, Buffer.from([1, 2, 3]))]);
+
+test('msg 26 с изменённой вещью распознаётся', () => {
+  const s = soSummary(Buffer.concat([ld(2, single(1)), ld(2, single(1))]));
+  assert.equal(s.modified, 2);
+  assert.equal(s.econModified, 2);
+  assert.equal(creditsSend(s, true), true);
+});
+
+test('чистое добавление вещи (трейд) в строгом режиме не засчитывается', () => {
+  const s = soSummary(ld(4, single(1)));
+  assert.equal(s.econAdded, 1);
+  assert.equal(creditsSend(s, true), false);
+  assert.equal(creditsSend(s, false), true, 'без флага — по-старому');
+});
+
+test('нераспознанное сообщение засчитывается по-старому', () => {
+  assert.equal(soSummary(Buffer.from([0xff])), null);
+  assert.equal(creditsSend(null, true), true);
+});
+
+test('статус GC: сессия есть — 0, иначе номер', () => {
+  assert.equal(gcStatus(Buffer.from([0x08, 0x00])), 0);
+  assert.equal(gcStatus(Buffer.from([0x08, 0x02])), 2);
+  assert.equal(gcStatus(Buffer.alloc(0)), 0);
+});

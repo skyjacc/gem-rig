@@ -2,9 +2,10 @@
 // Держим отдельно от index.ts, чтобы тот остался про сборку сервера.
 
 import path from 'node:path'
-import { TOOLS, marketKey, readJson } from './paths.ts'
+import { TOOLS, readJson } from './paths.ts'
+import { cachedStatus, keyFor } from './marketkeys.ts'
 import { db } from './db.ts'
-import { ACCOUNT, active, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink } from './accounts.ts'
+import { ACCOUNT, active, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink, type Account } from './accounts.ts'
 import { buildGraph, type GraphEntity } from './graph.ts'
 import { hasMap } from './supply.ts'
 import { queueFor } from './queue.ts'
@@ -29,6 +30,8 @@ export function accountList() {
       added: a.added,
       session: hasSession(a),
       burned: (db.prepare(`select count(*) c from burned where account = ?`).get(a.steamid) as any).c,
+      // Статус ключа площадки. Самого ключа здесь нет и быть не должно.
+      market: cachedStatus(a),
     })),
   }
 }
@@ -432,17 +435,23 @@ let scanCache: ScanCache | null = null
 // Баланс площадки — обращение по сети, и его нельзя дёргать на каждый
 // показ списка. Полминуты достаточно: деньги списываются только через
 // закупку, а она сама толкает состояние.
-let moneyCache: { at: number; value: any } = { at: 0, value: null }
-async function money(force: boolean) {
-  const key = marketKey()
+// Баланс — по аккаунту: у каждого свой ключ, значит и свой счёт.
+const moneyCache = new Map<string, { at: number; value: any }>()
+async function money(force: boolean, a: Account) {
+  const key = keyFor(a)
   if (!key) return null
-  if (!force && moneyCache.value && Date.now() - moneyCache.at < 30_000) return moneyCache.value
+  const c = moneyCache.get(a.id)
+  if (!force && c?.value && Date.now() - c.at < 30_000) return c.value
   const r = await balance(key)
-  moneyCache = { at: Date.now(), value: r }
+  moneyCache.set(a.id, { at: Date.now(), value: r })
   return r
 }
 
-export async function marketScan(force = false, currency: Currency = 'USD') {
+// Разбор площадки — для конкретного аккаунта: что у НЕГО уже лежит и что
+// накручивается, его баланс и его ключ. Раньше всё бралось у активного,
+// а покупалось общим ключом — и лоты уезжали не туда, куда считался план.
+export async function marketScan(force = false, currency: Currency = 'USD', who: Account | null = active()) {
+  const a = who ?? active()
   const s = settings()
   const goal = s.goal
 
@@ -453,21 +462,24 @@ export async function marketScan(force = false, currency: Currency = 'USD') {
 
   // Что уже лежит и что уже накручивается — от этого зависит цена в отправках.
   const owned = new Map<string, number>()
-  for (const r of invOf().rows) {
+  for (const r of invOf(a.steamid).rows) {
     if (!r.gem || r.gem === '—') continue
     owned.set(r.gem, (owned.get(r.gem) ?? 0) + 1)
   }
-  const mine = picks()
+  const mine = picks(a.steamid)
   const burning = new Set(mine.map(p => p.key))
 
-  const key = [currency, goal, s.sellPrice, s.perGem, cache.at, [...burning].sort().join(','), [...owned.keys()].sort().join(',')].join('|')
-  const acc: any = await money(force)
+  const key = [a.id, currency, goal, s.sellPrice, s.perGem, cache.at, [...burning].sort().join(','), [...owned.keys()].sort().join(',')].join('|')
+  const acc: any = await money(force, a)
+  // Кому считается и с каким ключом — без самого ключа.
+  const whom = { account: { id: a.id, label: a.label }, key: cachedStatus(a) }
   if (!force && scanCache && scanCache.key === key && Date.now() - scanCache.at < 60_000) {
     return {
       ...scanCache.value,
+      ...whom,
       balance: acc?.success ? Number(acc.money) || 0 : null,
       balanceCurrency: acc?.currency ?? null,
-      balanceError: marketKey() ? (acc?.success ? null : (acc?.error ?? 'площадка не ответила')) : 'нет ключа',
+      balanceError: keyFor(a) ? (acc?.success ? null : (acc?.error ?? 'площадка не ответила')) : 'нет ключа',
     }
   }
 
@@ -536,9 +548,10 @@ export async function marketScan(force = false, currency: Currency = 'USD') {
 
   return {
     ...value,
+    ...whom,
     balance: acc?.success ? Number(acc.money) || 0 : null,
     balanceCurrency: acc?.currency ?? null,
-    balanceError: marketKey() ? (acc?.success ? null : (acc?.error ?? 'площадка не ответила')) : 'нет ключа',
+    balanceError: keyFor(a) ? (acc?.success ? null : (acc?.error ?? 'площадка не ответила')) : 'нет ключа',
   }
 }
 

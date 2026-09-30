@@ -1,19 +1,34 @@
-import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { lazy, Suspense, useEffect, useRef, useState, type ComponentType } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 
-// Вход в панель. Одна задача — ввести токен.
+// Вход. Сцена — шейдерный фон Portal Field из ThreeUI (MIT), поверх — одна
+// тёмная панель: название, поле токена, кнопка Liquid Metal. Выбран из шести
+// вариантов (Ember Storm, Flow Field, Portal Field, Nebula, Amber Halftone,
+// Cloud Field).
 //
-// Самоцвет над названием — не украшение, а индикатор: пока токен
-// проверяется, прорисовываются грани; принят — камень загорается;
-// не принят — вздрагивает. Остальное экрана намеренно тихое.
+// ThreeUI грузится отдельно: основная панель за него не платит.
+// На вход Steam страница не похожа — иначе выглядела бы как фишинг.
 
 type Phase = 'idle' | 'busy' | 'ok' | 'bad'
 
+// Каждый компонент — своим подпутём: иначе подтягивается вся библиотека
+// (7 МБ), а панель открывают и издалека через Tailscale. Стили ThreeUI —
+// только вместе с его компонентами, чтобы не задеть оформление панели.
+const css = () => import('@designcodeio/threeui/style.css')
+const load = (imp: () => Promise<any>, name: string) =>
+  lazy(async () => {
+    const [m] = await Promise.all([imp(), css()])
+    return { default: m[name] as ComponentType<any> }
+  })
+
+const PortalFieldCollection = load(() => import('@designcodeio/threeui/components/PortalFieldCollection'), 'PortalFieldCollection')
+const LiquidMetalButton = load(() => import('@designcodeio/threeui/components/LiquidMetalButton'), 'LiquidMetalButton')
 export function Login() {
   const [token, setToken] = useState('')
   const [show, setShow] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
+  const form = useRef<HTMLFormElement>(null)
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => { input.current?.focus() }, [])
@@ -32,7 +47,7 @@ export function Login() {
       const d = await r.json().catch(() => ({}))
       if (r.ok && d?.ok) {
         setPhase('ok')
-        setTimeout(() => location.reload(), 650)
+        setTimeout(() => location.reload(), 400)
         return
       }
       setPhase('bad')
@@ -41,67 +56,64 @@ export function Login() {
       setPhase('bad')
       setError('Нет связи с панелью')
     }
-    input.current?.select()
+    requestAnimationFrame(() => input.current?.select())
   }
 
   return (
-    <main className="login">
-      <form
-        className="login-box"
-        onSubmit={e => { e.preventDefault(); void submit() }}
-        aria-describedby={error ? 'login-error' : 'login-hint'}
-      >
-        <Gem phase={phase} />
-        <h1 className="login-title">Gemtrack</h1>
+    <main className={'lg is-' + phase}>
+      <div className="lg-scene" aria-hidden="true">
+        <Suspense fallback={null}>
+          <div className="lg-bg-wrap">
+            <PortalFieldCollection variant="portal-field" mode="dark" className="lg-bg" />
+          </div>
+        </Suspense>
+      </div>
 
-        <div className={'login-field' + (phase === 'bad' ? ' is-bad' : '')}>
+      <form
+        ref={form}
+        className="lg-panel"
+        onSubmit={e => { e.preventDefault(); void submit() }}
+        aria-describedby={error ? 'lg-error' : undefined}
+      >
+        <h1 className="lg-title">Gemtrack</h1>
+
+        <div className="lg-field">
           <input
             ref={input}
             type={show ? 'text' : 'password'}
             value={token}
             onChange={e => { setToken(e.target.value); if (phase === 'bad') { setPhase('idle'); setError(null) } }}
             placeholder="Токен доступа"
+            aria-label="Токен доступа"
             autoComplete="current-password"
             spellCheck={false}
-            aria-label="Токен доступа"
             aria-invalid={phase === 'bad'}
             disabled={phase === 'ok'}
           />
           <button
             type="button"
-            className="login-icon"
+            className="lg-eye"
             onClick={() => setShow(s => !s)}
             aria-label={show ? 'Скрыть токен' : 'Показать токен'}
-            tabIndex={-1}
           >
-            {show ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
-          <button
-            type="submit"
-            className="login-go"
-            disabled={!token.trim() || phase === 'busy' || phase === 'ok'}
-            aria-label="Войти"
-          >
-            <ArrowRight size={16} />
+            {show ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
 
-        <p id={error ? 'login-error' : 'login-hint'} className={'login-note' + (error ? ' is-bad' : '')} role={error ? 'alert' : undefined}>
-          {error ?? 'tools/panel.token на домашнем ПК'}
-        </p>
+        <div className="lg-go">
+          <Suspense fallback={<button type="submit" className="lg-go-plain">Войти</button>}>
+            <LiquidMetalButton
+              variant="pill"
+              rendering="monotone"
+              embedded
+              text={phase === 'busy' ? 'Проверка' : phase === 'ok' ? 'Входим' : 'Войти'}
+              onClick={() => form.current?.requestSubmit()}
+            />
+          </Suspense>
+        </div>
+
+        <p id="lg-error" className="lg-error" role="alert">{error ?? ''}</p>
       </form>
     </main>
-  )
-}
-
-// Гранёный камень: корона и павильон, как у настоящей огранки.
-function Gem({ phase }: { phase: Phase }) {
-  return (
-    <svg className={'login-gem is-' + phase} viewBox="0 0 64 56" aria-hidden="true">
-      <g fill="none" strokeLinejoin="round" strokeLinecap="round">
-        <path className="gem-outline" d="M14 4 H50 L62 20 L32 53 L2 20 Z" />
-        <path className="gem-facet" d="M2 20 H62 M14 4 L22 20 L32 4 L42 20 L50 4 M22 20 L32 53 L42 20" />
-      </g>
-    </svg>
   )
 }

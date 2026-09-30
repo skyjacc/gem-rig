@@ -31,6 +31,7 @@ import { advise, creditRate, evenDelay, silenceLimit, type Sample } from './pace
 import { capFor, reached, spreadPlan, type Wave } from './spread.ts'
 import { ACCOUNT, active, list as accounts, type Account } from './accounts.ts'
 import { settings } from './settings.ts'
+import { sessionStatus } from './steamweb.ts'
 
 // Как часто смотреть и что считать товаром — из настроек.
 export const TICK = () => settings().tick
@@ -290,6 +291,13 @@ async function tickOne(a: Account, push: () => void) {
   const sender = senderState(a.id)
   const count = made(a, u)
   const box = invOf(a.steamid)
+
+  // Сессия отозвана Steam — отправщик не войдёт, а при попытке удалит токен.
+  // Встаём сразу, с понятной причиной.
+  if (sessionStatus(a, true).state === 'revoked') {
+    halt(a, u, 'сессия Steam отозвана — обновите её по QR на экране аккаунтов', push)
+    return
+  }
 
   // Отправщик сказал, что возвращаться некуда: сессия протухла, Steam
   // выбивает вход подряд. Перезапуск даст ровно то же самое.

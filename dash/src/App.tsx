@@ -17,6 +17,8 @@ export default function App() {
   // Привязка открывается поверх любого экрана: кнопка в колонке не должна
   // уводить человека на другую вкладку ради второй кнопки.
   const [linking, setLinking] = useState(false)
+  // Обновление сессии существующего аккаунта: тот же вход по QR, но для него.
+  const [relink, setRelink] = useState<{ id: string; label: string } | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const { data: accounts } = useJson<AccountsData>('/api/accounts', state?.ts)
 
@@ -56,7 +58,7 @@ export default function App() {
     <>
       <div className="bg-ambient" aria-hidden="true" />
       <div className="flex h-svh">
-        <Sidebar view={view} onView={setView} onLink={() => setLinking(true)} state={state} accounts={accounts} items={items} />
+        <Sidebar view={view} onView={setView} onLink={() => { setRelink(null); setLinking(true) }} state={state} accounts={accounts} items={items} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/[0.08] px-4 sm:px-8">
@@ -96,13 +98,13 @@ export default function App() {
             {view === 'work' && <Work state={state} live={live} now={now} />}
             {view === 'buy' && <Buy state={state} />}
             {view === 'graph' && <Graph state={state} />}
-            {view === 'accounts' && <Accounts state={state} accounts={accounts} onLink={() => setLinking(true)} />}
+            {view === 'accounts' && <Accounts state={state} accounts={accounts} onLink={r => { setRelink(r ?? null); setLinking(true) }} />}
             {view === 'review' && <Review state={state} />}
           </main>
         </div>
       </div>
 
-      <LinkAccount open={linking} onClose={() => setLinking(false)} accounts={accounts} />
+      <LinkAccount open={linking} onClose={() => { setLinking(false); setRelink(null) }} accounts={accounts} relink={relink} />
     </>
   )
 }

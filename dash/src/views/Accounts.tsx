@@ -31,7 +31,7 @@ export function Accounts({
 }: {
   state: State
   accounts: AccountsData | null
-  onLink: () => void
+  onLink: (relink?: { id: string; label: string }) => void
 }) {
   const now = state.ts
   const [dropping, setDropping] = useState<string | null>(null)
@@ -55,7 +55,7 @@ export function Accounts({
         title="Аккаунты"
         sub="матчи общие для всех аккаунтов, а израсходованные — у каждого свои: второй аккаунт накручивает по тем же матчам заново"
         right={
-          <Button active onClick={onLink}>
+          <Button active onClick={() => onLink()}>
             <Link2 className="h-3.5 w-3.5" />
             <span>привязать</span>
           </Button>
@@ -75,6 +75,7 @@ export function Accounts({
             now={now}
             onToggle={() => toggle(a.id)}
             onDrop={() => setDropping(a.id)}
+            onRelink={() => onLink({ id: a.id, label: a.label })}
           />
         ))}
       </div>
@@ -125,7 +126,7 @@ function DropAccount({ dropped, onClose }: { dropped: AccountRow | null | undefi
 }
 
 function Row({
-  a, u, icons, active, alone, open, now, onToggle, onDrop,
+  a, u, icons, active, alone, open, now, onToggle, onDrop, onRelink,
 }: {
   a: AccountRow
   u?: Unit
@@ -136,6 +137,7 @@ function Row({
   now: number
   onToggle: () => void
   onDrop: () => void
+  onRelink: () => void
 }) {
   const [name, setName] = useState(a.label)
   const [editing, setEditing] = useState(false)
@@ -174,7 +176,7 @@ function Row({
         <Cell k="израсходовано" v={nf(a.burned)} />
         <Cell k="в очереди" v={nf(u?.queueLength ?? 0)} />
         <Cell k="пауза" v={u ? nf(u.delay) + (u.auto ? ' сама' : u.even ? ' к сроку' : ' мс') : '—'} />
-        <Cell k="сессия" v={a.session ? 'есть' : 'нет'} tone={a.session ? undefined : 'stop'} />
+        <Cell k="сессия" v={SESSION_WORD[a.sessionState?.state ?? (a.session ? 'unknown' : 'missing')]} tone={a.sessionState?.state === 'ok' ? undefined : a.sessionState?.state === 'unknown' ? undefined : 'stop'} />
         {/* Инвентарь у каждого аккаунта свой. Одно общее число врало бы про
             всех, кроме активного, а по составу считаются потолки. */}
         <Cell
@@ -191,6 +193,7 @@ function Row({
         <Cell k="выбило сессией" v={String(u?.displaced ?? 0)} tone={u?.displaced ? 'stop' : undefined} />
       </div>
 
+      <Session a={a} onRelink={onRelink} />
       <MarketKey a={a} />
 
       {u?.fatal ? (
@@ -535,6 +538,50 @@ function MarketKey({ a }: { a: AccountRow }) {
         <p className="mt-1.5 text-[12px] text-muted-foreground">{st.error}</p>
       ) : null}
       {act.error ? <div className="mt-2"><Note title="ключ не сохранился">{act.error}</Note></div> : null}
+    </div>
+  )
+}
+const SESSION_WORD: Record<NonNullable<AccountRow['sessionState']>['state'], string> = {
+  unknown: 'не проверена',
+  ok: 'жива',
+  revoked: 'отозвана',
+  error: 'не проверилась',
+  missing: 'нет',
+}
+
+// Сессия Steam. Отозванную Steam не принимает (смена пароля, «выйти на всех
+// устройствах», сброс Steam Guard), хотя файл токена лежит как прежде.
+// Отправщик с ней не войдёт и сотрёт токен — поэтому её видно сразу и её
+// можно обновить тем же QR, не отвязывая аккаунт.
+function Session({ a, onRelink }: { a: AccountRow; onRelink: () => void }) {
+  const act = useAction()
+  const st = a.sessionState?.state ?? (a.session ? 'unknown' : 'missing')
+  const dead = st === 'revoked' || st === 'missing'
+  return (
+    <div className="mt-3 border-t border-white/[0.06] pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[12px] text-muted-foreground">сессия Steam:</span>
+        <span className={'text-[12px] ' + (dead ? 'text-[var(--stop)]' : st === 'ok' ? '' : 'text-muted-foreground')}>
+          {SESSION_WORD[st]}
+        </span>
+        <span className="ml-auto flex items-center gap-2">
+          {a.session ? (
+            <Button disabled={act.busy} loading={act.busy} onClick={() => act.run('/api/accounts/session-check', { id: a.id })}>проверить</Button>
+          ) : null}
+          <Button active={dead} onClick={onRelink}>обновить по QR</Button>
+        </span>
+      </div>
+      {st === 'revoked' ? (
+        <div className="mt-2">
+          <Note title="Steam отозвал сессию">
+            Так бывает после смены пароля, «выйти на всех устройствах» или сброса Steam Guard.
+            Работник на этом аккаунте стоит. Обновите сессию по QR — журнал, ключ площадки и настройки останутся.
+          </Note>
+        </div>
+      ) : st === 'error' && a.sessionState?.error ? (
+        <p className="mt-1.5 text-[12px] text-muted-foreground">{a.sessionState.error}</p>
+      ) : null}
+      {act.error ? <div className="mt-2"><Note title="не проверилась">{act.error}</Note></div> : null}
     </div>
   )
 }

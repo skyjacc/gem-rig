@@ -1,4 +1,4 @@
-import { Check, Plus } from 'lucide-react'
+import { Check, Gem, Plus } from 'lucide-react'
 import type { Accounts, State, Unit } from '../lib/api.ts'
 import { post } from '../lib/api.ts'
 import { Dot } from './ui.tsx'
@@ -38,9 +38,9 @@ export function Sidebar({
     // Ниже средней ширины колонка уходит: на узком экране двести пятьдесят
     // пикселей постоянной навигации — это половина места под данные.
     // Вкладки там переезжают в шапку.
-    <aside className="hidden h-svh w-[212px] shrink-0 flex-col border-r border-white/[0.08] md:flex xl:w-[248px]">
+    <aside className="side hidden h-svh w-[212px] shrink-0 flex-col md:flex xl:w-[248px]">
       <div className="flex h-14 items-center gap-2 border-b border-white/[0.08] px-4">
-        <span className="text-[15px] font-medium tracking-[-0.03em]">Gemtrack</span>
+        <span className="side-brand"><Gem size={16} strokeWidth={1.5} aria-hidden="true" /><span>Gemtrack</span></span>
       </div>
 
       {/* Аккаунты. Переключение меняет то, чей журнал расхода считается. */}
@@ -88,7 +88,7 @@ export function Sidebar({
             onClick={() => onView(it.id)}
             aria-current={view === it.id ? 'page' : undefined}
             className={
-              'flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors ' +
+              'side-item flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors ' +
               (view === it.id ? 'bg-white/[0.08] text-foreground' : 'text-muted-foreground hover:bg-white/[0.03] hover:text-foreground')
             }
           >

@@ -13,8 +13,9 @@ import { refreshEquipped, refreshInventory } from './steam.ts'
 import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
 import { senderState, statusFile, stop } from './sender.ts'
+import { allowedHosts, bearer, cookieValue, gate, loadToken, loginCookie, logoutCookie, sameToken } from './auth.ts'
 import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph, itemPool, marketScan, queuePreview, tree } from './api.ts'
-import { purchaseState, startPurchase, stopPurchase } from './purchase.ts'
+import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase.ts'
 import { ACCOUNT, activeId as activeAccountId, list as accountList2 } from './accounts.ts'
 import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
 import { reset as resetSettings, settings, update as updateSettings } from './settings.ts'
@@ -29,15 +30,60 @@ const PORT = Number(process.env.PORT ?? 4322)
 //
 // За этими адресами стоят необратимые действия: /api/autopilot запускает
 // отправку сообщений игровому координатору, /api/market/buy тратит деньги
-// с баланса площадки, /api/accounts/unlink удаляет сессию Steam. Ключа нет
-// ни у одного из них. Пока сервер отвечал на 0.0.0.0, всё это мог сделать
-// любой в той же сети — от соседа по вайфаю до заражённого устройства.
-// «Локальный проект» и «слушает всю сеть» — разные вещи.
+// с баланса площадки, /api/accounts/unlink удаляет сессию Steam. Пока сервер
+// отвечал на 0.0.0.0 без ключа, всё это мог сделать любой в той же сети —
+// от соседа по вайфаю до заражённого устройства. Теперь каждый /api/*
+// требует токен (auth.ts), но петля по умолчанию остаётся: ключ — второй
+// замок, а не повод открывать дверь.
 //
-// Нужен доступ с телефона — HOST=0.0.0.0 задаётся руками, осознанно.
+// Нужен доступ с телефона — лучше Tailscale (tailscale serve), а не
+// HOST=0.0.0.0. Имя из tailnet добавляется в ALLOWED_HOSTS.
 const HOST = process.env.HOST || '127.0.0.1'
 
 const app = Fastify({ logger: false, bodyLimit: 1_048_576 })
+
+// ─────────────────────────────── вход ───────────────────────────────
+// Host, Origin и токен на каждый запрос — см. auth.ts. Адрес 127.0.0.1
+// защищает от сети, но не от страницы в том же браузере.
+const ALLOWED = allowedHosts()
+const { token: PANEL_TOKEN, created: tokenCreated } = loadToken()
+
+app.addHook('onRequest', async (req, reply) => {
+  const g = gate({ method: req.method, url: req.url, headers: req.headers as any }, PANEL_TOKEN, ALLOWED)
+  if (!g.ok) {
+    reply.code(g.code).type('application/json; charset=utf-8').send({ error: g.why, auth: g.code === 401 })
+    return reply
+  }
+})
+
+const presented = (req: any) =>
+  cookieValue(req.headers.cookie) || bearer(req.headers.authorization)
+const isHttps = (req: any) =>
+  req.protocol === 'https' || String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https'
+
+app.get('/api/auth', async (req: any) => ({ authed: sameToken(presented(req), PANEL_TOKEN) }))
+
+// Вход: ссылка из консоли (GET) или поле на экране входа (POST).
+app.get('/api/login', async (req: any, reply) => {
+  if (!sameToken(String(req.query?.token ?? ''), PANEL_TOKEN)) {
+    return reply.code(401).type('text/plain; charset=utf-8').send('токен не подходит')
+  }
+  reply.header('set-cookie', loginCookie(PANEL_TOKEN, isHttps(req)))
+  return reply.redirect('/')
+})
+
+app.post('/api/login', async (req: any, reply) => {
+  if (!sameToken(String(req.body?.token ?? ''), PANEL_TOKEN)) {
+    return reply.code(401).send({ error: 'токен не подходит' })
+  }
+  reply.header('set-cookie', loginCookie(PANEL_TOKEN, isHttps(req)))
+  return { ok: true }
+})
+
+app.post('/api/logout', async (_req, reply) => {
+  reply.header('set-cookie', logoutCookie())
+  return { ok: true }
+})
 
 const moved = importLegacy()
 if (!moved.skipped) console.log('перенёс из JSON:', moved)
@@ -214,7 +260,15 @@ app.get('/api/queue', async (req: any) => queuePreview(Number(req.query?.limit) 
 // Закупка запускается и дальше живёт сама: панель смотрит на её состояние.
 app.post('/api/market/buy', async (req: any) => {
   const b = req.body ?? {}
-  const r = await startPurchase(b.lines ?? [], b.currency ?? 'RUB', () => push())
+  const currency = String(b.currency ?? 'RUB') as any
+  // Цены сверяются с разбором площадки в той же валюте: сервер покупает
+  // только то и не дороже того, что видел сам.
+  const scan: any = await marketScan(false, currency)
+  const seen = new Map<string, number>((scan?.offers ?? []).map((o: any) => [String(o.name), Number(o.price)]))
+  const s = settings()
+  const vet = vetLines(b.lines ?? [], seen, s.priceTolerance, s.purchaseCap)
+  if ('error' in vet) return vet
+  const r = await startPurchase(vet.lines, currency, () => push())
   push()
   return r
 })
@@ -283,7 +337,12 @@ if (fs.existsSync(DIST)) {
 }
 
 await app.listen({ port: PORT, host: HOST })
-console.log('Gemtrack: http://localhost:' + PORT + (HOST === '127.0.0.1' ? '' : '  (слушает ' + HOST + ' — панель открыта всей сети)'))
+console.log('Gemtrack: http://localhost:' + PORT + (HOST === '127.0.0.1' ? '' : '  (слушает ' + HOST + ' — вход только по токену)'))
+// Ссылку печатаем только при создании токена: дальше он лежит в файле,
+// и незачем оставлять его в каждом логе запуска.
+if (tokenCreated) console.log('вход (один раз в браузере): http://localhost:' + PORT + '/api/login?token=' + PANEL_TOKEN)
+else console.log('вход: токен в ' + (process.env.PANEL_TOKEN ? 'PANEL_TOKEN' : 'tools/panel.token') + ', ссылка — /api/login?token=<токен>')
+if (ALLOWED.size > 3) console.log('разрешённые имена: ' + [...ALLOWED].join(', '))
 console.log('гемов в базе:', supplyRows().length)
 
 ingestStatus()

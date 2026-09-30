@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"radar/internal/auth"
 	"radar/internal/config"
 	"radar/internal/economics"
 	"radar/internal/guard"
@@ -161,10 +163,28 @@ func main() {
 		Assets:    web.Assets(),
 	}
 
-	addr := fmt.Sprintf("127.0.0.1:%d", cfg.Port)
+	// Loopback by default. RADAR_HOST opens it wider on purpose (e.g. behind
+	// Tailscale); the token below guards every /api/* either way.
+	host := os.Getenv("RADAR_HOST")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	addr := net.JoinHostPort(host, fmt.Sprint(cfg.Port))
+
+	panelToken, tokenCreated, err := auth.LoadToken(os.Getenv, dataDir())
+	if err != nil {
+		log.Fatalf("panel token: %v", err)
+	}
+	if tokenCreated {
+		log.Printf("login (once per browser): http://localhost:%d/api/login?token=%s", cfg.Port, panelToken)
+	} else {
+		log.Printf("login: token in RADAR_TOKEN or %s", filepath.Join(dataDir(), "panel.token"))
+	}
+	allowed := auth.AllowedHosts(os.Getenv("RADAR_ALLOWED_HOSTS"))
+
 	httpServer := &http.Server{
 		Addr:              addr,
-		Handler:           srv.Handler(),
+		Handler:           auth.Middleware(panelToken, allowed, srv.Handler()),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -243,11 +263,18 @@ func watchNewLots(ctx context.Context, scan *scanner.Scanner) {
 }
 
 func logStartup(cfg *config.Config, dm *sources.DMarket) {
-	log.Printf("radar listening on http://127.0.0.1:%d", cfg.Port)
+	log.Printf("radar listening on http://localhost:%d (bind %s)", cfg.Port, orDefault(os.Getenv("RADAR_HOST"), "127.0.0.1"))
 	log.Printf("keys dir: %s (market: %v, steam: %v, dmarket: %v)",
 		cfg.KeysDir, cfg.MarketKey() != "", cfg.SteamKey() != "", dm.Configured())
 	log.Printf("rate limit: %d req/sec to market.dota2.net (its hard limit is 5)", marketRPS)
 	log.Printf("gem prices: tm.net + steam + waxpeer + lootfarm + lis-skins" +
 		", plus dmarket completed sales when keyed")
 	log.Printf("trade guard: alert only, it never accepts or declines an offer")
+}
+
+func orDefault(v, def string) string {
+	if v == "" {
+		return def
+	}
+	return v
 }

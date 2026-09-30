@@ -90,3 +90,35 @@ test('неясный ответ площадки останавливает за
   assert.equal(after('неясно', 0), 'стоп')
   assert.equal(after('неясно', 5), 'стоп')
 })
+// ── сверка заказа с площадкой ──
+
+import { vetLines } from './purchase.ts'
+
+const SEEN = new Map([['Spectator: Alliance', 0.5], ['Spectator: NaVi', 1]])
+
+test('заказ по увиденной цене проходит', () => {
+  const r = vetLines([{ name: 'Spectator: Alliance', take: 10, price: 0.5 }], SEEN, 0, 0)
+  assert.deepEqual(r, { lines: [{ name: 'Spectator: Alliance', take: 10, price: 0.5 }] })
+})
+
+test('незнакомое имя не покупается', () => {
+  const r = vetLines([{ name: 'Arcana', take: 1, price: 1 }], SEEN, 0, 0)
+  assert.ok('error' in r)
+})
+
+test('цена выше увиденной отбивается, допуск её пропускает', () => {
+  assert.ok('error' in vetLines([{ name: 'Spectator: NaVi', take: 1, price: 1.05 }], SEEN, 0, 0))
+  assert.ok('lines' in vetLines([{ name: 'Spectator: NaVi', take: 1, price: 1.05 }], SEEN, 0.1, 0))
+})
+
+test('потолок суммы: сверх него закупка не начинается', () => {
+  const lines = [{ name: 'Spectator: NaVi', take: 30, price: 1 }]
+  assert.ok('error' in vetLines(lines, SEEN, 0, 20))
+  assert.ok('lines' in vetLines(lines, SEEN, 0, 30))
+  assert.ok('lines' in vetLines(lines, SEEN, 0, 0), 'ноль — без потолка')
+})
+
+test('пустые и нулевые строки отбрасываются', () => {
+  assert.ok('error' in vetLines([], SEEN, 0, 0))
+  assert.ok('error' in vetLines([{ name: 'Spectator: NaVi', take: 0, price: 1 }], SEEN, 0, 0))
+})

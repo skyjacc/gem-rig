@@ -6,7 +6,7 @@
   "description": "Kinetic gem radar — dashboard",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node -e \"require('fs').writeFileSync('../backend/web/dist/.gitkeep', '')\"",
     "check": "tsc --noEmit",
     "preview": "vite preview"
   },

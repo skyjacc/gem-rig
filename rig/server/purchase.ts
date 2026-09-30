@@ -66,6 +66,50 @@ export function after(reason: string, failsInARow: number): 'стоп' | 'поз
   return 'дальше'
 }
 
+// Сверка заказа с тем, что сервер сам видел на площадке.
+//
+// Раньше строки закупки приходили из браузера как есть: имя, цена, сколько
+// брать — и сервер им верил. Проверялся только баланс. Значит любой, кто
+// дотянулся до /api/market/buy, заказывал что угодно по какой угодно цене
+// в пределах счёта. Теперь имя обязано быть в последнем разборе площадки,
+// цена — не выше увиденной с допуском, а сумма — в пределах потолка.
+export function vetLines(
+  lines: any[],
+  seen: Map<string, number>,
+  tolerance: number,
+  cap: number,
+): { lines: Line[] } | { error: string } {
+  if (!Array.isArray(lines) || !lines.length) return { error: 'нечего покупать' }
+  const tol = Math.max(0, Number(tolerance) || 0)
+  const out: Line[] = []
+  for (const l of lines) {
+    const name = String(l?.name ?? '')
+    const take = Math.trunc(Number(l?.take) || 0)
+    const price = Number(l?.price)
+    if (!name || take <= 0) continue
+    if (!Number.isFinite(price) || price <= 0) return { error: 'у «' + name + '» нет цены' }
+    const known = seen.get(name)
+    if (known === undefined) return { error: '«' + name + '» нет в разборе площадки — обновите список' }
+    if (price > known * (1 + tol) + 1e-9) {
+      return { error: 'цена «' + name + '» ' + price + ' выше увиденной ' + known + ' — обновите список' }
+    }
+    out.push({ name, take, price })
+  }
+  if (!out.length) return { error: 'нечего покупать' }
+  // Потолок обязателен. Одно число по умолчанию здесь не годится: счёт
+  // площадки бывает в рублях, долларах и евро, и «1000» значит то одиннадцать
+  // долларов, то тысячу. Поэтому без явно заданного потолка закупка
+  // не начинается вовсе — ноль больше не значит «без предела».
+  if (!(cap > 0)) {
+    return { error: 'не задан потолок закупки — задайте его в настройках, в валюте счёта площадки' }
+  }
+  const total = out.reduce((n, l) => n + l.take * l.price, 0)
+  if (total > cap + 1e-9) {
+    return { error: 'закупка на ' + total.toFixed(2) + ' больше потолка ' + cap + ' — поднимите потолок в настройках' }
+  }
+  return { lines: out }
+}
+
 export type Entry = {
   ts: number
   gem: string

@@ -45,6 +45,10 @@ export type Settings = {
   // Насколько цена может вырасти между планом и покупкой и всё ещё
   // считаться приемлемой. Ноль означает «только по своей цене или дешевле».
   priceTolerance: number
+  // Потолок одной закупки в валюте счёта площадки. Ноль — не задан:
+  // закупка не начнётся, пока человек не назовёт сумму сам.
+  // Последний рубеж, если панель откроет не тот человек или не тот план.
+  purchaseCap: number
 
   pace: {
     floor: number   // ниже этой паузы не опускаемся никогда, мс
@@ -77,6 +81,7 @@ export const DEFAULTS: Settings = {
   sellPrice: 10,
   perGem: 25,
   priceTolerance: 0,
+  purchaseCap: 0,
   // Пол 500 мс — не осторожность, а предел отправщика: значение ниже он
   // из файла не принимает вовсе и молча остаётся на прежнем темпе.
   pace: { floor: 500, ceil: 30_000, enough: 40, clean: 0.01, down: 0.8, up: 1.4 },
@@ -97,6 +102,7 @@ const LIMITS: Record<string, [number, number]> = {
   sellPrice: [0.01, 10_000],
   perGem: [1, 5_000],
   priceTolerance: [0, 1],
+  purchaseCap: [0, 10_000_000],
   // Пол паузы не может быть ниже 500: отправщик значение из файла ниже
   // пятисот не принимает вовсе (tools/gcwatch/lib.js, effectiveDelay)
   // и молча остаётся на прежнем темпе. Панель показывала бы 300 мс,
@@ -124,7 +130,7 @@ const num = (key: string, v: unknown, fallback: number) => {
   if (v === null || v === undefined || v === '') return fallback
   const n = Number(v)
   if (!Number.isFinite(n)) return fallback
-  const whole = key === 'pace.clean' || key.startsWith('spread.') || key === 'pace.down' || key === 'pace.up' || key === 'sellPrice' || key === 'priceTolerance'
+  const whole = key === 'pace.clean' || key.startsWith('spread.') || key === 'pace.down' || key === 'pace.up' || key === 'sellPrice' || key === 'priceTolerance' || key === 'purchaseCap'
   return clamp(key, whole ? n : Math.trunc(n))
 }
 
@@ -146,6 +152,8 @@ export function merge(base: Settings, patch: any): Settings {
     sellPrice: num('sellPrice', p.sellPrice, base.sellPrice),
     perGem: num('perGem', p.perGem, base.perGem),
     priceTolerance: num('priceTolerance', p.priceTolerance, base.priceTolerance),
+    // Старый settings.json этого поля не знает — берём значение по умолчанию.
+    purchaseCap: num('purchaseCap', p.purchaseCap, base.purchaseCap ?? DEFAULTS.purchaseCap),
     pace: {
       floor: num('pace.floor', pace.floor, base.pace.floor),
       ceil: num('pace.ceil', pace.ceil, base.pace.ceil),

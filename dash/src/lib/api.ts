@@ -206,6 +206,7 @@ export type Settings = {
   sellPrice: number
   perGem: number
   priceTolerance: number
+  purchaseCap: number
   pace: { floor: number; ceil: number; enough: number; clean: number; down: number; up: number }
   spread: { band: number; jitter: number }
 }

@@ -1,34 +1,35 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Check, Eye, EyeOff, Gem, LoaderCircle, Lock } from 'lucide-react'
 
-// Вход. Сцена — шейдерный фон Portal Field из ThreeUI (MIT), поверх — одна
-// тёмная панель: название, поле токена, кнопка Liquid Metal. Выбран из шести
-// вариантов (Ember Storm, Flow Field, Portal Field, Nebula, Amber Halftone,
-// Cloud Field).
+// Вход. Фон — шейдерная сцена Portal Field из ThreeUI (MIT); выбран из шести
+// вариантов. Поверх — компактная тёмная карточка: знак, название, одно поле,
+// одна кнопка. Панель своя, для себя — поэтому никаких пояснений и подписей.
 //
-// ThreeUI грузится отдельно: основная панель за него не платит.
+// Фон и интерфейс связаны: поле в фокусе — портал ярче; «Войти» — портал
+// пульсирует; вход принят — портал затягивает экран, и открывается панель.
+//
+// Иконки — только Lucide: один набор, один вес линии.
 // На вход Steam страница не похожа — иначе выглядела бы как фишинг.
 
 type Phase = 'idle' | 'busy' | 'ok' | 'bad'
 
-// Каждый компонент — своим подпутём: иначе подтягивается вся библиотека
-// (7 МБ), а панель открывают и издалека через Tailscale. Стили ThreeUI —
-// только вместе с его компонентами, чтобы не задеть оформление панели.
-const css = () => import('@designcodeio/threeui/style.css')
-const load = (imp: () => Promise<any>, name: string) =>
-  lazy(async () => {
-    const [m] = await Promise.all([imp(), css()])
-    return { default: m[name] as ComponentType<any> }
-  })
+// ThreeUI грузится подпутём: вся библиотека весит 7 МБ, а панель открывают
+// издалека. Его стили — вместе с компонентом, чтобы не задеть панель.
+const PortalFieldCollection = lazy(async () => {
+  const [m] = await Promise.all([
+    import('@designcodeio/threeui/components/PortalFieldCollection') as Promise<any>,
+    import('@designcodeio/threeui/style.css'),
+  ])
+  return { default: m.PortalFieldCollection as ComponentType<any> }
+})
 
-const PortalFieldCollection = load(() => import('@designcodeio/threeui/components/PortalFieldCollection'), 'PortalFieldCollection')
-const LiquidMetalButton = load(() => import('@designcodeio/threeui/components/LiquidMetalButton'), 'LiquidMetalButton')
 export function Login() {
   const [token, setToken] = useState('')
   const [show, setShow] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
-  const form = useRef<HTMLFormElement>(null)
+  const [focus, setFocus] = useState(false)
+  const [pulse, setPulse] = useState(0)
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => { input.current?.focus() }, [])
@@ -38,6 +39,7 @@ export function Login() {
     if (!t || phase === 'busy' || phase === 'ok') return
     setPhase('busy')
     setError(null)
+    setPulse(p => p + 1)
     try {
       const r = await fetch('/api/login', {
         method: 'POST',
@@ -47,7 +49,8 @@ export function Login() {
       const d = await r.json().catch(() => ({}))
       if (r.ok && d?.ok) {
         setPhase('ok')
-        setTimeout(() => location.reload(), 400)
+        // Портал успевает затянуть экран, потом открывается панель.
+        setTimeout(() => location.reload(), 900)
         return
       }
       setPhase('bad')
@@ -59,33 +62,39 @@ export function Login() {
     requestAnimationFrame(() => input.current?.select())
   }
 
+  const filled = token.length > 0
+
   return (
-    <main className={'lg is-' + phase}>
+    <main className={'lg is-' + phase + (focus ? ' is-focus' : '')}>
       <div className="lg-scene" aria-hidden="true">
-        <Suspense fallback={null}>
-          <div className="lg-bg-wrap">
+        <div className={'lg-scene-in' + (pulse ? ' pulse-' + (pulse % 2) : '')}>
+          <Suspense fallback={null}>
             <PortalFieldCollection variant="portal-field" mode="dark" className="lg-bg" />
-          </div>
-        </Suspense>
+          </Suspense>
+        </div>
       </div>
 
       <form
-        ref={form}
-        className="lg-panel"
+        className="lg-card"
         onSubmit={e => { e.preventDefault(); void submit() }}
         aria-describedby={error ? 'lg-error' : undefined}
       >
+        <Gem className="lg-mark" size={18} strokeWidth={1.5} aria-hidden="true" />
         <h1 className="lg-title">Gemtrack</h1>
 
-        <div className="lg-field">
+        <label className={'lg-field' + (filled ? ' filled' : '')}>
+          <Lock className="lg-lock" size={15} strokeWidth={1.75} aria-hidden="true" />
+          <span className="lg-float">Токен доступа</span>
           <input
             ref={input}
             type={show ? 'text' : 'password'}
             value={token}
             onChange={e => { setToken(e.target.value); if (phase === 'bad') { setPhase('idle'); setError(null) } }}
-            placeholder="Токен доступа"
-            aria-label="Токен доступа"
+            onFocus={() => setFocus(true)}
+            onBlur={() => setFocus(false)}
             autoComplete="current-password"
+            autoCapitalize="off"
+            autoCorrect="off"
             spellCheck={false}
             aria-invalid={phase === 'bad'}
             disabled={phase === 'ok'}
@@ -96,23 +105,19 @@ export function Login() {
             onClick={() => setShow(s => !s)}
             aria-label={show ? 'Скрыть токен' : 'Показать токен'}
           >
-            {show ? <EyeOff size={16} /> : <Eye size={16} />}
+            {show ? <EyeOff size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
           </button>
-        </div>
-
-        <div className="lg-go">
-          <Suspense fallback={<button type="submit" className="lg-go-plain">Войти</button>}>
-            <LiquidMetalButton
-              variant="pill"
-              rendering="monotone"
-              embedded
-              text={phase === 'busy' ? 'Проверка' : phase === 'ok' ? 'Входим' : 'Войти'}
-              onClick={() => form.current?.requestSubmit()}
-            />
-          </Suspense>
-        </div>
+        </label>
 
         <p id="lg-error" className="lg-error" role="alert">{error ?? ''}</p>
+
+        <button type="submit" className="lg-go" disabled={!token.trim() || phase === 'busy' || phase === 'ok'}>
+          <span className="lg-go-label">
+            {phase === 'busy' ? <LoaderCircle className="lg-spin" size={17} strokeWidth={2} aria-label="Проверка" />
+              : phase === 'ok' ? <Check size={18} strokeWidth={2.25} aria-label="Вход принят" />
+                : 'Войти'}
+          </span>
+        </button>
       </form>
     </main>
   )

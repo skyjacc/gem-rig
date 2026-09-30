@@ -8,6 +8,8 @@ tools/stratz.key
 tools/market.key
 tools/market-*.key
 tools/panel.token
+tools/panel.env.cmd
+tools/panel.log
 tools/gcwatch/token.json
 tools/gcwatch/token-*.json
 

@@ -1,0 +1,52 @@
+# Проверка каждого PR и каждого пуша в master: тесты и типы движка,
+# типы и сборка панели. Ни ключей, ни сети площадки здесь нет —
+# тесты подменяют fetch и берут базу в памяти (rig/server/testenv.ts).
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  rig:
+    name: rig — тесты и типы (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Сейчас панель живёт на домашнем Windows, потом может переехать на Linux.
+        os: [windows-latest, ubuntu-latest]
+    defaults:
+      run:
+        working-directory: rig
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # .ts запускается напрямую — нужен Node 24.
+          node-version: 24
+          cache: npm
+          cache-dependency-path: rig/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run check
+
+  dash:
+    name: dash — типы и сборка
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: dash/package-lock.json
+      - run: npm ci
+      - run: npm run build

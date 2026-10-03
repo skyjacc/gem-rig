@@ -1,6 +1,6 @@
 import { test, mock, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { balance, buyOne, marketLimiter } from './market.ts'
+import { balance, buyOne, buyInfo, marketLimiter } from './market.ts'
 
 // Настоящая площадка не трогается: fetch подменён, ограничитель не ждёт.
 const KEY = 'SECRET-KEY-123'
@@ -54,6 +54,17 @@ test('запрос к площадке отправляет сам ограни�
   const r: any = await balance(KEY)
   assert.equal(seen.length, 0, 'fetch вызван мимо ограничителя')
   assert.equal(r.held, true)
+})
+
+test('проверка покупки по custom_id: ключ заголовком, custom_id в адресе', async () => {
+  answer(200, '{"success":false,"error":"not found"}')
+  const r: any = await buyInfo(KEY, 'gt-1-1')
+  const u = new URL(seen[0].url)
+  assert.equal(u.pathname, '/api/v2/get-buy-info-by-custom-id')
+  assert.equal(u.searchParams.get('custom_id'), 'gt-1-1')
+  assert.ok(!seen[0].url.includes(KEY), 'ключ в адресе: ' + seen[0].url)
+  assert.equal(seen[0].headers['X-API-KEY'], KEY)
+  assert.equal(r.error, 'not found')
 })
 
 test('429 на чтении — отказ «слишком часто», не неясность, и пауза ключу 5 секунд', async () => {

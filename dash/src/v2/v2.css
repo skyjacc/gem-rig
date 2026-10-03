@@ -1,0 +1,173 @@
+/* Новая панель (спецификация v2, §4).
+ *
+ * Всё — только внутри .v2. Старая панель живёт рядом в той же сборке со
+ * своим index.css, и ни одно правило отсюда не должно её задеть: ни один
+ * селектор без .v2 впереди, классы — с префиксом v2- (§10: совпадение имён
+ * с чужими стилями уже однажды ломало вид — .card с transform на hover).
+ * Когда старая панель уйдёт (этап 9), этот файл станет index.css.
+ *
+ * Никаких прыжков (§3.1): наведение меняет только фон, выбор — кольцо
+ * акцентом внутрь (inset box-shadow). Ни transform, ни border-width,
+ * ни padding, ни font-weight в :hover и в выбранном состоянии.
+ */
+
+.v2 {
+  /* §4.1 — дословно */
+  --bg: #0c0c0e;
+  --s1: #141416;
+  --s2: #1b1b1e;
+  --s3: #232327;
+  --line: #ffffff0f;
+  --line2: #ffffff17;
+  --ink: #ecebe8;
+  --ink2: #a7a5a0;
+  --mute: #76746f;
+  --ac: #b8f25c;
+  --warn: #f2b44a;
+  --stop: #ff7a7a;
+  --r1: 16px;
+  --r2: 10px;
+
+  /* Производные тех же трёх цветов смысла — прозрачность, а не новые цвета
+     (так в макетах: свечение и подложки чипов). */
+  --acg: #b8f25c55;
+  --acs: #b8f25c1a;
+  --warns: #f2b44a17;
+  --stops: #ff7a7a17;
+  --s3h: #2c2c31;           /* наведение поверх --s3 */
+
+  --t-color: 150ms;         /* смена цвета */
+  --t-in: 220ms;            /* появление */
+
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* §3.5: цифры — Geist с табличными цифрами; Geist Mono — только для id. */
+.v2 .v2-num { font-variant-numeric: tabular-nums; }
+.v2 .v2-id { font-family: 'Geist Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+.v2 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.v2 button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* §4.3: фокус виден всегда, когда пришли с клавиатуры. Кольцо — outline:
+   он не занимает места и ничего не сдвигает. */
+.v2 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ── слои ── */
+
+.v2 .v2-panel { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r1); padding: 16px; }
+.v2 .v2-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 22px; margin-bottom: 12px; font-size: 15px; font-weight: 500; }
+.v2 .v2-panel-head .v2-aside { color: var(--mute); font-size: 12px; font-weight: 400; }
+
+/* Плитка внутри панели — без кромки, отличается фоном. */
+.v2 .v2-tile { background: var(--s2); border-radius: var(--r2); padding: 8px 10px; transition: background-color var(--t-color); }
+.v2 .v2-tile[role='button']:hover, .v2 button.v2-tile:hover { background: var(--s3); }
+.v2 .v2-tile[aria-selected='true'], .v2 .v2-tile.is-on { box-shadow: inset 0 0 0 1px var(--ac); }
+
+/* ── пилюли и кнопки ── */
+
+.v2 .v2-pill {
+  height: 32px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px;
+  border-radius: 999px; background: var(--s1); border: 1px solid var(--line);
+  color: var(--ink2); font-size: 12px; white-space: nowrap;
+}
+.v2 .v2-pill b { color: var(--ink); font-weight: 500; }
+.v2 .v2-pill.is-warn { color: var(--warn); background: var(--warns); border-color: transparent; }
+.v2 .v2-pill.is-stop { color: var(--stop); background: var(--stops); border-color: transparent; }
+
+.v2 .v2-btn {
+  height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 14px; border-radius: 999px; background: var(--s2); color: var(--ink);
+  font-size: 12.5px; white-space: nowrap;
+  transition: background-color var(--t-color), box-shadow var(--t-color), color var(--t-color);
+}
+.v2 .v2-btn:hover:not(:disabled) { background: var(--s3); }
+.v2 .v2-btn.is-soft { background: var(--s3); }
+.v2 .v2-btn.is-soft:hover:not(:disabled) { background: var(--s3h); }
+/* Главное действие: лайм со свечением. Свечение — тень, места не занимает. */
+.v2 .v2-btn.is-go { height: 40px; padding: 0 18px 0 14px; background: var(--ac); color: var(--bg); font-weight: 600; box-shadow: 0 0 24px var(--acg); }
+.v2 .v2-btn.is-go:hover:not(:disabled) { background: var(--ac); box-shadow: 0 0 34px var(--acg); }
+.v2 .v2-btn.is-stop { color: var(--stop); background: var(--stops); }
+.v2 .v2-btn.is-stop:hover:not(:disabled) { background: var(--s3); }
+
+/* Кнопка-иконка: подпись обязательна (aria-label) и видна подсказкой
+   при наведении И при фокусе с клавиатуры (§4.3). */
+.v2 .v2-ibtn {
+  width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center;
+  color: var(--mute); position: relative;
+  transition: background-color var(--t-color), color var(--t-color);
+}
+.v2 .v2-ibtn:hover { background: var(--s2); color: var(--ink); }
+.v2 .v2-ibtn[aria-current='page'] { background: var(--ink); color: var(--bg); }
+.v2 .v2-ibtn.is-boxed { width: 32px; height: 32px; background: var(--s1); border: 1px solid var(--line); color: var(--ink2); }
+.v2 .v2-ibtn.is-boxed:hover { background: var(--s2); color: var(--ink); }
+.v2 .v2-tip {
+  position: absolute; z-index: 20; white-space: nowrap; pointer-events: none;
+  background: var(--s3); color: var(--ink); font-size: 12px; padding: 5px 9px; border-radius: 8px;
+  opacity: 0; transition: opacity 120ms;
+}
+.v2 .v2-tip.at-right { left: calc(100% + 10px); top: 50%; translate: 0 -50%; }
+.v2 .v2-tip.at-bottom { top: calc(100% + 8px); left: 50%; translate: -50% 0; }
+.v2 .v2-tip.at-top { bottom: calc(100% + 8px); left: 50%; translate: -50% 0; }
+.v2 .v2-ibtn:hover .v2-tip, .v2 .v2-ibtn:focus-visible .v2-tip { opacity: 1; }
+.v2 .v2-badge {
+  position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; background: var(--warn); color: #111; font-size: 10px; font-weight: 600;
+  display: grid; place-items: center;
+}
+.v2 .v2-badge.is-stop { background: var(--stop); }
+
+/* ── метки ── */
+
+.v2 .v2-chip {
+  height: 20px; padding: 0 7px; border-radius: 999px; font-size: 10.5px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  color: var(--ink2); background: var(--s3);
+}
+.v2 .v2-chip.has-dot::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: currentColor; }
+.v2 .v2-chip.is-ok { color: var(--ac); background: var(--acs); }
+.v2 .v2-chip.is-warn { color: var(--warn); background: var(--warns); }
+.v2 .v2-chip.is-stop { color: var(--stop); background: var(--stops); }
+
+/* Откуда число (§3.3): маленькая тихая подпись. */
+.v2 .v2-src { font-size: 10.5px; color: var(--mute); border: 1px solid var(--line2); border-radius: 999px; padding: 0 6px; height: 16px; display: inline-flex; align-items: center; white-space: nowrap; }
+
+/* ── четыре состояния значения (§3.3) ── */
+
+.v2 .v2-val { display: inline-flex; align-items: baseline; gap: 6px; }
+.v2 .v2-val.is-stale { color: var(--mute); }
+.v2 .v2-val .v2-when { font-size: 11px; color: var(--mute); }
+.v2 .v2-val.is-none { color: var(--mute); }
+.v2 .v2-val .v2-why { font-size: 12px; }
+
+/* ── лампа ── */
+
+.v2 .v2-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--mute); flex: none; }
+.v2 .v2-dot.is-ok { background: var(--ac); box-shadow: 0 0 8px var(--acg); }
+.v2 .v2-dot.is-warn { background: var(--warn); }
+.v2 .v2-dot.is-stop { background: var(--stop); }
+.v2 .v2-dot.is-pulse { animation: v2-breathe 2.4s ease-in-out infinite; }
+.v2 .v2-lamp { display: inline-flex; align-items: center; gap: 8px; }
+
+@keyframes v2-breathe { 50% { opacity: 0.45; } }
+@keyframes v2-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes v2-turn { to { rotate: 360deg; } }
+.v2 .v2-spin { animation: v2-turn 0.9s linear infinite; }
+
+/* ── скелетон ── */
+
+.v2 .v2-skel { background: var(--s2); border-radius: var(--r2); animation: v2-breathe 1.6s ease-in-out infinite; }
+
+/* §4.3: без движения для тех, кто его отключил. */
+@media (prefers-reduced-motion: reduce) {
+  .v2 *, .v2 *::before, .v2 *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

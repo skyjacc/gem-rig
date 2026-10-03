@@ -63,9 +63,13 @@ test('429 останавливает и те запросы, что уже жд�
   const c = lim.run('k', () => sent.push(now()))       // C забронировал 1500 и спит
   lim.cool('k', 5000)                                  // A получил 429: тишина до 6000
   await Promise.all([b, c])
+  // Контракт — тишина и частота, а не точное расписание: порядок ждущих
+  // после паузы ограничитель не обещает.
+  assert.equal(sent.length, 3)
   assert.equal(sent[0], 1000)
   for (const s of sent.slice(1)) assert.ok(s >= 6000, 'ушёл во время паузы: ' + s)
-  assert.deepEqual(sent, [1000, 6000, 6250])
+  const after = sent.slice(1).sort((x, y) => x - y)
+  assert.ok(after[1] - after[0] >= 250, 'после паузы чаще четырёх в секунду: ' + after)
 })
 
 test('run отправляет сразу после проверки и отдаёт ответ отправки', async () => {

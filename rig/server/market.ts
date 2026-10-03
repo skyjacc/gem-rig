@@ -182,11 +182,10 @@ const scrub = (s: string, key: string) => (key ? s.split(key).join('***') : s)
 async function call(method: string, key: string, params: Record<string, string | number>) {
   const q = String(new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))))
   const url = API + method + (q ? '?' + q : '')
-  await marketLimiter.take(key)
   let status = 0
   let text = ''
   try {
-    const r = await fetch(url, { headers: { 'User-Agent': 'gemtrack', 'X-API-KEY': key } })
+    const r = await marketLimiter.run(key, () => fetch(url, { headers: { 'User-Agent': 'gemtrack', 'X-API-KEY': key } }))
     status = r.status
     text = await r.text()
   } catch (e: any) {

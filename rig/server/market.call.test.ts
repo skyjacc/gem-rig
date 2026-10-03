@@ -16,7 +16,7 @@ function answer(status: number, body: string) {
 
 beforeEach(() => {
   mock.restoreAll()
-  mock.method(marketLimiter, 'take', async () => 0)
+  mock.method(marketLimiter, 'run', async (_key: string, send: () => unknown) => send())
   mock.method(marketLimiter, 'cool', () => {})
 })
 
@@ -39,13 +39,21 @@ test('параметры покупки остаются в адресе, клю
   assert.equal(u.searchParams.get('key'), null)
 })
 
-test('каждый вызов берёт место у ограничителя с этим ключом', async () => {
+test('каждый вызов уходит через ограничитель с этим ключом', async () => {
   answer(200, '{"success":true}')
   await balance(KEY)
   await buyOne(KEY, 'Spectator: Alliance', 0.03, 'USD', 'gt-2')
-  const take = marketLimiter.take as unknown as { mock: { calls: { arguments: unknown[] }[] } }
-  assert.equal(take.mock.calls.length, 2)
-  assert.deepEqual(take.mock.calls.map(c => c.arguments[0]), [KEY, KEY])
+  const run = marketLimiter.run as unknown as { mock: { calls: { arguments: unknown[] }[] } }
+  assert.equal(run.mock.calls.length, 2)
+  assert.deepEqual(run.mock.calls.map(c => c.arguments[0]), [KEY, KEY])
+})
+
+test('запрос к площадке отправляет сам ограничитель, а не код мимо него', async () => {
+  answer(200, '{"success":true}')
+  mock.method(marketLimiter, 'run', async () => new Response('{"success":true,"held":true}'))
+  const r: any = await balance(KEY)
+  assert.equal(seen.length, 0, 'fetch вызван мимо ограничителя')
+  assert.equal(r.held, true)
 })
 
 test('429 на чтении — отказ «слишком часто», не неясность, и пауза ключу 5 секунд', async () => {

@@ -40,6 +40,39 @@ test('«слишком часто» отодвигает следующий за
   assert.equal(await lim.take('k'), 6000)
 })
 
+// Часы, которые идут только во сне, и сон, который кончается не сразу:
+// между бронью окна и отправкой успевает прийти чужой ответ 429.
+function sleepy(start = 1000) {
+  let t = start
+  const clock: Clock = {
+    now: () => t,
+    sleep: ms => {
+      const until = t + ms
+      return new Promise(resolve => setImmediate(() => { t = Math.max(t, until); resolve() }))
+    },
+  }
+  return { clock, now: () => t }
+}
+
+test('429 останавливает и те запросы, что уже ждут своего окна', async () => {
+  const { clock, now } = sleepy()
+  const lim = createLimiter(4, clock)
+  const sent: number[] = []
+  await lim.run('k', () => sent.push(now()))           // A ушёл в 1000
+  const b = lim.run('k', () => sent.push(now()))       // B забронировал 1250 и спит
+  const c = lim.run('k', () => sent.push(now()))       // C забронировал 1500 и спит
+  lim.cool('k', 5000)                                  // A получил 429: тишина до 6000
+  await Promise.all([b, c])
+  assert.equal(sent[0], 1000)
+  for (const s of sent.slice(1)) assert.ok(s >= 6000, 'ушёл во время паузы: ' + s)
+  assert.deepEqual(sent, [1000, 6000, 6250])
+})
+
+test('run отправляет сразу после проверки и отдаёт ответ отправки', async () => {
+  const lim = createLimiter(4, frozen())
+  assert.equal(await lim.run('k', () => 'ответ'), 'ответ')
+})
+
 test('ждёт ровно до своего окна', async () => {
   const slept: number[] = []
   const lim = createLimiter(4, { now: () => 1000, sleep: async ms => { slept.push(ms) } })

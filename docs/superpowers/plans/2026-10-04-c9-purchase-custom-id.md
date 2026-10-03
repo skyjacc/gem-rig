@@ -27,7 +27,7 @@
 | `get-buy-info-by-custom-id?custom_id=…` → `{"success":true,"data":{item_id, market_hash_name, stage, paid, currency, refund, trade_id, …}}` | `VERIFIED` | docs-v2, пример ответа, 2026-10-04 |
 | `stage`: `1` NEW, `2` ITEM_GIVEN, `5` TIMED_OUT (трейд отменён, есть `refund`) | `VERIFIED` | docs-v2, 2026-10-04 |
 | Неизвестный `custom_id` → HTTP 200, `{"success":false,"error":"not found"}` | `OBSERVED` | один запрос только на чтение, ключ main, 2026-10-04 |
-| Покупка регистрируется под `custom_id` сразу, без задержки | `HYPOTHESIS` | — поэтому проверок три, с паузами |
+| Покупка регистрируется под `custom_id` сразу, без задержки | `HYPOTHESIS` | — поэтому проверок три, с паузами, а «not found» не считается отказом |
 | Наши `custom_id` уникальны: `'gt-' + Date.now() + '-' + left`, ≤ 50 знаков | код | `purchase.ts` |
 
 ## Решения
@@ -37,7 +37,7 @@
    - `success:true`, `stage` `1` или `2` → **куплено**: лот засчитывается (`job.ok++`, `spent += data.paid`, позиция −1).
    - `success:true`, `stage` `5` → **отказ**: «трейд отменён площадкой, деньги возвращаются» — лот не придёт.
    - `success:true`, другой или пустой `stage` → **неясно** с этим `stage` в пояснении.
-   - `success:false`, `error === "not found"` **во всех трёх проверках** → **отказ**: «площадка не знает эту покупку».
+   - `success:false`, `error === "not found"` → **неясно**, даже после всех трёх проверок: что покупка видна по `custom_id` сразу, не доказано (`HYPOTHESIS`), а ложный «отказ» исказил бы журнал. «Отказ» — только когда площадка сама это подтвердила (`stage 5`).
    - любое другое (`rateLimited`, обрыв, нечитаемый ответ, иная ошибка) → **неясно**, как сейчас.
 3. **Расписание проверок:** пауза 2 с после неясного `buy`, затем до трёх проверок с промежутком 3 с; первая определённая (не «not found» и не сбой) — окончательная. Паузы — в экспортируемом объекте `pace`, тесты ставят нули.
 4. **Журнал:** запись о неясном лоте появляется сразу («проверяю по custom_id…»), затем обновляется на месте итогом. В записи хранится `customId` — человек может сверить сам.
@@ -84,7 +84,7 @@ export const buyInfo = (key: string, customId: string) =>
 
 ### Task 2: вердикт `judgeBuyInfo`
 
-**Interfaces:** Produces `judgeBuyInfo(res: any): { reason: 'куплено' | 'отказ' | 'неясно' | 'не найдено'; paid: number | null; detail: string }`. `'не найдено'` — промежуточное, наружу в журнал не попадает (Task 3 превращает его в «отказ» только после всех проверок).
+**Interfaces:** Produces `judgeBuyInfo(res: any): { reason: 'куплено' | 'отказ' | 'неясно' | 'не найдено'; paid: number | null; detail: string }`. `'не найдено'` — промежуточное, наружу в журнал не попадает: Task 3 по нему повторяет проверку, а после последней пишет «неясно».
 
 - [ ] **Step 1: падающие тесты** в `purchase.test.ts`:
 
@@ -153,7 +153,7 @@ for (const [name, reply] of Object.entries(VARIANTS)) {
   })
 }
 test('stage 1 — лот засчитан, в журнале «куплено» и custom_id', ...)       // ok=1, spent=0.01, log[0].reason='куплено', log[0].customId начинается с 'gt-'
-test('not found во всех трёх проверках — «отказ»', ...)                      // n.info === 3, log[0].reason === 'отказ'
+test('not found во всех трёх проверках — «неясно», а не отказ', ...)        // n.info === 3, log[0].reason === 'неясно'
 test('not found, потом stage 1 — «куплено», проверок две', ...)              // повторная проверка не создаёт покупку: n.buy === 1
 test('сбой проверки — «неясно», как раньше', ...)
 ```
@@ -169,7 +169,8 @@ test('сбой проверки — «неясно», как раньше', ...)
 ```ts
 // Ответ на покупку потерялся. Заново не покупаем — спрашиваем, что стало
 // с этой покупкой. «not found» сразу может значить «ещё не записалась»,
-// поэтому до трёх вопросов с паузой; отказом он становится только в конце.
+// поэтому до трёх вопросов с паузой. Отказом он не становится никогда:
+// отсутствие ответа — не доказательство, что покупки нет.
 async function resolveAmbiguous(key: string, customId: string) {
   await sleep(pace.settle)
   let v = judgeBuyInfo(null)
@@ -178,7 +179,9 @@ async function resolveAmbiguous(key: string, customId: string) {
     v = judgeBuyInfo(await buyInfo(key, customId))
     if (v.reason !== 'не найдено') return v
   }
-  return v.reason === 'не найдено' ? { ...v, reason: 'отказ' as const } : v
+  return v.reason === 'не найдено'
+    ? { reason: 'неясно' as const, paid: null, detail: 'площадка не нашла покупку по custom_id за ' + pace.tries + ' проверки — сверьте историю' }
+    : v
 }
 ```
 

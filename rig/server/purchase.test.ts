@@ -123,3 +123,34 @@ test('пустые и нулевые строки отбрасываются', (
   assert.ok('error' in vetLines([], SEEN, 0, 0))
   assert.ok('error' in vetLines([{ name: 'Spectator: NaVi', take: 0, price: 1 }], SEEN, 0, 0))
 })
+// ── С9: что стало с покупкой, ответ на которую потерялся ──
+import { judgeBuyInfo } from './purchase.ts'
+
+const info = (stage: string, paid = 0.05) => ({ success: true, data: { stage, paid, currency: 'RUB' } })
+
+test('stage 1 и 2 — лот куплен, цена из ответа площадки', () => {
+  assert.equal(judgeBuyInfo(info('1', 0.05)).reason, 'куплено')
+  const v = judgeBuyInfo(info('2', 0.07))
+  assert.equal(v.reason, 'куплено')
+  assert.equal(v.paid, 0.07)
+})
+
+test('stage 5 — трейд отменён, лот не придёт: отказ', () => {
+  assert.equal(judgeBuyInfo(info('5')).reason, 'отказ')
+})
+
+test('незнакомый stage — неясно, и он назван в пояснении', () => {
+  const v = judgeBuyInfo(info('9'))
+  assert.equal(v.reason, 'неясно')
+  assert.ok(v.detail.includes('9'))
+})
+
+test('«not found» — не найдено, а не отказ: покупка могла ещё не записаться', () => {
+  assert.equal(judgeBuyInfo({ success: false, error: 'not found' }).reason, 'не найдено')
+})
+
+test('сбой, 429, мусор — неясно', () => {
+  for (const r of [{ success: false, ambiguous: true, error: 'x' }, { success: false, rateLimited: true }, null, { success: true }, { success: false, error: 'bad key' }]) {
+    assert.equal(judgeBuyInfo(r).reason, 'неясно', JSON.stringify(r))
+  }
+})

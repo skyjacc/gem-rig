@@ -65,6 +65,26 @@ export function after(reason: string, failsInARow: number): 'стоп' | 'поз
   return 'дальше'
 }
 
+// Что ответила площадка на вопрос «что с покупкой по custom_id».
+//
+// «Отказ» — только когда площадка сама это сказала: stage 5, трейд отменён.
+// «not found» отказом не считается: видна ли покупка по custom_id сразу,
+// не доказано, а ложный отказ исказил бы журнал. Это промежуточное
+// «не найдено» — по нему проверку повторяют, а в журнал оно не попадает.
+export function judgeBuyInfo(res: any): { reason: 'куплено' | 'отказ' | 'неясно' | 'не найдено'; paid: number | null; detail: string } {
+  if (res?.success === false && res?.error === 'not found') {
+    return { reason: 'не найдено', paid: null, detail: 'площадка не знает эту покупку' }
+  }
+  if (!res?.success || !res?.data) {
+    return { reason: 'неясно', paid: null, detail: 'проверка не удалась: ' + String(res?.error ?? 'нет ответа').slice(0, 60) }
+  }
+  const stage = String(res.data.stage ?? '')
+  const paid = Number(res.data.paid)
+  if (stage === '1' || stage === '2') return { reason: 'куплено', paid: paid > 0 ? paid : null, detail: 'подтверждено по custom_id' }
+  if (stage === '5') return { reason: 'отказ', paid: null, detail: 'трейд отменён площадкой, деньги возвращаются' }
+  return { reason: 'неясно', paid: null, detail: 'площадка вернула stage ' + (stage || '—') }
+}
+
 // Сверка заказа с тем, что сервер сам видел на площадке.
 //
 // Раньше строки закупки приходили из браузера как есть: имя, цена, сколько

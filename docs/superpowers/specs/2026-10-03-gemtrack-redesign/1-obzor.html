@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Gemtrack · Обзор (макет)</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0c0c0e; --s1:#141416; --s2:#1b1b1e; --s3:#232327; --line:#ffffff0f; --line2:#ffffff17;
+    --ink:#ecebe8; --ink2:#a7a5a0; --mute:#76746f;
+    --ac:#b8f25c; --acg:#b8f25c55; --acs:#b8f25c1a;
+    --warn:#f2b44a; --warns:#f2b44a17; --stop:#ff7a7a; --stops:#ff7a7a17;
+    --r1:16px; --r2:10px;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:"Geist",ui-sans-serif,system-ui,sans-serif; font-size:13px; -webkit-font-smoothing:antialiased; }
+  .mono { font-family:"Geist Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+  button { font:inherit; color:inherit; border:0; background:none; cursor:pointer; }
+
+  .app { display:grid; grid-template-columns:64px minmax(0,1fr) 360px; grid-template-rows:60px minmax(0,1fr); height:100vh; min-height:720px; }
+
+  /* ── рейка ── */
+  .rail { grid-row:1/3; display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:8px; }
+  .rail .logo { width:40px; height:40px; display:grid; place-items:center; margin-bottom:12px; }
+  .rail .logo svg { filter:drop-shadow(0 0 8px var(--acg)); }
+  .rail .grp { background:var(--s1); border:1px solid var(--line); border-radius:999px; padding:6px; display:flex; flex-direction:column; gap:4px; }
+  .rail .it { width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:var(--mute); position:relative; transition:background-color 150ms, color 150ms; }
+  .rail .it:hover { background:var(--s2); color:var(--ink); }
+  .rail .it.on { background:var(--ink); color:var(--bg); }
+  .rail .it .tip { position:absolute; left:46px; top:50%; translate:0 -50%; white-space:nowrap; background:var(--s3); color:var(--ink); font-size:12px; padding:5px 9px; border-radius:8px; opacity:0; pointer-events:none; transition:opacity 120ms; }
+  .rail .it:hover .tip { opacity:1; }
+  .rail .sp { flex:1; }
+
+  /* ── верх ── */
+  .top { grid-column:2/4; grid-row:1; display:flex; align-items:center; gap:8px; padding:0 16px 0 4px; min-width:0; }
+  .pill { height:32px; display:inline-flex; align-items:center; gap:8px; padding:0 12px; border-radius:999px; background:var(--s1); border:1px solid var(--line); color:var(--ink2); font-size:12px; white-space:nowrap; }
+  .pill b { color:var(--ink); font-weight:500; }
+  .pill.acc { padding-left:4px; }
+  .ava { width:24px; height:24px; border-radius:999px; background:linear-gradient(135deg,#3a3a40,#202024); display:grid; place-items:center; font-size:11px; color:var(--ink); }
+  .dot { width:7px; height:7px; border-radius:999px; background:var(--mute); flex:none; }
+  .dot.ok { background:var(--ac); box-shadow:0 0 8px var(--acg); }
+  .dot.warn { background:var(--warn); } .dot.stop { background:var(--stop); }
+  .top { overflow:hidden; }
+  .top .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .demo { color:var(--warn); background:var(--warns); border-color:transparent; }
+  .ibtn { width:32px; height:32px; border-radius:999px; background:var(--s1); border:1px solid var(--line); display:grid; place-items:center; color:var(--ink2); position:relative; }
+  .ibtn:hover { background:var(--s2); color:var(--ink); }
+  .badge { position:absolute; top:-3px; right:-3px; min-width:16px; height:16px; border-radius:999px; background:var(--warn); color:#111; font-size:10px; font-weight:600; display:grid; place-items:center; padding:0 4px; }
+
+  /* ── холст ── */
+  .stage { grid-column:2; grid-row:2; position:relative; margin:0 0 16px 4px; border-radius:20px; background:var(--s1); border:1px solid var(--line); overflow:hidden;
+           background-image:radial-gradient(#ffffff0d 1px, transparent 1.2px); background-size:20px 20px; background-position:10px 10px; }
+  .stage::after { content:""; position:absolute; inset:0; pointer-events:none; background:radial-gradient(60% 50% at 45% 45%, transparent, #0c0c0e99); }
+  .stage-head { position:absolute; left:16px; right:16px; top:14px; display:flex; align-items:center; gap:12px; z-index:3; }
+  .stage-head h1 { margin:0; font-size:20px; font-weight:600; letter-spacing:-.02em; }
+  .stage-head .sub { color:var(--mute); font-size:12px; }
+  .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--s2); }
+  .seg button { height:26px; padding:0 12px; border-radius:999px; color:var(--ink2); font-size:12px; transition:background-color 150ms,color 150ms; }
+  .seg button.on { background:var(--s3); color:var(--ink); }
+  .stage-head .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .sim { height:32px; padding:0 12px; border-radius:999px; background:var(--s2); color:var(--ink2); font-size:12px; display:inline-flex; gap:8px; align-items:center; }
+  .sim.on { color:var(--ac); background:var(--acs); }
+  .sw { width:26px; height:16px; border-radius:999px; background:var(--s3); position:relative; transition:background-color 150ms; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:999px; background:var(--ink2); transition:transform 150ms, background-color 150ms; }
+  .sim.on .sw { background:#b8f25c40; } .sim.on .sw::after { transform:translateX(10px); background:var(--ac); }
+
+  .board { position:absolute; left:50%; top:52%; width:960px; height:620px; translate:-50% -50%; z-index:1; transform-origin:center; }
+  .board svg { position:absolute; inset:0; overflow:visible; }
+  .edge { fill:none; stroke:#ffffff1f; stroke-width:1.2; }
+  .edge.live { stroke:var(--ac); stroke-opacity:.55; }
+  .edge.live.glow { stroke-width:5; stroke-opacity:.12; filter:blur(2px); }
+  .edge.warn { stroke:var(--warn); stroke-opacity:.45; stroke-dasharray:3 5; }
+  .edge.stop { stroke:var(--stop); stroke-opacity:.45; stroke-dasharray:3 5; }
+  .edge.item { stroke:#ffffff26; }
+  .edge.item.sel { stroke:var(--ac); stroke-opacity:.5; }
+  .pulse { fill:var(--ac); filter:drop-shadow(0 0 6px var(--ac)); }
+
+  .node { position:absolute; background:linear-gradient(180deg,#1d1d21,#18181b); border:1px solid var(--line2); border-radius:14px; box-shadow:0 10px 30px #00000066, inset 0 1px 0 #ffffff0d; transition:background-color 150ms, box-shadow 150ms; }
+  .node.gem { width:236px; height:66px; padding:10px 12px 10px 10px; display:flex; gap:10px; align-items:center; cursor:pointer; }
+  .node.gem:hover { background:linear-gradient(180deg,#232327,#1c1c1f); }
+  .node.gem.sel { box-shadow:0 10px 30px #00000066, inset 0 0 0 1px var(--ac), 0 0 24px #b8f25c22; }
+  .node .ico { width:44px; height:44px; border-radius:10px; background:#0f0f11 center/cover no-repeat; flex:none; border:1px solid var(--line); }
+  .node .meta { min-width:0; flex:1; }
+  .node .nm { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500; }
+  .node .nm span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .node .hr { color:var(--mute); font-size:11px; margin-top:1px; }
+  .node .bar { height:3px; border-radius:999px; background:var(--s3); margin-top:7px; overflow:hidden; }
+  .node .bar i { display:block; height:100%; background:var(--ac); border-radius:999px; }
+  .node .cnt { margin-left:auto; font-size:11px; color:var(--mute); font-weight:400; flex:none; }
+  .node .cnt b { color:var(--ink); font-weight:500; }
+  .node .hr .chip { height:18px; margin-top:1px; }
+  .node .val { font-size:11px; color:var(--ink2); position:absolute; right:12px; top:10px; }
+  .node .val b { color:var(--ink); font-weight:500; }
+  .port { position:absolute; top:50%; width:9px; height:9px; margin-top:-4.5px; border-radius:999px; background:var(--s3); border:1.5px solid #ffffff30; }
+  .port.l { left:-5px; } .port.r { right:-5px; }
+  .port.live { background:var(--ac); border-color:var(--ac); box-shadow:0 0 10px var(--ac); }
+
+  .node.acct { width:220px; padding:14px; }
+  .node.acct .row1 { display:flex; gap:10px; align-items:center; }
+  .node.acct .ava { width:36px; height:36px; font-size:14px; border-radius:10px; }
+  .node.acct .sid { color:var(--mute); font-size:10.5px; margin-top:2px; }
+  .node.acct .stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:12px; }
+  .node.acct .stats div { background:#111113; border-radius:8px; padding:6px 8px; }
+  .node.acct .stats span { display:block; color:var(--mute); font-size:10px; }
+  .node.acct .stats b { font-size:13px; font-weight:500; }
+
+  .node.item { width:214px; height:40px; padding:6px 10px 6px 6px; display:flex; align-items:center; gap:8px; border-radius:10px; font-size:12px; opacity:0; transform:translateX(-6px); transition:opacity 220ms, transform 220ms; }
+  .node.item.show { opacity:1; transform:none; }
+  .node.item .ico { width:28px; height:28px; border-radius:7px; }
+  .node.item .n { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink2); }
+  .node.item .v { color:var(--ink); }
+  .node.item.more { justify-content:center; color:var(--mute); background:transparent; border-style:dashed; box-shadow:none; }
+
+  .chip { height:20px; padding:0 7px; border-radius:999px; font-size:10.5px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; flex:none; }
+  .chip::before { content:""; width:5px; height:5px; border-radius:999px; background:currentColor; }
+  .c-ok { color:var(--ac); background:var(--acs); } .c-warn { color:var(--warn); background:var(--warns); } .c-stop { color:var(--stop); background:var(--stops); } .c-idle { color:var(--ink2); background:var(--s3); }
+
+  .elabel { position:absolute; z-index:2; height:20px; padding:0 8px; border-radius:999px; background:#0e0e10; border:1px solid var(--line2); color:var(--ink2); font-size:10.5px; display:flex; align-items:center; translate:-50% -50%; white-space:nowrap; }
+
+  .zoom { position:absolute; right:14px; top:50%; translate:0 -50%; z-index:3; display:flex; flex-direction:column; gap:4px; padding:4px; background:var(--s2); border:1px solid var(--line); border-radius:999px; }
+  .zoom button { width:30px; height:30px; border-radius:999px; color:var(--ink2); display:grid; place-items:center; }
+  .zoom button:hover { background:var(--s3); color:var(--ink); }
+  .legend { position:absolute; left:16px; bottom:96px; z-index:3; display:flex; flex-direction:column; gap:6px; font-size:11px; color:var(--mute); }
+  .legend span { display:flex; align-items:center; gap:8px; }
+  .legend i { width:18px; height:0; border-top:1.5px solid; }
+
+  /* ── пульт снизу ── */
+  .dock { position:absolute; left:50%; bottom:16px; translate:-50% 0; z-index:4; display:flex; align-items:center; gap:6px; padding:6px; border-radius:999px;
+          background:#1a1a1dee; border:1px solid var(--line2); box-shadow:0 20px 50px #000000aa, inset 0 1px 0 #ffffff0d; backdrop-filter:blur(10px); white-space:nowrap; }
+  .dock .st { display:flex; align-items:center; gap:8px; padding:0 12px 0 10px; height:40px; }
+  .dock .st b { font-weight:500; }
+  .dock .st span { color:var(--mute); font-size:12px; }
+  .dock .div { width:1px; height:24px; background:var(--line2); }
+  .dock .kv { padding:0 10px; display:flex; flex-direction:column; justify-content:center; height:40px; }
+  .dock .kv span { color:var(--mute); font-size:10.5px; }
+  .dock .kv b { font-size:13px; font-weight:500; }
+  .go { height:40px; padding:0 18px 0 14px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 24px var(--acg); transition:box-shadow 150ms, background-color 150ms; }
+  .go:hover { box-shadow:0 0 34px var(--acg); }
+  .go.stop { background:var(--s3); color:var(--ink); box-shadow:none; }
+  .ghost { height:40px; padding:0 14px; border-radius:999px; background:var(--s3); color:var(--ink); display:inline-flex; align-items:center; gap:6px; }
+  .ghost:hover { background:#2c2c31; }
+
+  /* ── инспектор ── */
+  .insp { grid-column:3; grid-row:2; padding:0 16px 16px 0; display:flex; flex-direction:column; gap:12px; overflow:auto; scrollbar-width:none; }
+  .panel { background:var(--s1); border:1px solid var(--line); border-radius:var(--r1); padding:16px; }
+  .ph { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; height:22px; font-weight:500; }
+  .ph .n { color:var(--mute); font-weight:400; font-size:12px; }
+  .hero { display:flex; gap:12px; align-items:center; }
+  .hero .ico { width:56px; height:56px; border-radius:14px; background:#0f0f11 center/cover no-repeat; border:1px solid var(--line2); box-shadow:0 0 30px #b8f25c1c; }
+  .hero h2 { margin:0; font-size:18px; font-weight:600; letter-spacing:-.02em; }
+  .hero .s { color:var(--mute); font-size:12px; margin-top:2px; }
+  .ringwrap { display:grid; grid-template-columns:132px 1fr; gap:16px; align-items:center; margin-top:16px; }
+  .ring { width:132px; height:132px; position:relative; }
+  .ring svg { transform:rotate(-90deg); }
+  .ring .c { position:absolute; inset:0; display:grid; place-items:center; text-align:center; }
+  .ring .c b { font-size:26px; font-weight:500; letter-spacing:-.02em; display:block; }
+  .ring .c span { color:var(--mute); font-size:11px; }
+  .facts { display:flex; flex-direction:column; gap:6px; }
+  .fact { background:var(--s2); border-radius:var(--r2); padding:8px 10px; }
+  .fact span { color:var(--mute); font-size:11px; display:block; }
+  .fact b { font-weight:500; }
+  .list { margin-top:12px; }
+  .li { display:flex; align-items:center; gap:10px; height:44px; border-top:1px solid var(--line); }
+  .li:first-child { border-top:0; }
+  .li .ico { width:30px; height:30px; border-radius:8px; background:#0f0f11 center/cover; border:1px solid var(--line); flex:none; }
+  .li .n { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink2); font-size:12.5px; }
+  .li .v { font-size:12.5px; }
+  .li .eq { color:var(--mute); font-size:10.5px; }
+  .acts { display:flex; gap:8px; margin-top:12px; }
+  .btn2 { flex:1; height:36px; border-radius:999px; background:var(--s2); color:var(--ink); font-size:12.5px; transition:background-color 150ms; }
+  .btn2:hover { background:var(--s3); }
+  .btn2.ac { background:var(--acs); color:var(--ac); }
+
+  .alert { background:var(--s2); border-radius:var(--r2); padding:12px 12px 12px 15px; box-shadow:inset 3px 0 0 var(--warn); }
+  .alert + .alert { margin-top:8px; }
+  .alert.r { box-shadow:inset 3px 0 0 var(--stop); }
+  .alert .t { font-size:12.5px; line-height:1.35; }
+  .alert .d { color:var(--mute); font-size:11.5px; margin-top:4px; line-height:1.35; }
+  .alert .a { display:flex; gap:6px; margin-top:10px; }
+  .alert .a button { height:28px; padding:0 12px; border-radius:999px; background:var(--s3); font-size:11.5px; color:var(--ink); transition:background-color 150ms; }
+  .alert .a button:hover { background:#2c2c31; }
+  .alert .a button.ac { background:var(--acs); color:var(--ac); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- рейка -->
+  <nav class="rail">
+    <div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b8f25c" stroke-width="1.6"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M12 21 8 9l4-6 4 6z"/></svg></div>
+    <div class="grp">
+      <button class="it on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.5 12c5 0 5-7 9-7M7.5 12c5 0 5 7 9 7"/></svg><span class="tip">Обзор</span></button>
+      <button class="it"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="tip">Инвентарь</span></button>
+      <button class="it"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6"/></svg><span class="tip">Скупка</span></button>
+      <button class="it" title="Продажи"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg><span class="tip">Продажи</span></button>
+      <button class="it"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg><span class="tip">Аккаунты</span></button>
+      <button class="it"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="tip">Журнал</span></button>
+    </div>
+    <div class="sp"></div>
+    <div class="grp">
+      <button class="it"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="tip">Общие правила</span></button>
+    </div>
+  </nav>
+
+  <!-- верх -->
+  <header class="top">
+    <span class="pill acc"><span class="ava">О</span><b>основной</b><span class="dot"></span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+    <span class="pill">вещей <b class="mono">51</b></span>
+    <span class="pill">гемов <b class="mono">7</b></span>
+    <span class="pill">в очереди <b class="mono">11 580</b></span>
+    <span class="pill">готово к продаже <b class="mono">0</b></span>
+    <span class="pill">инвентарь <b>56 с назад</b></span>
+    <div class="right">
+      <span class="pill demo"><span class="dot warn"></span>макет · снимок 21 августа · ничего не отправляется</span>
+      <button class="ibtn" title="тревоги"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="badge">2</span></button>
+    </div>
+  </header>
+
+  <!-- холст -->
+  <main class="stage" id="stage">
+    <div class="stage-head">
+      <div><h1>Обзор</h1><div class="sub">аккаунт → гемы → вещи · клик по гему открывает его справа</div></div>
+      <div class="seg" style="margin-left:16px"><button class="on">дерево</button><button>сеть матчей</button></div>
+      <div class="right">
+        <button class="sim" id="sim"><span class="sw"></span>показать, как идёт работа</button>
+      </div>
+    </div>
+
+    <div class="board" id="board"><svg id="wires"></svg></div>
+
+    <div class="legend">
+      <span><i style="border-color:var(--ac)"></i>в работе</span>
+      <span><i style="border-color:var(--warn);border-top-style:dashed"></i>не дойдёт до цели</span>
+      <span><i style="border-color:var(--stop);border-top-style:dashed"></i>не настроен</span>
+    </div>
+
+    <div class="zoom">
+      <button title="приблизить"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button title="отдалить"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></button>
+      <button title="вписать"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+
+    <div class="dock">
+      <div class="st"><span class="dot warn" id="dDot"></span><b id="dState">стоит</b><span id="dSub">работник выключен</span></div>
+      <div class="div"></div>
+      <div class="kv"><span>пауза</span><b class="mono">1,0 с</b></div>
+      <div class="kv"><span>темп</span><b class="mono" id="dRate">—</b></div>
+      <div class="kv"><span>до конца</span><b class="mono" id="dEta">—</b></div>
+      <div class="kv"><span>подтверждено</span><b>43 дня назад</b></div>
+      <div class="div"></div>
+      <button class="ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>настроить</button>
+      <button class="go" id="go"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg><span>Накрутить</span></button>
+    </div>
+  </main>
+
+  <!-- инспектор -->
+  <aside class="insp" id="insp"></aside>
+</div>
+
+<script>
+const GEMS = [{"gem":"BZZ","hero":"Pugna","items":29,"eq":7,"min":0,"max":12,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/96fx96f","rows":[{"n":"Nether Heart","v":12,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/62fx62f"},{"n":"Nether Lord's Cape","v":12,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLyn4blsixe-_qrepthL-KXHViTwP5z_rY5TijrzB5z52TSz9iucHvFbwR0A5UjFrMLskK9k4bmMLng4QSPid9bjXKpQw2GSL8/62fx62f"},{"n":"Nether Lord's Bracer","v":12,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLzjJfj-DAU4fe6YKF_H_ycHGOD_uxkseJsXWfnwBh0tTjUnIuveS_EOFUkWZp0Te4Luhixw9HiNuq35AXai4tEmC_3kGoXuUU9vK3G/62fx62f"},{"n":"Nether Lord's Scepter","v":12,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLinZPw6SdJoPyrfKxoMs-fAXWU0tFls-R5Wyyh20wk5mvQnNeqcX6WbAIlX8d1R7UC4EOxwNSyP-6x7gWLiopAzCWtjyJXrnE8KEzbH3w/62fx62f"},{"n":"Nether Lord's Devourer","v":12,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiL1m4Dv6DBe_b2gbbBlJeKsAmiCxf1JtOR_QDyhkA9p5DuAm4modHyXPQEjDcYkFuZb4RPuxoHkM-i37wWMio8RzC_-3ytPuDErvbifCKi6Fg/62fx62f"}]},{"gem":"Ohaiyo","hero":"Nature's Prophet","items":7,"eq":7,"min":0,"max":0,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mb0SRLkkpLl721L_fujbbJsLM-ABmiFzepzoq87G37hkB50tWyHyo39I3qXOFMjCZt2QucI5ELukN3nML-04wzcjowQ02yg2end0mr0/96fx96f","rows":[{"n":"Primeval Shoulder","v":0,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mb0SRLkkpLl721L_fujbbJsLM-ABmiFzepzoq87G37hkB50tWyHyo39I3qXOFMjCZt2QucI5ELukN3nML-04wzcjowQ02yg2end0mr0/62fx62f"},{"n":"Primeval Treant","v":0,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSD91N0-pO7-kvuTBjnn5rf6TBe7vy6J7R_Kf2WGGac_vpkteBnWxa9hR4YtzKRm7D_NDnOMVhPTtAlFLlOrBTskN3gNLvgtAfa3o4QyHj4iilP6iZssu0GVPB3_PHQjQ3DN-Y55cUdZKHwkOB9CYU/62fx62f"},{"n":"Inscribed Primeval Staff","v":0,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mbwRBzhkZiv7TBS4ve4aahSN_WSHmiej7tz5bZtSXi1xB935WXdmImvdn2fbAN1ApEmFrMI4xC-x9PvY--z7gHAy9USxUOzWzw/62fx62f"},{"n":"Primeval Horns","v":0,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mbvRBz10Yby9C9e-fOiV6xoIfTdXj6Sxesn5Lc9HCzil0Ql4TiEzY2vdy2SOwcpWZNyTeRetka_x4DlZvSiuVLveR9Msw/62fx62f"},{"n":"Primeval Cape","v":0,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mblQB760Yby9C9e-fOiV6ZsI_vdXjLCkusv6ONsFn7qwE5x4WvTmNuhc3mRbAZ2DpEmRe8D5kG7l9PmZPSiuVLgT4H1dA/62fx62f"}]},{"gem":"Team Empire","hero":"Slark","items":5,"eq":5,"min":18,"max":18,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbmUxDi0ZLh7ylk_ferbptsMv2AQDHBwOgn5LU9FnznwR4h4jzczN36dC3DaAYgDcB4EeNes0S8ktK0Ybn8p1uJsrguhiE/96fx96f","rows":[{"n":"Inscribed Prison Buckler","v":18,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbmUxDi0ZLh7ylk_ferbptsMv2AQDHBwOgn5LU9FnznwR4h4jzczN36dC3DaAYgDcB4EeNes0S8ktK0Ybn8p1uJsrguhiE/62fx62f"},{"n":"Prison Shank","v":18,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbwRBzhkZiv-SNJ5M28baFrH-eWD3efz6Bysrg4TXznwEsl627RztaseH-TOgZyDsEmQbIDtUW_kNbkZLux7lDXlcsbmlgjsyeb/62fx62f"},{"n":"Shark Cowl","v":18,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbvRBz10ZLh7ylk_ferbptlJfGXQGbFxL114ec9THngwBhw62-An938d3PFaVMnDpciR7RbtRO_x4C1Zrv8p1uJWmMKo1I/62fx62f"},{"n":"Bound Shark Flippers","v":18,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7Gb0SRLkkpLl7zEU6_O8Y5t_JfWVMXSYzvt6tOR7XGfmxEh0tzmEmImrdC6TPFQjDJYjTLVe5EO-k9TnN-O25gzegtlMnyv2kGoXuY1aqTFj/62fx62f"},{"n":"Shark Fin Cape","v":18,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GblQB760ZLh7ylk_ferbptvIfOYQD_FwrYl4-M9G3uykEh14DnRmN2ueC2WbQAkXJVxROcJ4RjskIWzPr78p1uJeeZGxcc/62fx62f"}]},{"gem":"Alliance","hero":"Puck","items":4,"eq":3,"min":52,"max":54,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5Frifgnwl5qv7ydW5vyne6doLvOWMXORyOI44uU5GCixwBwk5G6HyI2ocC6Ub1MlWMRwQ-cPtBGxk9C1YrmwsQHbg5UFk3uFdbU1HQ/96fx96f","rows":[{"n":"Spectator: Alliance","v":54,"e":false,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/62fx62f"},{"n":"Tail of Reminiscence","v":52,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5Frifgnwl5qv7ydW5vyne6doLvOWMXORyOI44uU5GCixwBwk5G6HyI2ocC6Ub1MlWMRwQ-cPtBGxk9C1YrmwsQHbg5UFk3uFdbU1HQ/62fx62f"},{"n":"Wings of Reminiscence","v":52,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5Frifgr4kJHzsjBe4vugYbduJf6QC1iHyOBxo685Fn7ix0wj42qHz4qucS6RZwEjA8F0F-Jfsxi5x9XnMemwsQ3d2tlE02yg2acYDfb_/62fx62f"},{"n":"Inscribed Orb of Reminiscence","v":52,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5FrifhX0n5Kv7ydW5vyne6doLvOWMW-VwOo4tuQ4HnmxwUQksm2Dztv4d36RPVIpXsB5QuQK4UaxmtHmPrvrtFOP2pUFk3vUPSigvQ/62fx62f"}]},{"gem":"DD","hero":"Lina","items":4,"eq":4,"min":0,"max":0,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZjl_ikU6uSreqhsM-SaAGCYxO9ij-9sTCL9wUtz62vRmN6ucnvGPAV0WJYkQuIO4xG-lYHkYrjmtgXe2otCn3j9ijQJsHg2iKUokw/96fx96f","rows":[{"n":"Everlasting Tails","v":0,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZjl_ikU6uSreqhsM-SaAGCYxO9ij-9sTCL9wUtz62vRmN6ucnvGPAV0WJYkQuIO4xG-lYHkYrjmtgXe2otCn3j9ijQJsHg2iKUokw/62fx62f"},{"n":"Everlasting Hair","v":0,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZ7h9DAU6uSreqhsM-SaAGCYxO9ij-loRjv9w01142TWzd2od3uUbwMiDMd0FO5f50O9ldXuPu7itACPidkTzSz83DQJsHi4Hp0RjA/62fx62f"},{"n":"Everlasting Belt","v":0,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZTl8TYU6uSreqhsM-SaAGCYxO9ij-NsQz39kU5-sjzUzYmveS7FaVInCsN3Q7QDuxnrm9G2Yu_j4Qzd2oxByST93DQJsHisgVBwbQ/62fx62f"},{"n":"Everlasting Arms","v":0,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZfy8DEU6uSreqhsM-SaAGCYxO9ij-B7Qjr9x0tx6mzcwtv_d3-UZgV2C8B5ReUOskbpkNa1NL-35VbfiI0Xmy_-3zQJsHiyPpQfSA/62fx62f"}]},{"gem":"NaVi","hero":"Chen","items":1,"eq":1,"min":10,"max":10,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_XcxsTuIn6W9Vl7y4n1_FCoVhjwjpnuwixa-fvgMKJoePGRCjHFwuslsrdtTXzjw0pwt2_cmIupIH3BPAYgCpF2F-MN5g74zIN9SriQmw/96fx96f","rows":[{"n":"Wings of Obelis Staff","v":10,"e":true,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_XcxsTuIn6W9Vl7y4n1_FCoVhjwjpnuwixa-fvgMKJoePGRCjHFwuslsrdtTXzjw0pwt2_cmIupIH3BPAYgCpF2F-MN5g74zIN9SriQmw/62fx62f"}]},{"gem":"CaspeRRR","hero":"Nyx Assassin","items":1,"eq":0,"min":0,"max":0,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_jR0d-jPHqZ2ldm54bn-VDpDg75n5Lv6h1P_fOtbbZ-b-ObD2Of1tFiouBqSjug2xwk5WmGwtr_IHOUaAFyW5QiQLVZ5BHqw9zuP-PnsgOMi4IQzy75iyxXrnE8d9MIDIs/96fx96f","rows":[{"n":"Shadow Tracers","v":0,"e":false,"i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_jR0d-jPHqZ2ldm54bn-VDpDg75n5Lv6h1P_fOtbbZ-b-ObD2Of1tFiouBqSjug2xwk5WmGwtr_IHOUaAFyW5QiQLVZ5BHqw9zuP-PnsgOMi4IQzy75iyxXrnE8d9MIDIs/62fx62f"}]}];
+const GOAL = 1000;   // цель из общих правил; в снимке стояло 1 000, на деле работают до ~1 000
+// что известно из снимка о проблемных гемах
+const NOTE = {
+  DD:       { tone:'warn', chip:'не дойдёт', why:'у игрока всего 568 матчей — до 1 000 не дойдёт' },
+  CaspeRRR: { tone:'stop', chip:'нет в карте', why:'непонятно, чьи матчи считать: гема нет в tools/gem-map.json' },
+};
+const ORDER = ['Alliance','Team Empire','BZZ','NaVi','Ohaiyo','DD','CaspeRRR'];
+const gems = ORDER.map(n => GEMS.find(g => g.gem === n)).filter(Boolean);
+let sel = 'Alliance';
+let running = false;
+
+const board = document.getElementById('board');
+const wires = document.getElementById('wires');
+const W = 960, H = 620;
+const AX = 20, AW = 220, AY = 250;            // аккаунт
+const GX = 340, GW = 236, GH = 66, GAP = 82;  // гемы
+const IX = 730, IW = 214, IH = 40, IGAP = 48; // вещи
+const gy = i => 34 + i * GAP;
+
+const fmt = n => n.toLocaleString('ru-RU');
+const tone = g => NOTE[g.gem]?.tone ?? 'ok';
+
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function curve(x1, y1, x2, y2) { const mx = (x1 + x2) / 2; return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`; }
+
+function draw() {
+  board.querySelectorAll('.node,.elabel').forEach(n => n.remove());
+  wires.innerHTML = '<defs></defs>';
+  wires.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  wires.setAttribute('width', W); wires.setAttribute('height', H);
+
+  // аккаунт
+  const acct = el('div', 'node acct', `
+    <div class="row1"><span class="ava">О</span><div><div style="font-weight:500">основной</div><div class="sid mono">7656119800000000</div></div></div>
+    <div style="margin-top:10px"><span class="chip ${running ? 'c-ok' : 'c-idle'}">${running ? 'накручивает' : 'выключен'}</span> <span class="chip c-stop">сессия не проверена</span></div>
+    <div class="stats"><div><span>вещей</span><b class="mono">51</b></div><div><span>гемов</span><b class="mono">7</b></div><div><span>сожжено</span><b class="mono">66</b></div></div>
+    <span class="port r ${running ? 'live' : ''}"></span>`);
+  acct.style.left = AX + 'px'; acct.style.top = AY + 'px';
+  board.appendChild(acct);
+  const ay = AY + acct.offsetHeight / 2;
+
+  gems.forEach((g, i) => {
+    const t = tone(g), y = gy(i);
+    const live = running && t === 'ok';
+    const d = curve(AX + AW, ay, GX, y + GH / 2);
+    if (live) wires.insertAdjacentHTML('beforeend', `<path class="edge live glow" d="${d}"/>`);
+    wires.insertAdjacentHTML('beforeend', `<path class="edge ${t === 'ok' ? (live ? 'live' : '') : t}" id="e${i}" d="${d}"/>`);
+    if (live) wires.insertAdjacentHTML('beforeend', `<circle r="3" class="pulse"><animateMotion dur="${1.6 + i * 0.25}s" repeatCount="indefinite" path="${d}"/></circle>`);
+
+    const pct = Math.min(100, g.max / GOAL * 100);
+    const n = el('div', 'node gem' + (g.gem === sel ? ' sel' : ''), `
+      <span class="port l ${live ? 'live' : ''}"></span>
+      <div class="ico" style="background-image:url('${g.icon}')"></div>
+      <div class="meta">
+        <div class="nm"><span>${g.gem}</span><span class="cnt mono"><b data-v="${g.gem}">${g.max}</b> / 1 000</span></div>
+        <div class="hr">${t !== 'ok' ? `<span class="chip c-${t}">${NOTE[g.gem].chip}</span>` : `${g.hero} · ${g.items} ${g.items === 1 ? 'вещь' : g.items < 5 ? 'вещи' : 'вещей'}`}</div>
+        <div class="bar"><i style="width:${Math.max(pct, g.max ? 1.5 : 0)}%"></i></div>
+      </div>
+      <span class="port r ${g.gem === sel ? 'live' : ''}"></span>`);
+    n.style.left = GX + 'px'; n.style.top = y + 'px';
+    n.onclick = () => { sel = g.gem; draw(); inspect(); };
+    board.appendChild(n);
+  });
+
+  // вещи выбранного гема
+  const si = gems.findIndex(g => g.gem === sel);
+  const g = gems[si];
+  const rows = g.rows.slice(0, g.items > 5 ? 4 : 5);
+  const extra = g.items - rows.length;
+  const count = rows.length + (extra > 0 ? 1 : 0);
+  const cy = gy(si) + GH / 2;
+  let top = Math.max(16, Math.min(H - count * IGAP - 8, cy - (count * IGAP - 8) / 2));
+  const lab = el('div', 'elabel', `${g.items} ${g.items === 1 ? 'вещь' : g.items < 5 ? 'вещи' : 'вещей'} · +1 за матч`);
+  lab.style.left = (GX + GW + IX) / 2 + 'px'; lab.style.top = cy + 'px';
+  rows.forEach((r, k) => {
+    const y = top + k * IGAP;
+    wires.insertAdjacentHTML('beforeend', `<path class="edge item sel" d="${curve(GX + GW, cy, IX, y + IH / 2)}"/>`);
+    const it = el('div', 'node item', `<div class="ico" style="background-image:url('${r.i}')"></div><span class="n">${r.n}</span><span class="v mono">${r.v}</span>`);
+    it.style.left = IX + 'px'; it.style.top = y + 'px';
+    board.appendChild(it);
+    setTimeout(() => it.classList.add('show'), 30 + k * 40);
+  });
+  if (extra > 0) {
+    const y = top + rows.length * IGAP;
+    wires.insertAdjacentHTML('beforeend', `<path class="edge item" d="${curve(GX + GW, cy, IX, y + IH / 2)}"/>`);
+    const m = el('div', 'node item more', `ещё ${extra} — в инвентаре`);
+    m.style.left = IX + 'px'; m.style.top = y + 'px';
+    board.appendChild(m);
+    setTimeout(() => m.classList.add('show'), 30 + rows.length * 40);
+  }
+  board.appendChild(lab);
+}
+
+function ring(v) {
+  const r = 58, c = 2 * Math.PI * r, p = Math.min(1, v / GOAL);
+  return `<svg width="132" height="132"><circle cx="66" cy="66" r="${r}" fill="none" stroke="#232327" stroke-width="8"/>
+    <circle cx="66" cy="66" r="${r}" fill="none" stroke="#b8f25c" stroke-width="8" stroke-linecap="round" stroke-dasharray="${Math.max(c * p, 4)} ${c}" style="filter:drop-shadow(0 0 6px #b8f25c88)"/></svg>`;
+}
+
+function inspect() {
+  const g = gems.find(x => x.gem === sel), t = tone(g), note = NOTE[g.gem];
+  const insp = document.getElementById('insp');
+  insp.innerHTML = `
+    <section class="panel">
+      <div class="ph">Гем <span class="n">Spectator Gem</span></div>
+      <div class="hero"><div class="ico" style="background-image:url('${g.icon}')"></div>
+        <div><h2>${g.gem}</h2><div class="s">${g.hero} · ${g.items} ${g.items === 1 ? 'вещь' : g.items < 5 ? 'вещи' : 'вещей'}, надето ${g.eq}</div>
+        <div style="margin-top:6px"><span class="chip c-${t === 'ok' ? 'ok' : t}">${t === 'ok' ? 'в работе' : note.chip}</span></div></div></div>
+      <div class="ringwrap">
+        <div class="ring">${ring(g.max)}<div class="c"><div><b class="mono">${g.max}</b><span>из 1 000</span></div></div></div>
+        <div class="facts">
+          <div class="fact"><span>разброс по вещам</span><b class="mono">${g.min === g.max ? g.max : g.min + ' – ' + g.max}</b></div>
+          <div class="fact"><span>осталось до цели</span><b class="mono">${fmt(GOAL - g.max)}</b></div>
+          <div class="fact"><span>дойдёт до цели</span><b>${t === 'ok' ? 'да' : t === 'warn' ? 'нет' : 'неизвестно'}</b></div>
+        </div>
+      </div>
+      ${note ? `<div class="alert ${t === 'stop' ? 'r' : ''}" style="margin-top:12px"><div class="t">${note.why}</div></div>` : ''}
+      <div class="list">${g.rows.slice(0, 5).map(r => `<div class="li"><div class="ico" style="background-image:url('${r.i}')"></div><span class="n">${r.n}</span>${r.e ? '<span class="eq">надето</span>' : ''}<span class="v mono">${r.v}</span></div>`).join('')}</div>
+      <div class="acts"><button class="btn2 ac">только этот гем</button><button class="btn2">в инвентаре</button></div>
+    </section>
+
+    <section class="panel">
+      <div class="ph">Требует внимания <span class="n">2</span></div>
+      <div class="alert"><div class="t">DD — до 1 000 не дойдёт</div><div class="d">у игрока всего 568 матчей</div>
+        <div class="a"><button class="ac">снизить цель до 568</button><button>не считать товаром</button></div></div>
+      <div class="alert r"><div class="t">CaspeRRR — непонятно, чьи матчи считать</div><div class="d">гема нет в карте tools/gem-map.json</div>
+        <div class="a"><button>указать команду</button></div></div>
+    </section>`;
+}
+
+// имитация работы: только анимация на макете, ничего никуда не уходит
+let tick = null;
+document.getElementById('sim').onclick = function () {
+  running = !running;
+  this.classList.toggle('on', running);
+  document.getElementById('dDot').className = 'dot ' + (running ? 'ok' : 'warn');
+  document.getElementById('dState').textContent = running ? 'идёт' : 'стоит';
+  document.getElementById('dSub').textContent = running ? 'имитация на макете' : 'работник выключен';
+  document.getElementById('dRate').textContent = running ? '58 / мин' : '—';
+  document.getElementById('dEta').textContent = running ? '≈ 33 ч' : '—';
+  const go = document.getElementById('go');
+  go.classList.toggle('stop', running);
+  go.querySelector('span').textContent = running ? 'Остановить' : 'Накрутить';
+  draw();
+  clearInterval(tick);
+  if (running) tick = setInterval(() => {
+    document.querySelectorAll('[data-v]').forEach(b => {
+      const g = gems.find(x => x.gem === b.dataset.v);
+      if (tone(g) === 'ok' && Math.random() < .5) { b.textContent = +b.textContent + 1; }
+    });
+  }, 900);
+};
+document.getElementById('go').onclick = () => document.getElementById('sim').click();
+
+// вписать холст в видимую область: сверху шапка холста, снизу пульт
+function fit() {
+  const st = document.getElementById('stage').getBoundingClientRect();
+  if (!st.width) return;
+  const k = Math.min(1.15, (st.width - 110) / W, (st.height - 170) / H);
+  if (!(k > 0.2)) return;
+  board.style.transform = `scale(${k})`;
+  board.style.top = (70 + (st.height - 170) / 2) + 'px';
+  board.style.left = (st.width / 2 - 20) + 'px';
+}
+addEventListener('resize', fit);
+document.querySelector('.zoom button:last-child').onclick = fit;
+
+draw(); inspect(); fit();
+requestAnimationFrame(fit);
+</script>
+</body>
+</html>

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Gemtrack · Скупка v2 (макет)</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0c0c0e; --s1:#141416; --s2:#1b1b1e; --s3:#232327; --line:#ffffff0f; --line2:#ffffff17;
+    --ink:#ecebe8; --ink2:#a7a5a0; --mute:#76746f;
+    --ac:#b8f25c; --acg:#b8f25c55; --acs:#b8f25c1a;
+    --warn:#f2b44a; --warns:#f2b44a17; --stop:#ff7a7a; --stops:#ff7a7a17;
+    --r1:16px; --r2:10px; --pad:16px; --gap:8px;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:"Geist",ui-sans-serif,system-ui,sans-serif; font-size:13px; -webkit-font-smoothing:antialiased; }
+  .num { font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+  .mono { font-family:"Geist Mono",ui-monospace,monospace; }
+  button, input { font:inherit; color:inherit; border:0; background:none; }
+  button { cursor:pointer; }
+  button:disabled { cursor:not-allowed; }
+
+  .app { display:grid; grid-template-columns:64px minmax(0,1fr) 380px; grid-template-rows:60px minmax(0,1fr); height:100vh; min-height:720px; }
+  .rail { grid-row:1/3; grid-column:1; display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:8px; }
+  .rail .logo { width:40px; height:40px; display:grid; place-items:center; margin-bottom:12px; }
+  .rail .logo svg { filter:drop-shadow(0 0 8px var(--acg)); }
+  .rail .grp { background:var(--s1); border:1px solid var(--line); border-radius:999px; padding:6px; display:flex; flex-direction:column; gap:4px; }
+  .rail .it { width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:var(--mute); transition:background-color 150ms, color 150ms; }
+  .rail .it:hover { background:var(--s2); color:var(--ink); }
+  .rail .it.on { background:var(--ink); color:var(--bg); }
+
+  .top { grid-column:2/4; grid-row:1; display:flex; align-items:center; gap:8px; padding:0 16px 0 4px; min-width:0; overflow:hidden; }
+  .pill { height:32px; display:inline-flex; align-items:center; gap:8px; padding:0 12px; border-radius:999px; background:var(--s1); border:1px solid var(--line); color:var(--ink2); font-size:12px; white-space:nowrap; }
+  .pill b { color:var(--ink); font-weight:500; }
+  .pill.acc { padding-left:4px; }
+  .ava { width:24px; height:24px; border-radius:999px; background:linear-gradient(135deg,#3a3a40,#202024); display:grid; place-items:center; font-size:11px; color:var(--ink); flex:none; }
+  .dot { width:7px; height:7px; border-radius:999px; background:var(--mute); flex:none; }
+  .dot.warn { background:var(--warn); } .dot.stop { background:var(--stop); } .dot.ok { background:var(--ac); }
+  .top .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .demo { color:var(--warn); background:var(--warns); border-color:transparent; }
+
+  .page { grid-column:2; grid-row:2; position:relative; margin:0 0 16px 4px; border-radius:20px; background:var(--s1); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; }
+  .scroll { flex:1; overflow:auto; padding:20px 20px 112px; scrollbar-width:thin; scrollbar-color:#ffffff24 transparent; }
+  .phead { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+  .phead h1 { margin:0; font-size:22px; font-weight:600; letter-spacing:-.02em; line-height:1.2; }
+  .phead .sub { color:var(--mute); font-size:12px; margin-top:4px; }
+  .phead .right { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--s2); }
+  .seg button { height:26px; padding:0 11px; border-radius:999px; color:var(--ink2); font-size:12px; transition:background-color 150ms,color 150ms; }
+  .seg button.on { background:var(--s3); color:var(--ink); }
+  .btn { height:32px; padding:0 12px; border-radius:999px; background:var(--s2); color:var(--ink2); font-size:12px; display:inline-flex; align-items:center; gap:6px; transition:background-color 150ms,color 150ms; }
+  .btn:hover { background:var(--s3); color:var(--ink); }
+  .src { display:inline-flex; align-items:center; height:16px; padding:0 6px; border-radius:999px; font-family:"Geist Mono",monospace; font-size:9.5px; color:var(--mute); background:var(--s3); white-space:nowrap; vertical-align:1px; }
+  .src.h { color:var(--warn); background:var(--warns); }
+
+  .note { margin-top:16px; display:flex; gap:10px; align-items:flex-start; padding:10px 14px; border-radius:12px; background:var(--s2); color:var(--ink2); font-size:12px; line-height:1.45; }
+  .note svg { flex:none; margin-top:1px; color:var(--warn); }
+
+  /* верх: плитки + карта выбора */
+  .hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:var(--gap); margin-top:16px; }
+  .kpis { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
+  .tile { background:var(--s2); border-radius:12px; padding:12px 14px; min-width:0; }
+  .tile .l { color:var(--mute); font-size:12px; white-space:nowrap; display:flex; justify-content:space-between; gap:6px; }
+  .tile .v { font-size:24px; margin-top:6px; letter-spacing:-.02em; line-height:1; }
+  .tile .v small { font-size:13px; color:var(--mute); }
+  .tile .n { color:var(--mute); font-size:11.5px; margin-top:8px; line-height:1.4; }
+  .chart { background:var(--s2); border-radius:12px; padding:12px 14px; position:relative; }
+  .chart .l { color:var(--mute); font-size:12px; display:flex; justify-content:space-between; }
+  .chart svg { display:block; width:100%; height:196px; margin-top:6px; overflow:visible; }
+  .chart .ax { stroke:#ffffff14; }
+  .chart .axt { fill:var(--mute); font-size:10px; font-family:"Geist",sans-serif; }
+  .chart .goal { stroke:var(--warn); stroke-dasharray:3 4; stroke-opacity:.7; }
+  .chart .pt { cursor:pointer; transition:r 150ms; }
+  .chart .zone { fill:#b8f25c08; }
+  .chart .tip { position:absolute; pointer-events:none; background:var(--s3); border:1px solid var(--line2); border-radius:8px; padding:6px 9px; font-size:11.5px; white-space:nowrap; opacity:0; transition:opacity 120ms; box-shadow:0 8px 20px #0008; }
+
+  /* фильтры */
+  .bar2 { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:20px; }
+  .fchip { height:30px; padding:0 6px 0 12px; border-radius:999px; background:var(--s2); color:var(--ink2); font-size:12px; display:inline-flex; align-items:center; gap:8px; transition:background-color 150ms,color 150ms; }
+  .fchip:hover { background:var(--s3); color:var(--ink); }
+  .fchip .c { min-width:22px; height:20px; padding:0 6px; border-radius:999px; background:var(--s3); font-size:11px; display:grid; place-items:center; }
+  .fchip.on { background:var(--ink); color:var(--bg); }
+  .fchip.on .c { background:#0c0c0e1f; }
+  .search { margin-left:auto; height:30px; width:180px; border-radius:999px; background:var(--s2); display:flex; align-items:center; gap:8px; padding:0 12px; color:var(--mute); }
+  .search input { flex:1; min-width:0; outline:none; color:var(--ink); font-size:12.5px; }
+
+  /* таблица-список */
+  .tbl { margin-top:12px; }
+  .th, .tr { display:grid; grid-template-columns:minmax(200px,1.7fr) 64px 72px minmax(110px,1fr) minmax(120px,1fr) 64px 76px 116px; align-items:center; gap:12px; padding:0 12px; }
+  .th { height:30px; color:var(--mute); font-size:11px; }
+  .th button { color:inherit; font-size:11px; display:inline-flex; gap:4px; align-items:center; justify-self:start; }
+  .th button.r { justify-self:end; }
+  .th button.on { color:var(--ink); }
+  .th button:hover { color:var(--ink); }
+  .tr { min-height:56px; border-radius:12px; transition:background-color 150ms, box-shadow 150ms; cursor:pointer; }
+  .tr + .tr { margin-top:2px; }
+  .tr:hover { background:var(--s2); }
+  .tr.sel { background:var(--s2); box-shadow:inset 0 0 0 1px var(--ac); }
+  .tr.free { background:linear-gradient(90deg,#b8f25c0c,transparent 50%); }
+  .tr.free:hover, .tr.free.sel { background:linear-gradient(90deg,#b8f25c14,var(--s2) 50%); }
+  .tr.no { opacity:.5; }
+  .tr .who { display:flex; align-items:center; gap:10px; min-width:0; }
+  .tr .ico { width:36px; height:36px; border-radius:9px; background:#0f0f11 center/cover; border:1px solid var(--line); flex:none; }
+  .tr .nm { font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tr .k { color:var(--mute); font-size:11px; margin-top:2px; display:flex; gap:6px; align-items:center; white-space:nowrap; }
+  .tr .r { text-align:right; }
+  .tr .sub { display:block; color:var(--mute); font-size:10.5px; }
+  .capb { position:relative; height:4px; border-radius:999px; background:var(--s3); margin-top:6px; }
+  .capb i { position:absolute; left:0; top:0; bottom:0; border-radius:999px; }
+  .capb b { position:absolute; top:-3px; width:1.5px; height:10px; background:var(--ink2); border-radius:2px; }
+  .ovl { display:flex; align-items:center; gap:6px; }
+  .avs { display:flex; }
+  .avs i { width:18px; height:18px; border-radius:5px; background:center/cover; border:2px solid var(--s1); }
+  .avs i + i { margin-left:-6px; }
+  .tr:hover .avs i, .tr.sel .avs i { border-color:var(--s2); }
+  .step { display:inline-flex; align-items:center; height:30px; border-radius:999px; background:var(--s2); padding:2px; justify-self:end; }
+  .tr:hover .step, .tr.sel .step { background:var(--s3); }
+  .step button { width:26px; height:26px; border-radius:999px; color:var(--ink2); display:grid; place-items:center; }
+  .step button:hover { background:#ffffff14; color:var(--ink); }
+  .step span { min-width:28px; text-align:center; font-weight:500; }
+  .step.has { background:var(--acs); color:var(--ac); }
+  .chip { height:18px; padding:0 7px; border-radius:999px; font-size:10.5px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+  .chip::before { content:""; width:5px; height:5px; border-radius:999px; background:currentColor; }
+  .chip.plain::before { display:none; }
+  .c-ok { color:var(--ac); background:var(--acs); } .c-warn { color:var(--warn); background:var(--warns); } .c-stop { color:var(--stop); background:var(--stops); } .c-idle { color:var(--ink2); background:var(--s3); }
+
+  .dock { position:absolute; left:50%; bottom:16px; translate:-50% 0; z-index:4; display:flex; align-items:center; gap:6px; padding:6px; border-radius:999px;
+          background:#1a1a1dee; border:1px solid var(--line2); box-shadow:0 20px 50px #000000aa, inset 0 1px 0 #ffffff0d; backdrop-filter:blur(10px); white-space:nowrap; }
+  .dock .st { display:flex; align-items:center; gap:8px; padding:0 12px 0 10px; height:40px; }
+  .dock .st b { font-weight:500; } .dock .st span { color:var(--mute); font-size:12px; }
+  .dock .div { width:1px; height:24px; background:var(--line2); }
+  .dock .kv { padding:0 10px; display:flex; flex-direction:column; justify-content:center; height:40px; }
+  .dock .kv span { color:var(--mute); font-size:10.5px; } .dock .kv b { font-size:13px; font-weight:500; }
+  .go { height:40px; padding:0 18px 0 14px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 24px var(--acg); }
+  .ghost { height:40px; padding:0 14px; border-radius:999px; background:var(--s3); color:var(--ink); }
+
+  /* корзина */
+  .side { grid-column:3; grid-row:2; padding:0 16px 16px 0; display:flex; flex-direction:column; gap:12px; overflow:auto; scrollbar-width:none; }
+  .panel { background:var(--s1); border:1px solid var(--line); border-radius:var(--r1); padding:var(--pad); display:flex; flex-direction:column; gap:var(--gap); }
+  .ph { display:flex; align-items:center; justify-content:space-between; height:20px; font-weight:500; margin-bottom:4px; }
+  .ph .n { color:var(--mute); font-weight:400; font-size:11.5px; }
+  .acct { display:grid; grid-template-columns:32px minmax(0,1fr) auto; gap:10px; align-items:center; background:var(--s2); border-radius:12px; padding:10px 12px; }
+  .acct .ava { width:32px; height:32px; font-size:13px; border-radius:9px; }
+  .acct .s { color:var(--mute); font-size:11px; margin-top:2px; }
+  .budget { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--gap); }
+  .field { height:40px; border-radius:12px; background:#0f0f11; border:1px solid var(--line); display:flex; align-items:center; padding:0 12px; gap:8px; transition:border-color 150ms, box-shadow 150ms; }
+  .field:focus-within { border-color:#b8f25c80; box-shadow:0 0 0 3px #b8f25c1a; }
+  .field span { color:var(--mute); }
+  .field input { flex:1; min-width:0; outline:none; font-size:14px; }
+  .btn2 { height:40px; padding:0 14px; border-radius:12px; background:var(--acs); color:var(--ac); font-size:12.5px; font-weight:500; transition:background-color 150ms; }
+  .btn2:hover { background:#b8f25c26; }
+  .hint { color:var(--mute); font-size:11.5px; line-height:1.45; }
+  .lines .ln { display:grid; grid-template-columns:28px minmax(0,1fr) auto 24px; gap:10px; align-items:center; height:44px; border-top:1px solid var(--line); }
+  .lines .ln:first-child { border-top:0; }
+  .lines .ico { width:28px; height:28px; border-radius:7px; background:center/cover; border:1px solid var(--line); }
+  .lines .nm { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12.5px; }
+  .lines .nm small { display:block; color:var(--mute); font-size:10.5px; }
+  .lines .x { width:24px; height:24px; border-radius:999px; color:var(--mute); display:grid; place-items:center; }
+  .lines .x:hover { background:var(--s3); color:var(--ink); }
+  .empty { text-align:center; color:var(--mute); font-size:12px; padding:18px 8px; border:1px dashed #ffffff1c; border-radius:12px; line-height:1.5; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
+  .fact { background:var(--s2); border-radius:var(--r2); padding:10px 12px; min-width:0; }
+  .fact .k { color:var(--mute); font-size:11px; white-space:nowrap; display:flex; justify-content:space-between; gap:6px; }
+  .fact b { font-weight:500; font-size:15px; display:block; margin-top:4px; }
+  .fact small { color:var(--mute); font-size:10.5px; }
+  .buy { height:44px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; font-size:13.5px; box-shadow:0 0 24px var(--acg); }
+  .buy:disabled { background:var(--s3); color:var(--mute); box-shadow:none; }
+  .why li { margin:0 0 6px; }
+  .why { margin:0; padding-left:18px; color:var(--ink2); font-size:12px; line-height:1.45; }
+
+  /* ── конвейер закупки ── */
+  .pipe { margin-top:16px; background:var(--s2); border-radius:16px; padding:16px; display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; }
+  .pipe-l { min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .pipe-h { display:flex; align-items:center; gap:10px; }
+  .pipe-h h2 { margin:0; font-size:15px; font-weight:600; }
+  .pipe-h .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .stages { position:relative; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:28px; }
+  .stages svg.wire { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+  .wire path { fill:none; stroke:#ffffff1f; stroke-width:1.5; }
+  .wire path.on { stroke:var(--ac); stroke-opacity:.6; }
+  .wire circle { fill:var(--ac); filter:drop-shadow(0 0 5px var(--ac)); }
+  .stage { position:relative; z-index:1; background:linear-gradient(180deg,#202024,#1a1a1d); border:1px solid var(--line2); border-radius:14px; padding:12px; box-shadow:0 10px 26px #0006, inset 0 1px 0 #ffffff0a; transition:box-shadow 200ms; }
+  .stage.live { box-shadow:0 10px 26px #0006, inset 0 0 0 1px #b8f25c66, 0 0 24px #b8f25c1a; }
+  .stage .sh { display:flex; align-items:center; gap:8px; color:var(--ink2); font-size:12px; }
+  .stage .sh i { width:24px; height:24px; border-radius:7px; background:var(--s3); display:grid; place-items:center; color:var(--ink); font-style:normal; }
+  .stage.live .sh i { background:var(--acs); color:var(--ac); }
+  .stage .big { font-size:26px; letter-spacing:-.02em; margin-top:10px; line-height:1; }
+  .stage .big small { font-size:13px; color:var(--mute); }
+  .stage .d { color:var(--mute); font-size:11.5px; margin-top:8px; line-height:1.4; min-height:32px; }
+  .stage .verd { display:flex; gap:4px; flex-wrap:wrap; margin-top:8px; }
+  .port { position:absolute; top:50%; width:9px; height:9px; margin-top:-4.5px; border-radius:999px; background:var(--s3); border:1.5px solid #ffffff30; z-index:2; }
+  .port.r { right:-5px; } .port.l { left:-5px; }
+  .live .port { background:var(--ac); border-color:var(--ac); box-shadow:0 0 8px var(--ac); }
+  .run { background:var(--s1); border-radius:12px; padding:12px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; }
+  .run .t { display:flex; justify-content:space-between; font-size:12px; color:var(--mute); gap:12px; }
+  .run .t b { color:var(--ink); font-weight:500; }
+  .run .bar { height:6px; margin-top:8px; }
+  .run .bar i { box-shadow:0 0 10px var(--acg); transition:width 300ms; }
+  .run .cur { font-size:11.5px; color:var(--ink2); margin-top:8px; }
+  .stopb { height:34px; padding:0 14px; border-radius:999px; background:var(--s3); color:var(--ink); font-size:12.5px; display:inline-flex; align-items:center; gap:6px; }
+  .stopb:hover { background:#ff7a7a22; color:var(--stop); }
+  .stopb:disabled { opacity:.4; }
+  .sim { height:30px; padding:0 12px; border-radius:999px; background:var(--s3); color:var(--ink2); font-size:12px; display:inline-flex; gap:8px; align-items:center; }
+  .sim.on { color:var(--ac); background:var(--acs); }
+  .sw { width:26px; height:16px; border-radius:999px; background:#ffffff14; position:relative; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:999px; background:var(--ink2); transition:transform 150ms, background-color 150ms; }
+  .sim.on .sw { background:#b8f25c40; } .sim.on .sw::after { transform:translateX(10px); background:var(--ac); }
+
+  /* лента покупок */
+  .feed { background:var(--s1); border-radius:12px; padding:12px; display:flex; flex-direction:column; min-height:0; }
+  .feed .fh { display:flex; justify-content:space-between; font-size:12px; color:var(--ink2); margin-bottom:6px; }
+  .feed .fl { flex:1; overflow:hidden; display:flex; flex-direction:column; gap:2px; max-height:262px; }
+  .ev { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:8px; align-items:center; padding:6px 4px; border-radius:8px; font-size:12px; animation:evin 260ms ease both; }
+  @keyframes evin { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+  .ev .m { width:18px; height:18px; border-radius:999px; display:grid; place-items:center; font-size:10px; }
+  .ev .m.ok { background:var(--acs); color:var(--ac); } .ev .m.no { background:var(--warns); color:var(--warn); } .ev .m.st { background:var(--stops); color:var(--stop); } .ev .m.re { background:var(--s3); color:var(--ink2); }
+  .ev .w { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ev .w small { color:var(--mute); }
+  .ev .p { text-align:right; white-space:nowrap; }
+  .ev .p small { display:block; color:var(--mute); font-size:10px; }
+  .feed .empty { flex:1; display:grid; place-items:center; }
+
+  .sec { margin-top:24px; }
+  .sech { display:flex; align-items:baseline; gap:8px; margin-bottom:10px; }
+  .sech h2 { margin:0; font-size:15px; font-weight:600; letter-spacing:-.01em; }
+  .sech .n { color:var(--mute); font-size:12px; }
+  .bar2 { margin-top:0; }
+  .tr .stat { justify-self:end; }
+  .th, .tr { grid-template-columns:minmax(200px,1.8fr) 64px 74px minmax(100px,1fr) minmax(110px,1fr) 60px 112px 116px; }
+  .tr .tm { text-align:right; cursor:help; }
+  .tr .tm b { font-weight:500; }
+  .tr .tm.free b { color:var(--ac); }
+  .th button[data-s="sends"] { cursor:help; }
+  .tr.buying { box-shadow:inset 0 0 0 1px #b8f25c55; background:var(--s2); }
+  .step.lock { opacity:.5; pointer-events:none; }
+  .got { font-size:10.5px; color:var(--ac); display:block; text-align:right; margin-top:2px; }
+  .rule { display:grid; grid-template-columns:18px minmax(0,1fr); gap:8px; font-size:12px; color:var(--ink2); line-height:1.45; }
+  .rule i { width:18px; height:18px; border-radius:999px; display:grid; place-items:center; font-style:normal; font-size:10px; margin-top:1px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b8f25c" stroke-width="1.6"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M12 21 8 9l4-6 4 6z"/></svg></div>
+    <div class="grp">
+      <button class="it" title="Обзор"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.5 12c5 0 5-7 9-7M7.5 12c5 0 5 7 9 7"/></svg></button>
+      <button class="it" title="Инвентарь"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+      <button class="it on" title="Скупка"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6"/></svg></button>
+      <button class="it" title="Продажи"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></button>
+      <button class="it" title="Аккаунты"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg></button>
+      <button class="it" title="Журнал"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+    </div>
+  </nav>
+
+  <header class="top">
+    <span class="pill acc"><span class="ava">О</span><b>основной</b><span class="dot"></span></span>
+    <span class="pill">вещей <b class="num">51</b></span>
+    <span class="pill">гемов <b class="num">7</b></span>
+    <span class="pill">в очереди <b class="num">11 580</b></span>
+    <div class="right"><span class="pill demo"><span class="dot warn"></span>макет · снимок 21 августа · ничего не покупается</span></div>
+  </header>
+
+  <main class="page">
+    <div class="scroll">
+      <div class="phead">
+        <div><h1>Скупка</h1><div class="sub">робот сам покупает на market.dota2.net по вашему плану — лот за лотом, сверяя цену перед каждым</div></div>
+        <div class="right">
+          <div class="seg"><button class="on">$</button><button>₽</button><button>€</button><button>₴</button></div>
+          <button class="btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>обновить цены</button>
+        </div>
+      </div>
+
+      <!-- конвейер -->
+      <section class="pipe">
+        <div class="pipe-l">
+          <div class="pipe-h"><h2>Робот закупки</h2><span class="chip c-idle" id="rstate">ждёт запуска</span>
+            <div class="right"><button class="sim" id="sim"><span class="sw"></span>показать, как идёт закупка</button></div></div>
+          <div class="stages" id="stages">
+            <svg class="wire" id="wire"></svg>
+            <div class="stage" id="s1"><span class="port r"></span>
+              <div class="sh"><i>1</i>План</div>
+              <div class="big num" id="s1v">0 <small>лотов</small></div>
+              <div class="d" id="s1d">соберите ниже или по бюджету справа</div></div>
+            <div class="stage" id="s2"><span class="port l"></span><span class="port r"></span>
+              <div class="sh"><i>2</i>Покупка</div>
+              <div class="big num" id="s2v">0 <small>куплено</small></div>
+              <div class="d" id="s2d">перед каждым лотом — свежая цена; дороже плана не берёт</div></div>
+            <div class="stage" id="s3"><span class="port l"></span>
+              <div class="sh"><i>3</i>Приход в Steam</div>
+              <div class="big num" id="s3v">0 <small>пришло</small></div>
+              <div class="verd" id="s3d"><span class="chip c-idle">чисто 0</span><span class="chip c-idle">наш 0</span><span class="chip c-ok">выигрыш 0</span></div></div>
+          </div>
+          <div class="run">
+            <div>
+              <div class="t"><span>прогресс <b class="num" id="rp">0 из 0</b></span><span>потрачено <b class="num" id="rs">$0.00</b> из потолка <b class="num" id="rc">$5.00</b></span></div>
+              <div class="bar"><i id="rbar" style="width:0%"></i></div>
+              <div class="cur" id="rcur">робот стоит. Запуск — кнопкой «Запустить закупку» в корзине.</div>
+            </div>
+            <button class="stopb" id="stop" disabled><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>Остановить</button>
+          </div>
+        </div>
+        <div class="feed">
+          <div class="fh"><span>Лента покупок</span><span class="src">журнал</span></div>
+          <div class="fl" id="feed"><div class="empty"><div class="hint" style="text-align:center">здесь каждый лот: цена в плане<br>и цена в момент покупки</div></div></div>
+        </div>
+      </section>
+
+      <!-- план -->
+      <section class="sec">
+        <div class="sech"><h2>План</h2><span class="n">что брать и сколько · цены — каталог Steam из снимка, «общих» и «отправок» — оценка по графу</span></div>
+        <div class="bar2" id="filters"></div>
+        <div class="tbl">
+          <div class="th" id="th"></div>
+          <div id="rows"></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="dock">
+      <div class="st"><span class="dot warn"></span><b>стоит</b><span>накрутка выключена</span></div>
+      <div class="div"></div>
+      <div class="kv"><span>пауза</span><b class="num">1,0 с</b></div>
+      <div class="kv"><span>подтверждено</span><b>43 дня назад</b></div>
+      <div class="div"></div>
+      <button class="ghost">настроить</button>
+      <button class="go"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>Накрутить</button>
+    </div>
+  </main>
+
+  <aside class="side" id="side"></aside>
+</div>
+
+<script>
+const OFFERS = [{"name":"Spectator: Beyond the Summit","short":"Beyond the Summit","genuine":false,"price":1.04,"listings":19,"kind":"studio","ent":"Beyond The Summit (BTS) — продакшн-компания, Лос-Анджелес, основана 2012-03, закрыта 2023-03-27 (LD и GoDz)","supply":null,"est":7740,"per1000":0.1343669250645995,"owned":0,"ownedValue":null,"node":null,"overlap":0,"with":[],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Liquid","short":"Liquid","genuine":false,"price":0.35,"listings":41,"kind":"team","ent":"Team Liquid","supply":3275,"est":null,"per1000":0.10687022900763359,"owned":0,"ownedValue":null,"node":"Liquid","overlap":350,"with":[["Alliance",141],["NaVi",101],["Team Empire",67]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: LGD","short":"LGD","genuine":false,"price":0.24,"listings":186,"kind":"team","ent":"LGD Gaming / PSG.LGD","supply":3010,"est":null,"per1000":0.07973421926910298,"owned":0,"ownedValue":null,"node":"LGD","overlap":621,"with":[["DD",475],["Ohaiyo",59],["NaVi",42]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: NaVi","short":"NaVi","genuine":false,"price":0.06,"listings":234,"kind":"team","ent":"Natus Vincere (Valve loc: \"NaVi\")","supply":2844,"est":null,"per1000":0.02109704641350211,"owned":1,"ownedValue":10,"node":"NaVi","overlap":0,"with":[],"burning":true,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Genuine Spectator: Evil Geniuses","short":"Evil Geniuses","genuine":true,"price":40.6,"listings":1,"kind":"team","ent":"Evil Geniuses (Steam-команда 39; в OpenDota сейчас отдаётся как 'Shopify Rebellion')","supply":2812,"est":null,"per1000":14.438122332859175,"owned":0,"ownedValue":null,"node":"Evil Geniuses","overlap":266,"with":[["NaVi",91],["Alliance",76],["Team Empire",45]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJG51EejH-XdxMSeNG6D6lFn9Zf8pA6wRB-ixsG4rHAK6vH2MPBvdKbBXGbCx70i5-A5HHnizR90smWGmdm3MSXA03sXdUg/96fx96f"},{"name":"Spectator: Evil Geniuses","short":"Evil Geniuses","genuine":false,"price":0.09,"listings":81,"kind":"team","ent":"Evil Geniuses (Steam-команда 39; в OpenDota сейчас отдаётся как 'Shopify Rebellion')","supply":2812,"est":null,"per1000":0.032005689900426744,"owned":0,"ownedValue":null,"node":"Evil Geniuses","overlap":266,"with":[["NaVi",91],["Alliance",76],["Team Empire",45]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: iG","short":"iG","genuine":false,"price":0.16,"listings":69,"kind":"team","ent":"Invictus Gaming (iG, Китай, чемпион TI2)","supply":2795,"est":null,"per1000":0.057245080500894455,"owned":0,"ownedValue":null,"node":"iG","overlap":154,"with":[["DD",69],["Ohaiyo",31],["NaVi",25]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: ViCi Gaming","short":"ViCi Gaming","genuine":false,"price":0.12,"listings":73,"kind":"team","ent":"Vici Gaming (VG, Китай)","supply":2748,"est":null,"per1000":0.043668122270742356,"owned":0,"ownedValue":null,"node":"ViCi Gaming","overlap":139,"with":[["DD",47],["Alliance",29],["NaVi",27]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Arteezy","short":"Arteezy","genuine":false,"price":0.2,"listings":43,"kind":"player","ent":"Artour 'Arteezy' Babaev (Канада, р. 1996-07-01)","supply":2714,"est":null,"per1000":0.07369196757553427,"owned":0,"ownedValue":null,"node":"Arteezy","overlap":203,"with":[["NaVi",67],["Alliance",54],["Team Empire",34]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: SOLO","short":"SOLO","genuine":false,"price":0.15,"listings":180,"kind":"player","ent":"Alexey 'Solo' Berezin (Россия)","supply":2711,"est":null,"per1000":0.055330136481003316,"owned":0,"ownedValue":null,"node":"SOLO","overlap":935,"with":[["BZZ",311],["NaVi",286],["Team Empire",250]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Kuroky","short":"Kuroky","genuine":false,"price":0.47,"listings":12,"kind":"player","ent":"Kuro Salehi Takhasomi (KuroKy)","supply":2595,"est":null,"per1000":0.18111753371868977,"owned":0,"ownedValue":null,"node":"Kuroky","overlap":929,"with":[["NaVi",580],["Alliance",156],["Team Empire",83]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Team Empire","short":"Team Empire","genuine":false,"price":0.03,"listings":699,"kind":"team","ent":"Team Empire (Valve loc: \"Team Empire\")","supply":2594,"est":null,"per1000":0.01156515034695451,"owned":5,"ownedValue":18,"node":"Team Empire","overlap":0,"with":[],"burning":true,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Virtus.pro","short":"Virtus.pro","genuine":false,"price":0.03,"listings":55,"kind":"team","ent":"Virtus.pro — старая регистрация 2012-2022 (team_id 1883502)","supply":2573,"est":null,"per1000":0.011659541391371939,"owned":0,"ownedValue":null,"node":"Virtus.pro","overlap":762,"with":[["BZZ",297],["Team Empire",165],["NaVi",138]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Fnatic","short":"Fnatic","genuine":false,"price":0.06,"listings":106,"kind":"team","ent":"Fnatic (Steam-команда 350190; в OpenDota сейчас отдаётся как 'Ascent Esports')","supply":2544,"est":null,"per1000":0.023584905660377357,"owned":0,"ownedValue":null,"node":"Fnatic","overlap":893,"with":[["Ohaiyo",558],["Alliance",112],["NaVi",105]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Alliance","short":"Alliance","genuine":false,"price":0.04,"listings":677,"kind":"team","ent":"Alliance (Швеция)","supply":2483,"est":null,"per1000":0.01610954490535642,"owned":4,"ownedValue":54,"node":"Alliance","overlap":0,"with":[],"burning":true,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Danil 'Dendi' Ishutin","short":"Danil 'Dendi' Ishutin","genuine":false,"price":0.13,"listings":73,"kind":"player","ent":"Danil 'Dendi' Ishutin (Na'Vi / B8)","supply":2378,"est":null,"per1000":0.05466778805719092,"owned":0,"ownedValue":null,"node":"Danil 'Dendi' Ishutin","overlap":1947,"with":[["NaVi",1567],["Team Empire",150],["Alliance",107]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Adrian 'Era' Kryeziu","short":"Adrian 'Era' Kryeziu","genuine":false,"price":0.03,"listings":150,"kind":"player","ent":"Adrian 'Era' Kryeziu (Швеция, р. 1995-09-03)","supply":2225,"est":null,"per1000":0.01348314606741573,"owned":0,"ownedValue":null,"node":"Adrian 'Era' Kryeziu","overlap":506,"with":[["Alliance",201],["Team Empire",117],["NaVi",99]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: BZZ","short":"BZZ","genuine":false,"price":0.03,"listings":251,"kind":"player","ent":"Станислав '633' (BZZ, BzzIsPerfect) Глушан (Россия, р. 1992-11-09)","supply":2155,"est":null,"per1000":0.013921113689095127,"owned":29,"ownedValue":12,"node":"BZZ","overlap":0,"with":[],"burning":true,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: EternaLEnVy","short":"EternaLEnVy","genuine":false,"price":0.03,"listings":165,"kind":"player","ent":"Jacky 'EternaLEnVy' Mao","supply":2142,"est":null,"per1000":0.014005602240896357,"owned":0,"ownedValue":null,"node":"EternaLEnVy","overlap":484,"with":[["Alliance",149],["Ohaiyo",122],["Team Empire",91]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Liquid`ixmike88","short":"Liquid`ixmike88","genuine":false,"price":0.03,"listings":234,"kind":"player","ent":"Michael 'ixmike88' Ghannam","supply":2118,"est":null,"per1000":0.014164305949008499,"owned":0,"ownedValue":null,"node":"Liquid`ixmike88","overlap":73,"with":[["Team Empire",28],["Alliance",20],["NaVi",17]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: iceiceice","short":"iceiceice","genuine":false,"price":0.03,"listings":938,"kind":"player","ent":"iceiceice — Daryl Koh Pei Xiang (许培祥), Сингапур; Zenith → Team DK → Vici Gaming → EHOME → Team Faceless → Mineski → Fnatic → Evil Geniuses → Team Secret → BLEED","supply":2104,"est":null,"per1000":0.014258555133079848,"owned":0,"ownedValue":null,"node":"iceiceice","overlap":175,"with":[["Ohaiyo",72],["DD",36],["Alliance",26]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Funn1k","short":"Funn1k","genuine":false,"price":0.03,"listings":1130,"kind":"player","ent":"Glib 'Funn1k' Lipatnikov (Гліб Липатніков)","supply":2092,"est":null,"per1000":0.014340344168260038,"owned":0,"ownedValue":null,"node":"Funn1k","overlap":1478,"with":[["NaVi",865],["Team Empire",406],["Alliance",97]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Sergey 'G' Bragin","short":"Sergey 'G' Bragin","genuine":false,"price":0.03,"listings":44,"kind":"player","ent":"Sergey 'G' Bragin (Россия)","supply":1979,"est":null,"per1000":0.015159171298635674,"owned":0,"ownedValue":null,"node":"Sergey 'G' Bragin","overlap":868,"with":[["BZZ",430],["Team Empire",225],["NaVi",114]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Clinton 'Fear' Loomis","short":"Clinton 'Fear' Loomis","genuine":false,"price":0.03,"listings":69,"kind":"player","ent":"Clinton \"Fear\" Loomis, США (Evil Geniuses, чемпион TI5, герой фильма Free to Play), Liquipedia status=Active, roles=analyst/caster","supply":1920,"est":null,"per1000":0.015625,"owned":0,"ownedValue":null,"node":"Clinton 'Fear' Loomis","overlap":200,"with":[["NaVi",60],["Alliance",53],["Team Empire",41]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Ohaiyo","short":"Ohaiyo","genuine":false,"price":0.03,"listings":799,"kind":"player","ent":"Chong Xin 'Ohaiyo' Khoo (Малайзия)","supply":1849,"est":null,"per1000":0.016224986479177934,"owned":7,"ownedValue":0,"node":"Ohaiyo","overlap":0,"with":[],"burning":true,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Lee 'Kyxy' Kang Yang","short":"Lee 'Kyxy' Kang Yang","genuine":false,"price":0.03,"listings":165,"kind":"player","ent":"Lee 'kYxY' Kang Yang (李康阳)","supply":1839,"est":null,"per1000":0.01631321370309951,"owned":0,"ownedValue":null,"node":"Lee 'Kyxy' Kang Yang","overlap":849,"with":[["Ohaiyo",788],["DD",35],["Alliance",14]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Mushi","short":"Mushi","genuine":false,"price":0.03,"listings":389,"kind":"player","ent":"Chai 'Mushi' Yee Fung (蔡宜风)","supply":1800,"est":null,"per1000":0.016666666666666666,"owned":0,"ownedValue":null,"node":"Mushi","overlap":1077,"with":[["Ohaiyo",962],["DD",38],["NaVi",34]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: BuLba","short":"BuLba","genuine":false,"price":0.03,"listings":465,"kind":"player","ent":"Kanishka \"BuLba\" Sosale (ಕನಿಷ್ಕ ಸೋಸಲೆ), США/Индия, ныне тренер (status Active, roles=coach)","supply":1794,"est":null,"per1000":0.016722408026755852,"owned":0,"ownedValue":null,"node":"BuLba","overlap":253,"with":[["Alliance",63],["Team Empire",63],["NaVi",60]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Newbee","short":"Newbee","genuine":false,"price":0.04,"listings":189,"kind":"team","ent":"Newbee (Valve loc: \"Newbee\")","supply":1763,"est":null,"per1000":0.022688598979013045,"owned":0,"ownedValue":null,"node":"Newbee","overlap":71,"with":[["Ohaiyo",24],["NaVi",16],["DD",15]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Gb0SBHnm4SuqXVZuvf8OqBuI_XBXjHDkLdw6bQ_TCjkkU926z7XyIqucCiTPQRzX4wwG7DYyDM1Cg/96fx96f"},{"name":"Spectator: RoX.KIS.yol","short":"RoX.KIS.yol","genuine":false,"price":0.03,"listings":461,"kind":"player","ent":"'yol' (Valve loc: \"RoX.KIS.yol\"; OpenDota персона 'yy', алиас 'yol')","supply":1500,"est":null,"per1000":0.019999999999999997,"owned":0,"ownedValue":null,"node":"RoX.KIS.yol","overlap":1300,"with":[["BZZ",1093],["Team Empire",101],["NaVi",62]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: BurNIng","short":"BurNIng","genuine":false,"price":0.03,"listings":40,"kind":"player","ent":"Xu \"BurNIng\" Zhilei (徐志雷), Китай, Liquipedia status=Retired, roles=streamer/coach, сооснователь Team Aster","supply":1381,"est":null,"per1000":0.021723388848660388,"owned":0,"ownedValue":null,"node":"BurNIng","overlap":133,"with":[["DD",48],["Ohaiyo",39],["NaVi",15]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Hao","short":"Hao","genuine":false,"price":0.03,"listings":826,"kind":"player","ent":"Chen 'Hao' Zhihao (陈智豪)","supply":1136,"est":null,"per1000":0.02640845070422535,"owned":0,"ownedValue":null,"node":"Hao","overlap":130,"with":[["DD",54],["Ohaiyo",34],["NaVi",17]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Sing","short":"Sing","genuine":false,"price":0.05,"listings":39,"kind":"player","ent":"Wehsing 'SingSing' Yuen (Нидерланды)","supply":1059,"est":null,"per1000":0.047214353163361665,"owned":0,"ownedValue":null,"node":"Sing","overlap":274,"with":[["Team Empire",84],["Alliance",66],["NaVi",66]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Mousesports","short":"Mousesports","genuine":false,"price":0.03,"listings":326,"kind":"team","ent":"mousesports / MOUZ (регистрация 2012-2017)","supply":748,"est":null,"per1000":0.040106951871657755,"owned":0,"ownedValue":null,"node":"Mousesports","overlap":168,"with":[["Alliance",46],["Team Empire",43],["NaVi",40]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: D2L","short":"D2L","genuine":false,"price":0.04,"listings":14,"kind":"league","ent":"Dota 2 League (D2L) — онлайн-лига, которую вела организация Evil Geniuses, касты Ayesee и Maelk/Draskyl","supply":null,"est":727,"per1000":0.055020632737276476,"owned":0,"ownedValue":null,"node":null,"overlap":0,"with":[],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: MVP Phoenix","short":"MVP Phoenix","genuine":false,"price":0.03,"listings":315,"kind":"team","ent":"MVP Phoenix","supply":706,"est":null,"per1000":0.042492917847025496,"owned":0,"ownedValue":null,"node":"MVP Phoenix","overlap":80,"with":[["Ohaiyo",55],["NaVi",8],["Team Empire",6]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: NS","short":"NS","genuine":false,"price":0.03,"listings":643,"kind":"player","ent":"Ярослав Владимирович Кузнецов (NS)","supply":690,"est":null,"per1000":0.043478260869565216,"owned":0,"ownedValue":null,"node":"NS","overlap":180,"with":[["Alliance",52],["Team Empire",47],["BZZ",44]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: ZSMJ","short":"ZSMJ","genuine":false,"price":0.03,"listings":509,"kind":"player","ent":"ZSMJ — Gong Jian (龚建), Китай, carry; ViCi Gaming → TongFu/Newbee.mgb → Hyper Glory Team → Team FanTuan (2013-2016), позже Old Boys","supply":671,"est":null,"per1000":0.044709388971684055,"owned":0,"ownedValue":null,"node":"ZSMJ","overlap":58,"with":[["DD",41],["Ohaiyo",14],["NaVi",3]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: DK","short":"DK","genuine":false,"price":0.03,"listings":483,"kind":"team","ent":"Team DK","supply":624,"est":null,"per1000":0.04807692307692308,"owned":0,"ownedValue":null,"node":"DK","overlap":93,"with":[["DD",44],["Ohaiyo",24],["NaVi",11]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Cloud9","short":"Cloud9","genuine":false,"price":0.04,"listings":226,"kind":"team","ent":"Cloud9 (дота-дивизион, дебют 2014-02-09 покупкой Speed Gaming, орг. закрыл доту 2024-11-01). В OpenDota НЕТ единой сущности C9 — имя носили 5 разных регистраций","supply":610,"est":null,"per1000":0.06557377049180328,"owned":0,"ownedValue":null,"node":"Cloud9","overlap":154,"with":[["Alliance",46],["Team Empire",41],["BZZ",28]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Ars-Art","short":"Ars-Art","genuine":false,"price":0.03,"listings":396,"kind":"player","ent":"Сергей Антонович Ревин, ARS-ART (ныне ник Smile; Россия, р. 1988-08-12)","supply":589,"est":null,"per1000":0.05093378607809847,"owned":0,"ownedValue":null,"node":"Ars-Art","overlap":305,"with":[["NaVi",168],["Team Empire",49],["Alliance",45]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: YYF","short":"YYF","genuine":false,"price":0.03,"listings":183,"kind":"player","ent":"YYF — Jiang Cen (姜岑), Китай, offlane; Invictus Gaming (2012-07 .. 2014-07), затем Old Boys (шоу-матчи 2015-2020)","supply":573,"est":null,"per1000":0.05235602094240838,"owned":0,"ownedValue":null,"node":"YYF","overlap":183,"with":[["DD",128],["Ohaiyo",23],["NaVi",21]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: DD","short":"DD","genuine":false,"price":0.04,"listings":892,"kind":"player","ent":"Xie 'DD' Bin (谢彬) — LGD.cn","supply":568,"est":null,"per1000":0.07042253521126761,"owned":4,"ownedValue":0,"node":"DD","overlap":0,"with":[],"burning":true,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Titan","short":"Titan","genuine":false,"price":0.03,"listings":308,"kind":"team","ent":"Titan / Titan eSports (Малайзия, ex-Orange ростер: XtiNcT, Net, Ohaiyo, kYxY + Ice, позже Meracle / YamateH)","supply":392,"est":null,"per1000":0.07653061224489796,"owned":0,"ownedValue":null,"node":"Titan","overlap":407,"with":[["Ohaiyo",388],["DD",15],["Alliance",2]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Arrow Gaming","short":"Arrow Gaming","genuine":false,"price":0.03,"listings":498,"kind":"team","ent":"Arrow Gaming (Малайзия; в OpenDota подписана 'Nvidia.ArrowGaming.AVF', tag Arrow)","supply":290,"est":null,"per1000":0.10344827586206896,"owned":0,"ownedValue":null,"node":"Arrow Gaming","overlap":39,"with":[["Ohaiyo",33],["DD",3],["Alliance",1]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Dota Cinema","short":"Dota Cinema","genuine":false,"price":0.04,"listings":135,"kind":"studio","ent":"Dota Cinema (DotaCinema)","supply":null,"est":256,"per1000":0.15625,"owned":0,"ownedValue":null,"node":null,"overlap":0,"with":[],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Zephyr","short":"Zephyr","genuine":false,"price":0.16,"listings":21,"kind":"team","ent":"Zephyr (западный ростер, базировался в Южной Корее: Corey, SexyBamboe, BlitZ, Eosin, Purge; позже Merlini, sLICKz)","supply":148,"est":null,"per1000":1.0810810810810811,"owned":0,"ownedValue":null,"node":"Zephyr","overlap":4,"with":[["Ohaiyo",4]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: NaVi NA","short":"NaVi NA","genuine":false,"price":0.03,"listings":218,"kind":"team","ent":"Natus Vincere US (Valve loc: \"NaVi NA\", OpenDota name \"Natus Vincere US\", tag \"Na`Vi US\")","supply":137,"est":null,"per1000":0.218978102189781,"owned":0,"ownedValue":null,"node":"NaVi NA","overlap":17,"with":[["Team Empire",7],["NaVi",5],["BZZ",2]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: CIS Game","short":"CIS Game","genuine":false,"price":0.03,"listings":513,"kind":"team","ent":"CIS Game (тег CIS) — КИТАЙСКИЙ клуб из Куньшаня, основан нач. 2014, распущен 2014 (состав выкуплен Vici Gaming)","supply":89,"est":null,"per1000":0.33707865168539325,"owned":0,"ownedValue":null,"node":"CIS Game","overlap":14,"with":[["DD",12],["Ohaiyo",2]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Benedict 'HyHy' Lim","short":"Benedict 'HyHy' Lim","genuine":false,"price":0.04,"listings":42,"kind":"player","ent":"Benedict \"hyhy\" Lim Han Yong (林汉勇), Сингапур, статус Retired","supply":47,"est":null,"per1000":0.851063829787234,"owned":0,"ownedValue":null,"node":"Benedict 'HyHy' Lim","overlap":18,"with":[["DD",10],["Ohaiyo",8]],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: CaspeRRR","short":"CaspeRRR","genuine":false,"price":0.11,"listings":601,"kind":"unknown","ent":"Роман Володимирович Лепьохін / Roman \"CaspeRRR\" Lepokhin, Украина (Horishni Plavni) — РУССКОЯЗЫЧНЫЙ КОММЕНТАТОР, Liquipedia roles=caster, status=Active","supply":null,"est":3,"per1000":36.666666666666664,"owned":1,"ownedValue":0,"node":null,"overlap":0,"with":[],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator:","short":"без имени","genuine":false,"price":0.06,"listings":83,"kind":"unknown","ent":"","supply":null,"est":null,"per1000":null,"owned":0,"ownedValue":null,"node":null,"overlap":0,"with":[],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"},{"name":"Spectator: Aren 'VeRsuta' Zurabyan","short":"Aren 'VeRsuta' Zurabyan","genuine":false,"price":0.03,"listings":897,"kind":"unknown","ent":"Арен 'VeRsuta' Зурабян (комментатор/стример, Россия, р. 1989-01-17)","supply":null,"est":null,"per1000":null,"owned":0,"ownedValue":null,"node":null,"overlap":0,"with":[],"burning":false,"icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/96fx96f"}];
+const GOAL = 1000, SPEED = 76, PER_GEM = 25, TOL = 0;   // perGem, priceTolerance — settings.ts; SPEED — Buy.tsx
+const ICON = Object.fromEntries(OFFERS.filter(o => o.node).map(o => [o.node, o.icon]));
+const list = OFFERS.filter(o => !o.genuine).map(o => {
+  const cap = o.supply, reaches = cap != null && cap >= GOAL;
+  const overlap = o.burning ? null : Math.min(o.overlap, cap ?? o.overlap);
+  const sends = o.burning ? 0 : reaches ? Math.max(0, GOAL - (overlap || 0)) : null;
+  return { ...o, cap, reaches, overlap, sends, key: o.name };
+});
+const money = v => '$' + (v < 0.1 ? v.toFixed(3) : v < 1 ? v.toFixed(2) : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+// главная цифра — время, а не отправки: «+7 мин» понятнее, чем «522»
+const plus = s => { const m = Math.round(s / SPEED); return m < 60 ? '+' + Math.max(m, 1) + ' мин' : '+' + (m / 60).toFixed(1).replace('.', ',') + ' ч'; };
+const sendsWord = n => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? 'отправка' : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'отправки' : 'отправок'; };
+const dur = s => { const m = Math.round(s / SPEED); return m < 60 ? '≈ ' + Math.max(m, 1) + ' мин' : '≈ ' + (m / 60).toFixed(1).replace('.', ',') + ' ч'; };
+const fmt = n => n == null ? '—' : Math.round(n).toLocaleString('ru-RU');
+const kindRu = k => ({ team:'команда', player:'игрок', studio:'студия', caster:'комментатор', event:'событие' }[k] || k || '—');
+const smart = (a, b) => Number(b.burning) - Number(a.burning) || (b.overlap ?? 0) - (a.overlap ?? 0) || a.per1000 - b.per1000 || a.price - b.price;
+
+let filter = 'reach', sortKey = 'smart', sortDir = 1, q = '', budget = '5';
+const take = {};
+const R = { on:false, sim:false, planned:0, done:0, ok:0, spent:0, got:{}, arr:{ чисто:0, наш:0, выигрыш:0 }, arrived:0, cur:null, timer:null };
+
+const FIL = [
+  ['reach', 'дойдут', o => o.reaches], ['free', 'уже в работе', o => o.burning],
+  ['ovl', 'с общими матчами', o => o.reaches && o.overlap > 0], ['all', 'все', o => true], ['no', 'не дойдут', o => !o.reaches],
+];
+const COLS = [['name','гем',''],['price','цена','r'],['per1000','за 1000','r'],['cap','потолок',''],['overlap','общих с моими',''],['listings','лотов','r'],['sends','доп. время накрутки','r'],['take','взять','r']];
+
+function filters() {
+  document.getElementById('filters').innerHTML = FIL.map(([k, l, f]) => `<button class="fchip ${filter === k ? 'on' : ''}" data-f="${k}">${l}<span class="c num">${list.filter(f).length}</span></button>`).join('')
+    + `<label class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="гем" value="${q}"></label>`;
+  document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; filters(); rows(); });
+  document.getElementById('q').oninput = e => { q = e.target.value.trim(); rows(); };
+}
+function head() {
+  document.getElementById('th').innerHTML = COLS.map(([k, t, a]) => `<button class="${a} ${sortKey === k ? 'on' : ''}" data-s="${k}" ${k === 'sends' ? 'title="сколько дольше будет крутиться, если купить этот гем: 1 000 минус общие матчи с моими гемами, при 76 отправках в минуту. Одинаково для 1 и для 25 лотов."' : ''}>${t}${sortKey === k ? (sortDir > 0 ? ' ↑' : ' ↓') : ''}</button>`).join('');
+  document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const k = b.dataset.s; if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; } head(); rows(); });
+}
+function rows() {
+  const f = FIL.find(x => x[0] === filter)[2];
+  let r = list.filter(f).filter(o => !q || (o.short + ' ' + (o.ent || '')).toLowerCase().includes(q.toLowerCase()));
+  if (sortKey === 'smart') r.sort(smart);
+  else r.sort((a, b) => { const v = o => sortKey === 'take' ? (take[o.key] || 0) : sortKey === 'name' ? o.short : (o[sortKey] ?? -1); const x = v(a), y = v(b); return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
+  document.getElementById('rows').innerHTML = r.map(o => {
+    const n = take[o.key] || 0, capPct = Math.min((o.cap ?? o.est ?? 0) / 3500 * 100, 100), got = R.got[o.key];
+    return `<div class="tr ${o.burning ? 'free' : ''} ${o.reaches ? '' : 'no'} ${R.cur === o.key ? 'buying' : ''}">
+      <div class="who"><div class="ico" style="background-image:url('${o.icon}')"></div><div style="min-width:0"><div class="nm">${o.short}</div>
+        <div class="k">${kindRu(o.kind)}${o.burning ? '<span class="chip c-ok">в работе · у меня ' + o.owned + '</span>' : !o.reaches ? `<span class="chip c-warn">${o.cap == null ? 'потолок не измерен' : 'не дойдёт'}</span>` : ''}${R.cur === o.key ? '<span class="chip c-ok">покупается</span>' : ''}</div></div></div>
+      <div class="r num">${money(o.price)}</div>
+      <div class="r num">${money(o.per1000)}</div>
+      <div><span class="num">${o.cap != null ? fmt(o.cap) : '≈ ' + fmt(o.est)}</span><div class="capb"><i style="width:${capPct}%;background:${o.reaches ? 'var(--ac)' : 'var(--warn)'};opacity:.7"></i><b style="left:${GOAL / 3500 * 100}%"></b></div></div>
+      <div class="ovl">${o.burning ? '<span style="color:var(--mute);font-size:12px">свой гем</span>' : o.overlap ? `<span class="num">${fmt(o.overlap)}</span><span class="avs">${o.with.map(([g]) => ICON[g] ? `<i style="background-image:url('${ICON[g]}')" title="${g}"></i>` : '').join('')}</span>` : '<span style="color:var(--mute)">—</span>'}</div>
+      <div class="r num">${fmt(o.listings)}</div>
+      <div class="tm num ${o.sends === 0 ? 'free' : ''}" title="${o.sends == null ? 'не дойдёт до 1 000 — время не считается' : o.sends === 0 ? 'гем уже крутится: новые копии поднимут те же отправки' : `1 000 − ${fmt(o.overlap || 0)} общих матчей с моими гемами = ${fmt(o.sends)} ${sendsWord(o.sends)}; при ${SPEED} в минуту это ${plus(o.sends).slice(1)}`}">${o.sends == null ? '<b style="color:var(--mute)">—</b>' : o.sends === 0 ? '<b>бесплатно</b><span class="sub">уже крутится</span>' : `<b>${plus(o.sends)}</b><span class="sub">${fmt(o.sends)} ${sendsWord(o.sends)}</span>`}</div>
+      <div class="r"><span class="step ${n ? 'has' : ''} ${R.on ? 'lock' : ''}"><button data-m="${o.key}" ${o.reaches ? '' : 'disabled'}>−</button><span class="num">${n}</span><button data-p="${o.key}" ${o.reaches ? '' : 'disabled'}>+</button></span>${got != null ? `<span class="got num">куплено ${got}</span>` : ''}</div>
+    </div>`;
+  }).join('') || '<div class="empty" style="margin-top:8px">ничего не подходит — смените фильтр</div>';
+  document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => bump(b.dataset.p, 1));
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => bump(b.dataset.m, -1));
+}
+function bump(k, d) { const o = list.find(x => x.key === k); take[k] = Math.max(0, Math.min(o.listings, PER_GEM, (take[k] || 0) + d)); if (!take[k]) delete take[k]; rows(); cart(); pipe(); }
+
+function optimal() {
+  const cash = Number(budget.replace(',', '.')) || 0; if (!cash) return;
+  let left = cash; for (const k in take) delete take[k];
+  for (const o of list.filter(o => o.reaches && o.price > 0).sort(smart)) {
+    const can = Math.min(o.listings, PER_GEM, Math.floor(left / o.price + 1e-9)); if (can <= 0) continue;
+    take[o.key] = can; left -= can * o.price;
+  }
+  rows(); cart(); pipe();
+}
+
+function lines() { return Object.entries(take).map(([k, n]) => ({ o: list.find(x => x.key === k), n })); }
+
+function cart() {
+  const L = lines(), units = L.reduce((a, x) => a + x.n, 0), cost = L.reduce((a, x) => a + x.n * x.o.price, 0);
+  const sends = L.reduce((a, x) => a + (x.o.sends || 0), 0), free = L.filter(x => x.o.burning).reduce((a, x) => a + x.n, 0);
+  const cap = Number(budget.replace(',', '.')) || 0;
+  document.getElementById('side').innerHTML = `
+    <section class="panel">
+      <div class="ph">Закупка на <span class="n">ключ площадки — у каждого аккаунта свой</span></div>
+      <div class="acct"><span class="ava">О</span><div style="min-width:0"><div style="font-weight:500">основной</div><div class="s">лоты придут в Steam этого аккаунта</div></div><span class="chip c-stop">нет ключа</span></div>
+      <div class="hint">Без ключа закупка не запустится — сервер ответит «нет ключа площадки». Ключ задаётся в Аккаунтах.</div>
+    </section>
+
+    <section class="panel">
+      <div class="ph">Бюджет <span class="n">он же потолок суммы</span></div>
+      <div class="budget"><label class="field"><span>$</span><input id="budget" inputmode="decimal" value="${budget}"></label><button class="btn2" id="opt">собрать план</button></div>
+      <div class="rule"><i class="c-ok">1</i><span>сначала копии гемов, что уже в работе — им не нужно новых отправок</span></div>
+      <div class="rule"><i class="c-idle">2</i><span>потом те, у кого больше общих матчей с моими</span></div>
+      <div class="rule"><i class="c-idle">3</i><span>дальше — по цене тысячи просмотров; не больше ${PER_GEM} лотов одного гема</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="ph">Корзина <span class="n">${L.length ? L.length + ' поз. · ' + units + ' шт.' : ''}</span></div>
+      ${L.length ? `<div class="lines">${L.map(({ o, n }) => `<div class="ln"><div class="ico" style="background-image:url('${o.icon}')"></div><div class="nm">${o.short}<small class="num">${n} × ${money(o.price)}${o.burning ? ' · без отправок' : ''}</small></div><span class="num">${money(n * o.price)}</span><button class="x" data-x="${o.key}" ${R.on ? 'disabled' : ''}>✕</button></div>`).join('')}</div>`
+        : `<div class="empty">пусто · «+» в строке плана или «собрать план» по бюджету</div>`}
+      <div class="grid2">
+        <div class="fact"><div class="k">спишется не больше</div><b class="num">${money(cost)}</b><small>${cap ? 'потолок ' + money(cap) : ''}</small></div>
+        <div class="fact"><div class="k">самоцветов</div><b class="num">${units}</b><small>${free ? free + ' без отправок' : ''}</small></div>
+        <div class="fact"><div class="k">доп. время <span class="src h">оценка</span></div><b class="num">${sends ? plus(sends) : L.length ? 'бесплатно' : '—'}</b><small>${sends ? fmt(sends) + ' ' + sendsWord(sends) + ' при ' + SPEED + '/мин' : L.length ? 'всё уже крутится' : ''}</small></div>
+        <div class="fact"><div class="k">допуск цены</div><b class="num">${TOL * 100}%</b><small>дороже плана не берёт</small></div>
+      </div>
+      <button class="buy" id="launch" ${L.length && !R.on ? '' : 'disabled'}>${R.on ? 'Робот работает…' : 'Запустить закупку' + (L.length ? ' · до ' + money(cost) : '')}</button>
+      <div class="hint">${R.sim ? 'Имитация: числа и события выдуманы, чтобы показать поведение. Ничего не покупается.' : 'В макете запуск включает имитацию — ничего не покупается.'}</div>
+    </section>`;
+  document.getElementById('budget').oninput = e => { budget = e.target.value; };
+  document.getElementById('opt').onclick = optimal;
+  document.getElementById('launch').onclick = start;
+  document.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { delete take[b.dataset.x]; rows(); cart(); pipe(); });
+}
+
+/* ── конвейер ── */
+function wire() {
+  const box = document.getElementById('stages'), svg = document.getElementById('wire');
+  const b = box.getBoundingClientRect(), s = ['s1','s2','s3'].map(id => document.getElementById(id).getBoundingClientRect());
+  let h = '';
+  for (let i = 0; i < 2; i++) {
+    const x1 = s[i].right - b.left, x2 = s[i + 1].left - b.left, y = s[i].top - b.top + s[i].height / 2;
+    const d = `M${x1},${y} L${x2},${y}`, on = R.on && (i === 0 || R.ok > 0);
+    h += `<path class="${on ? 'on' : ''}" d="${d}"/>` + (on ? `<circle r="3"><animateMotion dur="${0.9 + i * 0.3}s" repeatCount="indefinite" path="${d}"/></circle>` : '');
+  }
+  svg.innerHTML = h;
+}
+function pipe() {
+  const L = lines(), planned = R.on ? R.planned : L.reduce((a, x) => a + x.n, 0);
+  document.getElementById('s1v').innerHTML = `${planned} <small>лотов</small>`;
+  document.getElementById('s1d').textContent = planned ? `${L.length} поз. на ${money(L.reduce((a, x) => a + x.n * x.o.price, 0))}` : 'соберите ниже или по бюджету справа';
+  document.getElementById('s2v').innerHTML = `${R.ok} <small>куплено</small>`;
+  document.getElementById('s3v').innerHTML = `${R.arrived} <small>пришло</small>`;
+  document.getElementById('s3d').innerHTML = `<span class="chip c-idle">чисто ${R.arr.чисто}</span><span class="chip c-idle">наш ${R.arr.наш}</span><span class="chip c-ok">выигрыш ${R.arr.выигрыш}</span>`;
+  ['s1','s2','s3'].forEach((id, i) => document.getElementById(id).classList.toggle('live', R.on && (i === 1 || (i === 2 && R.ok > 0))));
+  const pct = R.planned ? R.done / R.planned * 100 : 0;
+  document.getElementById('rp').textContent = `${R.done} из ${R.planned}`;
+  document.getElementById('rs').textContent = money(R.spent);
+  document.getElementById('rc').textContent = money(Number(budget.replace(',', '.')) || 0);
+  document.getElementById('rbar').style.width = pct + '%';
+  document.getElementById('stop').disabled = !R.on;
+  const st = document.getElementById('rstate');
+  st.className = 'chip ' + (R.on ? 'c-ok' : R.done ? 'c-idle' : 'c-idle');
+  st.textContent = R.on ? 'покупает' : R.done ? 'закончил' : 'ждёт запуска';
+  wire();
+}
+function ev(kind, gem, text, price, planned) {
+  const f = document.getElementById('feed'); f.querySelector('.empty')?.remove();
+  const m = { ok:['ok','✓'], no:['no','↑'], st:['st','■'], re:['re','↻'] }[kind];
+  f.insertAdjacentHTML('afterbegin', `<div class="ev"><span class="m ${m[0]}">${m[1]}</span><span class="w">${gem} <small>${text}</small></span><span class="p num">${price != null ? money(price) : ''}${planned != null ? `<small>план ${money(planned)}</small>` : ''}</span></div>`);
+  while (f.children.length > 9) f.lastChild.remove();
+}
+
+// Имитация: те же правила, что в purchase.ts — свежая цена перед лотом,
+// дороже плана (допуск 0) — позиция бросается, отказ площадки — до 3 повторов.
+function start() {
+  const L = lines(); if (!L.length || R.on) return;
+  Object.assign(R, { on:true, sim:true, planned:L.reduce((a, x) => a + x.n, 0), done:0, ok:0, spent:0, got:{}, arr:{ чисто:0, наш:0, выигрыш:0 }, arrived:0 });
+  document.getElementById('sim').classList.add('on');
+  const queue = L.map(x => ({ ...x, left: x.n, fails: 0 }));
+  let i = 0;
+  cart(); pipe();
+  R.timer = setInterval(() => {
+    const p = queue[i];
+    if (!p) return finish('план выполнен');
+    R.cur = p.o.key;
+    // Дешёвые лоты кончаются по мере скупки: чем больше взято из позиции,
+    // тем вероятнее, что следующий окажется дороже плана (purchase.ts).
+    const taken = (p.n - p.left) / p.n;
+    const rises = Math.random() < 0.01 + taken * taken * 0.12;
+    const now = rises ? +(p.o.price * (1.05 + Math.random() * 0.2)).toFixed(3) : +(p.o.price * (Math.random() < 0.25 ? 0.9 : 1)).toFixed(3);
+    const roll = Math.random();
+    if (roll < 0.03) { p.fails++; ev('re', p.o.short, `площадка не ответила · повтор ${p.fails} из 3`); if (p.fails >= 3) { R.done += p.left; p.left = 0; i++; } }
+    else if (now > p.o.price * (1 + TOL)) { ev('no', p.o.short, 'цена выросла — позиция брошена', now, p.o.price); R.done += p.left; p.left = 0; i++; }
+    else {
+      p.fails = 0; p.left--; R.done++; R.ok++; R.spent += now; R.got[p.o.key] = (R.got[p.o.key] || 0) + 1;
+      ev('ok', p.o.short, now < p.o.price ? 'куплен дешевле плана' : 'куплен', now, p.o.price);
+      setTimeout(() => { R.arrived++; const r = Math.random(); R.arr[r < 0.04 ? 'выигрыш' : r < 0.3 ? 'наш' : 'чисто']++; pipe(); }, 1800 + Math.random() * 1500);
+      if (!p.left) i++;
+    }
+    document.getElementById('rcur').innerHTML = `сейчас: <b>${p.o.short}</b> · лот ${p.n - p.left} из ${p.n} · позиция ${Math.min(i + 1, queue.length)} из ${queue.length}`;
+    rows(); pipe();
+  }, 450);
+}
+function finish(why) {
+  clearInterval(R.timer); R.on = false; R.cur = null;
+  ev('st', 'робот', why);
+  document.getElementById('rcur').textContent = `${why}: куплено ${R.ok} из ${R.planned}, потрачено ${money(R.spent)}. Новый запуск — только вручную.`;
+  rows(); cart(); pipe();
+}
+document.getElementById('stop').onclick = () => finish('остановлен вручную');
+document.getElementById('sim').onclick = () => { if (R.on) return finish('остановлен вручную'); if (!lines().length) optimal(); start(); };
+
+filters(); head(); rows(); cart(); pipe(); addEventListener('resize', wire);
+</script>
+</body>
+</html>

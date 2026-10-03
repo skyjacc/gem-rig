@@ -50,3 +50,5 @@ radar/backend/*.new.exe
 !radar/backend/web/dist/
 radar/backend/web/dist/*
 !radar/backend/web/dist/.gitkeep
+
+.superpowers/

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Gemtrack · Аккаунты (макет)</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0c0c0e; --s1:#141416; --s2:#1b1b1e; --s3:#232327; --line:#ffffff0f; --line2:#ffffff17;
+    --ink:#ecebe8; --ink2:#a7a5a0; --mute:#76746f;
+    --ac:#b8f25c; --acg:#b8f25c55; --acs:#b8f25c1a;
+    --warn:#f2b44a; --warns:#f2b44a17; --stop:#ff7a7a; --stops:#ff7a7a17;
+    --r1:16px; --r2:10px; --pad:16px; --gap:8px;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:"Geist",ui-sans-serif,system-ui,sans-serif; font-size:13px; -webkit-font-smoothing:antialiased; }
+  .num { font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+  .mono { font-family:"Geist Mono",ui-monospace,monospace; }
+  button, input { font:inherit; color:inherit; border:0; background:none; }
+  button { cursor:pointer; }
+
+  .app { display:grid; grid-template-columns:64px minmax(0,1fr) 360px; grid-template-rows:60px minmax(0,1fr); height:100vh; min-height:720px; }
+  .rail { grid-row:1/3; grid-column:1; display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:8px; }
+  .rail .logo { width:40px; height:40px; display:grid; place-items:center; margin-bottom:12px; }
+  .rail .logo svg { filter:drop-shadow(0 0 8px var(--acg)); }
+  .rail .grp { background:var(--s1); border:1px solid var(--line); border-radius:999px; padding:6px; display:flex; flex-direction:column; gap:4px; }
+  .rail .it { width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:var(--mute); transition:background-color 150ms, color 150ms; }
+  .rail .it:hover { background:var(--s2); color:var(--ink); }
+  .rail .it.on { background:var(--ink); color:var(--bg); }
+
+  .top { grid-column:2/4; grid-row:1; display:flex; align-items:center; gap:8px; padding:0 16px 0 4px; min-width:0; overflow:hidden; }
+  .pill { height:32px; display:inline-flex; align-items:center; gap:8px; padding:0 12px; border-radius:999px; background:var(--s1); border:1px solid var(--line); color:var(--ink2); font-size:12px; white-space:nowrap; }
+  .pill b { color:var(--ink); font-weight:500; }
+  .pill.acc { padding-left:4px; }
+  .ava { width:24px; height:24px; border-radius:999px; background:linear-gradient(135deg,#3a3a40,#202024); display:grid; place-items:center; font-size:11px; color:var(--ink); flex:none; }
+  .dot { width:7px; height:7px; border-radius:999px; background:var(--mute); flex:none; }
+  .dot.ok { background:var(--ac); box-shadow:0 0 8px var(--acg); } .dot.warn { background:var(--warn); } .dot.stop { background:var(--stop); }
+  .top .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .demo { color:var(--warn); background:var(--warns); border-color:transparent; }
+
+  .page { grid-column:2; grid-row:2; position:relative; margin:0 0 16px 4px; border-radius:20px; background:var(--s1); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; }
+  .scroll { flex:1; overflow:auto; padding:20px 20px 112px; scrollbar-width:thin; scrollbar-color:#ffffff24 transparent; }
+  .phead { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+  .phead h1 { margin:0; font-size:22px; font-weight:600; letter-spacing:-.02em; line-height:1.2; }
+  .phead .sub { color:var(--mute); font-size:12px; margin-top:4px; max-width:560px; line-height:1.45; }
+  .phead .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .primary { height:36px; padding:0 16px 0 12px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 20px #b8f25c33; }
+  .src { display:inline-flex; align-items:center; height:16px; padding:0 6px; border-radius:999px; font-family:"Geist Mono",monospace; font-size:9.5px; color:var(--mute); background:var(--s3); white-space:nowrap; vertical-align:1px; }
+
+  .sec { margin-top:24px; }
+  .sech { display:flex; align-items:baseline; gap:8px; margin-bottom:12px; }
+  .sech h2 { margin:0; font-size:15px; font-weight:600; letter-spacing:-.01em; }
+  .sech .n { color:var(--mute); font-size:12px; }
+
+  /* карточки аккаунтов */
+  .cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px,1fr)); gap:12px; margin-top:20px; }
+  .acard { background:linear-gradient(180deg,#1d1d21,#18181b); border:1px solid var(--line2); border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:14px; box-shadow:0 12px 30px #0006, inset 0 1px 0 #ffffff0a; cursor:pointer; transition:box-shadow 150ms; }
+  .acard.sel { box-shadow:0 12px 30px #0006, inset 0 0 0 1px var(--ac); }
+  .acard .h { display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:12px; align-items:center; }
+  .acard .ava { width:44px; height:44px; border-radius:12px; font-size:17px; position:relative; }
+  .acard .ava .dot { position:absolute; right:-3px; bottom:-3px; width:12px; height:12px; border:2.5px solid #1b1b1e; }
+  .acard .nm { font-size:16px; font-weight:600; letter-spacing:-.01em; display:flex; align-items:center; gap:6px; }
+  .acard .nm button { color:var(--mute); width:22px; height:22px; border-radius:6px; display:grid; place-items:center; }
+  .acard .nm button:hover { background:var(--s3); color:var(--ink); }
+  .acard .sid { color:var(--mute); font-size:11px; margin-top:2px; }
+  .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+  .stats div { background:#111113; border-radius:10px; padding:8px 10px; min-width:0; }
+  .stats span { display:block; color:var(--mute); font-size:10.5px; white-space:nowrap; }
+  .stats b { display:block; font-weight:500; font-size:14px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .checks { display:flex; flex-direction:column; gap:6px; }
+  .ck { display:grid; grid-template-columns:28px minmax(0,1fr) auto; gap:10px; align-items:center; background:var(--s2); border-radius:12px; padding:8px 8px 8px 10px; }
+  .ck .ic { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; }
+  .ck .ic.ok { background:var(--acs); color:var(--ac); } .ck .ic.warn { background:var(--warns); color:var(--warn); } .ck .ic.stop { background:var(--stops); color:var(--stop); }
+  .ck .t { font-size:12.5px; }
+  .ck .d { color:var(--mute); font-size:11px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ck .a { display:flex; gap:4px; }
+  .sbtn { height:28px; padding:0 10px; border-radius:999px; background:var(--s3); font-size:11.5px; color:var(--ink); white-space:nowrap; transition:background-color 150ms; }
+  .sbtn:hover { background:#2c2c31; }
+  .sbtn.ac { background:var(--acs); color:var(--ac); }
+  .acard .foot { display:flex; gap:8px; align-items:center; }
+  .run { height:36px; padding:0 16px 0 12px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 18px #b8f25c33; transition:background-color 150ms, color 150ms, box-shadow 150ms; }
+  .run.on { background:var(--s3); color:var(--ink); box-shadow:none; }
+  .foot .ghost { height:36px; padding:0 14px; border-radius:999px; background:var(--s3); color:var(--ink); font-size:12.5px; }
+  .foot .danger { margin-left:auto; height:36px; padding:0 12px; border-radius:999px; color:var(--mute); font-size:12px; }
+  .foot .danger:hover { color:var(--stop); background:var(--stops); }
+
+  .addcard { border:1px dashed #ffffff26; border-radius:18px; padding:20px; display:flex; flex-direction:column; justify-content:center; gap:12px; min-height:300px; transition:background-color 150ms, border-color 150ms; cursor:pointer; }
+  .addcard:hover { background:#ffffff05; border-color:#ffffff40; }
+  .addcard .qr { width:52px; height:52px; border-radius:14px; background:var(--s2); display:grid; place-items:center; color:var(--ac); }
+  .addcard h3 { margin:0; font-size:15px; font-weight:600; }
+  .addcard p { margin:0; color:var(--ink2); font-size:12.5px; line-height:1.5; }
+  .addcard .why { background:linear-gradient(90deg,#b8f25c10,transparent 70%); border-radius:12px; padding:10px 12px; font-size:12px; color:var(--ink2); line-height:1.45; }
+  .addcard .why b { color:var(--ink); font-weight:500; }
+
+  /* настройки */
+  .set { background:var(--s2); border-radius:14px; }
+  .row { display:grid; grid-template-columns:220px minmax(0,1fr); gap:16px; align-items:center; padding:14px 16px; border-top:1px solid var(--line); }
+  .row:first-child { border-top:0; }
+  .row .k { font-size:13px; }
+  .row .k small { display:block; color:var(--mute); font-size:11.5px; margin-top:3px; line-height:1.4; }
+  .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--s1); flex-wrap:wrap; }
+  .seg button { height:28px; padding:0 12px; border-radius:999px; color:var(--ink2); font-size:12px; transition:background-color 150ms,color 150ms; }
+  .seg button.on { background:var(--s3); color:var(--ink); }
+  .seg button.on.ac { background:var(--acs); color:var(--ac); }
+  .field { height:34px; width:140px; border-radius:10px; background:#0f0f11; border:1px solid var(--line); display:inline-flex; align-items:center; padding:0 10px; gap:6px; transition:border-color 150ms, box-shadow 150ms; }
+  .field:focus-within { border-color:#b8f25c80; box-shadow:0 0 0 3px #b8f25c1a; }
+  .field input { flex:1; min-width:0; outline:none; text-align:right; }
+  .field span { color:var(--mute); font-size:12px; }
+  .inline { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .inline .hint { color:var(--mute); font-size:11.5px; }
+  .gems { display:flex; gap:6px; flex-wrap:wrap; }
+  .gchip { height:34px; padding:0 10px 0 4px; border-radius:999px; background:var(--s1); border:1px solid var(--line); display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink2); transition:background-color 150ms, border-color 150ms, color 150ms, opacity 150ms; }
+  .gchip i { width:26px; height:26px; border-radius:999px; background:center/cover; }
+  .gchip b { font-weight:500; color:var(--mute); font-size:11px; }
+  .gchip.on { color:var(--ink); border-color:#b8f25c55; background:#b8f25c0d; }
+  .gchip:not(.on) i { opacity:.35; filter:grayscale(1); }
+  .gchip.na { border-style:dashed; cursor:not-allowed; }
+
+  .rules { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--gap); }
+  .rule { background:var(--s2); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
+  .rule .k { font-size:12.5px; }
+  .rule .k small { display:block; color:var(--mute); font-size:11px; margin-top:2px; line-height:1.4; }
+  .rule .field { width:100%; }
+
+  /* боковая */
+  .side { grid-column:3; grid-row:2; padding:0 16px 16px 0; display:flex; flex-direction:column; gap:12px; overflow:auto; scrollbar-width:none; }
+  .panel { background:var(--s1); border:1px solid var(--line); border-radius:var(--r1); padding:var(--pad); display:flex; flex-direction:column; gap:var(--gap); }
+  .ph { display:flex; align-items:center; justify-content:space-between; height:20px; font-weight:500; margin-bottom:4px; }
+  .ph .n { color:var(--mute); font-weight:400; font-size:11.5px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
+  .fact { background:var(--s2); border-radius:var(--r2); padding:10px 12px; min-width:0; }
+  .fact .k { color:var(--mute); font-size:11px; white-space:nowrap; }
+  .fact b { font-weight:500; font-size:14px; display:block; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .why2 { background:var(--s2); border-radius:12px; padding:12px; font-size:12px; color:var(--ink2); line-height:1.45; }
+  .why2 b { color:var(--ink); font-weight:500; }
+  .log .e { display:grid; grid-template-columns:44px minmax(0,1fr); gap:10px; padding:8px 0; border-top:1px solid var(--line); font-size:12px; }
+  .log .e:first-child { border-top:0; }
+  .log .e .ts { color:var(--mute); font-size:11px; }
+  .log .e .w { color:var(--ink2); }
+  .log .e .w b { color:var(--ink); font-weight:500; }
+
+  .chip { height:20px; padding:0 7px; border-radius:999px; font-size:10.5px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; flex:none; }
+  .chip::before { content:""; width:5px; height:5px; border-radius:999px; background:currentColor; }
+  .c-ok { color:var(--ac); background:var(--acs); } .c-warn { color:var(--warn); background:var(--warns); } .c-stop { color:var(--stop); background:var(--stops); } .c-idle { color:var(--ink2); background:var(--s3); }
+
+  .dock { position:absolute; left:50%; bottom:16px; translate:-50% 0; z-index:4; display:flex; align-items:center; gap:6px; padding:6px; border-radius:999px;
+          background:#1a1a1dee; border:1px solid var(--line2); box-shadow:0 20px 50px #000000aa, inset 0 1px 0 #ffffff0d; backdrop-filter:blur(10px); white-space:nowrap; }
+  .dock .st { display:flex; align-items:center; gap:8px; padding:0 12px 0 10px; height:40px; }
+  .dock .st b { font-weight:500; } .dock .st span { color:var(--mute); font-size:12px; }
+  .dock .div { width:1px; height:24px; background:var(--line2); }
+  .dock .kv { padding:0 10px; display:flex; flex-direction:column; justify-content:center; height:40px; }
+  .dock .kv span { color:var(--mute); font-size:10.5px; } .dock .kv b { font-size:13px; font-weight:500; }
+  .go { height:40px; padding:0 18px 0 14px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 24px var(--acg); }
+
+  /* окна */
+  .veil { position:fixed; inset:0; background:#000a; backdrop-filter:blur(4px); display:grid; place-items:center; z-index:20; opacity:0; pointer-events:none; transition:opacity 180ms; }
+  .veil.open { opacity:1; pointer-events:auto; }
+  .modal { width:min(460px, calc(100vw - 32px)); background:var(--s1); border:1px solid var(--line2); border-radius:20px; padding:20px; box-shadow:0 30px 80px #000c; display:flex; flex-direction:column; gap:14px; transform:translateY(8px) scale(.98); transition:transform 220ms cubic-bezier(.2,.8,.2,1); }
+  .veil.open .modal { transform:none; }
+  .modal h3 { margin:0; font-size:17px; font-weight:600; letter-spacing:-.01em; }
+  .modal p { margin:0; color:var(--ink2); font-size:12.5px; line-height:1.5; }
+  .qrbox { display:grid; grid-template-columns:168px minmax(0,1fr); gap:16px; align-items:center; }
+  .qrbox canvas { width:168px; height:168px; border-radius:14px; background:#ecebe8; padding:10px; }
+  .steps { display:flex; flex-direction:column; gap:10px; }
+  .steps div { display:grid; grid-template-columns:22px minmax(0,1fr); gap:8px; font-size:12.5px; color:var(--ink2); line-height:1.4; }
+  .steps i { width:22px; height:22px; border-radius:999px; background:var(--s3); color:var(--ink); display:grid; place-items:center; font-style:normal; font-size:11px; }
+  .wait { display:flex; align-items:center; gap:8px; color:var(--mute); font-size:12px; background:var(--s2); border-radius:12px; padding:10px 12px; }
+  .spin { width:14px; height:14px; border-radius:999px; border:2px solid #ffffff22; border-top-color:var(--ac); animation:sp 800ms linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  .mfoot { display:flex; gap:8px; justify-content:flex-end; }
+  .mbtn { height:36px; padding:0 16px; border-radius:999px; background:var(--s3); font-size:12.5px; }
+  .mbtn.red { background:var(--stop); color:#1a0b0b; font-weight:600; }
+  .mbtn.red:disabled { opacity:.4; cursor:not-allowed; }
+  .confirm { height:38px; border-radius:10px; background:#0f0f11; border:1px solid var(--line); padding:0 12px; outline:none; }
+  .confirm:focus { border-color:#ff7a7a80; box-shadow:0 0 0 3px #ff7a7a1a; }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b8f25c" stroke-width="1.6"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M12 21 8 9l4-6 4 6z"/></svg></div>
+    <div class="grp">
+      <button class="it" title="Обзор"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.5 12c5 0 5-7 9-7M7.5 12c5 0 5 7 9 7"/></svg></button>
+      <button class="it" title="Инвентарь"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+      <button class="it" title="Скупка"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6"/></svg></button>
+      <button class="it" title="Продажи"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></button>
+      <button class="it on" title="Аккаунты"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg></button>
+      <button class="it" title="Журнал"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+    </div>
+  </nav>
+
+  <header class="top">
+    <span class="pill acc"><span class="ava">О</span><b>основной</b><span class="dot"></span></span>
+    <span class="pill">аккаунтов <b class="num">1</b></span>
+    <span class="pill">крутят сейчас <b class="num" id="runningN">0</b></span>
+    <div class="right"><span class="pill demo"><span class="dot warn"></span>макет · снимок 21 августа · ничего не отправляется</span></div>
+  </header>
+
+  <main class="page">
+    <div class="scroll">
+      <div class="phead">
+        <div><h1>Аккаунты</h1><div class="sub">Матчи общие для всех аккаунтов, а сожжённые — у каждого свои: второй аккаунт крутит те же матчи заново, и у каждого свои темп, цель и набор гемов.</div></div>
+        <div class="right"><button class="primary" data-open="link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Привязать аккаунт</button></div>
+      </div>
+
+      <div class="cards" id="cards"></div>
+
+      <section class="sec">
+        <div class="sech"><h2 id="setTitle">Настройки</h2><span class="n">действуют только на этот аккаунт, применяются сразу</span></div>
+        <div class="set" id="set"></div>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h2>Общие правила</h2><span class="n">на все аккаунты сразу</span></div>
+        <div class="rules" id="rules"></div>
+      </section>
+    </div>
+
+    <div class="dock">
+      <div class="st"><span class="dot warn" id="dDot"></span><b id="dSt">стоит</b><span id="dSub">работник выключен</span></div>
+      <div class="div"></div>
+      <div class="kv"><span>пауза</span><b class="num" id="dPause">сама</b></div>
+      <div class="kv"><span>подтверждено</span><b>43 дня назад</b></div>
+    </div>
+  </main>
+
+  <aside class="side" id="side"></aside>
+</div>
+
+<!-- привязка по QR -->
+<div class="veil" id="link"><div class="modal">
+  <h3>Привязать аккаунт Steam</h3>
+  <p>Вход по QR из мобильного Steam. Пароль сюда не вводится: вход подтверждается в телефоне, панель хранит только файл сессии.</p>
+  <div class="qrbox"><canvas id="qr" width="148" height="148"></canvas>
+    <div class="steps">
+      <div><i>1</i><span>Откройте мобильное приложение Steam, раздел Steam Guard</span></div>
+      <div><i>2</i><span>Отсканируйте код слева</span></div>
+      <div><i>3</i><span>Подтвердите вход — аккаунт появится в списке сам</span></div>
+    </div></div>
+  <div class="wait"><span class="spin"></span>ждём подтверждения в телефоне <span class="src" style="margin-left:auto">пример кода</span></div>
+  <div class="mfoot"><button class="mbtn" data-close>Отмена</button></div>
+</div></div>
+
+<!-- отвязка -->
+<div class="veil" id="unlink"><div class="modal">
+  <h3>Отвязать «основной»?</h3>
+  <p>Панель удалит файл сессии и строку аккаунта. Вернуть можно только новым входом по QR. Журнал сожжённых матчей (66) останется: если аккаунт привяжут заново, очередь будет помнить, что эти матчи уже израсходованы.</p>
+  <input class="confirm" id="cf" placeholder="напишите «основной», чтобы подтвердить">
+  <div class="mfoot"><button class="mbtn" data-close>Отмена</button><button class="mbtn red" id="cfb" disabled>Отвязать</button></div>
+</div></div>
+
+<script>
+const D = {"acc": {"id": "main", "label": "основной", "steamid": "7656119800000000", "token": "session.json", "added": "2026-08-19T18:00:22.453Z", "session": true, "burned": 66}, "unit": {"delay": 1000, "auto": true, "target": null, "waves": 1, "only": null, "available": [{"gem": "NaVi", "objects": 1, "icon": "https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_XcxsTuIn6W9Vl7y4n1_FCoVhjwjpnuwixa-fvgMKJoePGRCjHFwuslsrdtTXzjw0pwt2_cmIupIH3BPAYgCpF2F-MN5g74zIN9SriQmw/96fx96f"}, {"gem": "Team Empire", "objects": 5, "icon": "https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbmUxDi0ZLh7ylk_ferbptsMv2AQDHBwOgn5LU9FnznwR4h4jzczN36dC3DaAYgDcB4EeNes0S8ktK0Ybn8p1uJsrguhiE/96fx96f"}, {"gem": "Ohaiyo", "objects": 7, "icon": "https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mb0SRLkkpLl721L_fujbbJsLM-ABmiFzepzoq87G37hkB50tWyHyo39I3qXOFMjCZt2QucI5ELukN3nML-04wzcjowQ02yg2end0mr0/96fx96f"}, {"gem": "Alliance", "objects": 4, "icon": "https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5Frifgnwl5qv7ydW5vyne6doLvOWMXORyOI44uU5GCixwBwk5G6HyI2ocC6Ub1MlWMRwQ-cPtBGxk9C1YrmwsQHbg5UFk3uFdbU1HQ/96fx96f"}, {"gem": "DD", "objects": 4, "icon": "https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZjl_ikU6uSreqhsM-SaAGCYxO9ij-9sTCL9wUtz62vRmN6ucnvGPAV0WJYkQuIO4xG-lYHkYrjmtgXe2otCn3j9ijQJsHg2iKUokw/96fx96f"}, {"gem": "BZZ", "objects": 29, "icon": "https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/96fx96f"}], "failures": 0, "running": false, "why": "работник выключен", "burned": 66, "queueLength": 0, "log": [{"ts": "2026-08-21T13:19:13.113Z", "action": "idle", "why": "работник выключен"}]}, "inv": {"error": null, "age": 56, "items": 51}, "settings": {"goal": 1000, "tick": 20000, "floor": 300}, "notInMap": "CaspeRRR", "queue": 11580};
+const A = D.acc, U = D.unit;
+const PACE = [[500,'0,5 с'],[1000,'1 с'],[2000,'2 с'],[5000,'5 с'],[30000,'30 с']];   // Accounts.tsx
+const fmt = n => n == null ? '—' : Math.round(n).toLocaleString('ru-RU');
+const st = { running:false, auto:U.auto, delay:U.delay, target:U.target ?? '', waves:U.waves ?? 1, only:new Set(U.available.map(g => g.gem)), session:'unknown', key:'missing' };
+const SESSION = { unknown:['не проверена','warn','токен лежит, но жив ли — неизвестно'], ok:['жива','ok','проверена только что'], revoked:['отозвана','stop','Steam её не примет — обновите по QR'] };
+const KEY = { missing:['не задан','stop','без ключа закупка не запустится'], ok:['проверен, этот аккаунт','ok','лоты придут сюда'], mismatch:['чужой Steam','stop','лоты уйдут на другой аккаунт'] };
+const pauseWord = () => st.auto ? 'сама' : PACE.find(p => p[0] === st.delay)?.[1] ?? st.delay + ' мс';
+const added = new Date(A.added).toLocaleDateString('ru-RU', { day:'numeric', month:'long' });
+const ICO = {
+  ok:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12 5 5 9-10"/></svg>',
+  warn:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16v.5"/></svg>',
+  stop:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 7l10 10M17 7 7 17"/></svg>',
+};
+
+function cards() {
+  const s = SESSION[st.session], k = KEY[st.key];
+  const ready = st.session === 'ok';
+  document.getElementById('cards').innerHTML = `
+    <div class="acard sel">
+      <div class="h"><div class="ava">О<span class="dot ${st.running ? 'ok' : 'warn'}"></span></div>
+        <div style="min-width:0"><div class="nm">${A.label}<button title="переименовать">✎</button></div><div class="sid mono">${A.steamid} · с ${added}</div></div>
+        <span class="chip ${st.running ? 'c-ok' : 'c-idle'}">${st.running ? 'накручивает' : 'стоит'}</span></div>
+      <div class="stats">
+        <div><span>сожжено</span><b class="num">${fmt(A.burned)}</b></div>
+        <div><span>в очереди</span><b class="num">${fmt(U.queueLength)}</b></div>
+        <div><span>пауза</span><b>${pauseWord()}</b></div>
+        <div><span>гемов</span><b class="num">${st.only.size} из ${U.available.length}</b></div>
+      </div>
+      <div class="checks">
+        <div class="ck"><span class="ic ${s[1]}">${ICO[s[1]]}</span><div style="min-width:0"><div class="t">Сессия Steam · ${s[0]}</div><div class="d">${s[2]}</div></div>
+          <div class="a"><button class="sbtn" id="chk">проверить</button><button class="sbtn" data-open="link">обновить по QR</button></div></div>
+        <div class="ck"><span class="ic ${k[1]}">${ICO[k[1]]}</span><div style="min-width:0"><div class="t">Ключ market.dota2.net · ${k[0]}</div><div class="d">${k[2]}</div></div>
+          <div class="a"><button class="sbtn ac" id="keyb">${st.key === 'missing' ? 'вставить ключ' : 'заменить'}</button></div></div>
+        <div class="ck"><span class="ic ok">${ICO.ok}</span><div style="min-width:0"><div class="t">Инвентарь · открыт</div><div class="d">${fmt(D.inv.items)} вещей · снимок ${D.inv.age} с назад</div></div>
+          <div class="a"></div></div>
+      </div>
+      <div class="foot">
+        <button class="run ${st.running ? 'on' : ''}" id="run">${st.running ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>Остановить' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>Накрутить'}</button>
+        <span style="color:var(--mute);font-size:11.5px">${ready || st.running ? '' : 'сначала стоит проверить сессию'}</span>
+        <button class="danger" disabled title="это единственный аккаунт — сервер не даст его отвязать" style="opacity:.45;cursor:not-allowed">отвязать</button>
+      </div>
+    </div>
+
+    <div class="addcard" data-open="link">
+      <div class="qr"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v7h-7M17 21v-4"/></svg></div>
+      <h3>Второй аккаунт</h3>
+      <p>Вход по QR из мобильного Steam — около минуты. Пароль не нужен.</p>
+      <div class="why"><b>Зачем.</b> Сожжённые матчи у каждого аккаунта свои. Второй пройдёт те же матчи заново и поднимет свои гемы — ещё одна партия товара за то же время. <span class="src">Accounts.tsx</span></div>
+    </div>`;
+  document.getElementById('run').onclick = e => { e.stopPropagation(); st.running = !st.running; all(); };
+  document.getElementById('chk').onclick = e => { e.stopPropagation(); e.target.textContent = 'проверяю…'; setTimeout(() => { st.session = 'ok'; all(); }, 700); };
+  document.getElementById('keyb').onclick = e => { e.stopPropagation(); st.key = 'ok'; all(); };
+  bindOpen();
+}
+
+function settings() {
+  document.getElementById('setTitle').textContent = 'Настройки «' + A.label + '»';
+  const PACE_ITEMS = [['auto','сама'], ...PACE.map(([ms, l]) => [String(ms), l])];
+  document.getElementById('set').innerHTML = `
+    <div class="row"><div class="k">Пауза между отправками<small>«сама» подбирает по замерам; ниже ${D.settings.floor} мс (пол из общих правил) нельзя</small></div>
+      <div><div class="seg" id="pace">${PACE_ITEMS.map(([id, l]) => `<button data-p="${id}" class="${(st.auto ? 'auto' : String(st.delay)) === id ? 'on' + (id === 'auto' ? ' ac' : '') : ''}">${l}</button>`).join('')}</div></div></div>
+    <div class="row"><div class="k">Цель<small>сколько отправок сделать и встать; пусто — до конца очереди</small></div>
+      <div class="inline"><label class="field"><input id="target" inputmode="numeric" placeholder="до конца" value="${st.target}"><span>отпр.</span></label>
+        <span class="hint">${st.target ? `≈ ${Math.max(1, Math.round(st.target / 76))} мин при 76/мин` : `в очереди ${fmt(U.queueLength)} — работник встанет, когда она кончится`}</span></div></div>
+    <div class="row"><div class="k">Разброс счётчиков<small>на сколько партий разложить, чтобы вещи вышли с разными числами, а не все ровно 1 000</small></div>
+      <div><div class="seg" id="waves">${[1,2,3,4,5].map(w => `<button data-w="${w}" class="${st.waves === w ? 'on' : ''}">${w === 1 ? 'нет' : w}</button>`).join('')}</div></div></div>
+    <div class="row"><div class="k">Какие гемы крутить<small>${st.only.size === U.available.length ? 'все, что лежат в инвентаре' : 'выбрано ' + st.only.size + ' из ' + U.available.length}</small></div>
+      <div class="gems">${U.available.map(g => `<button class="gchip ${st.only.has(g.gem) ? 'on' : ''}" data-g="${g.gem}"><i style="background-image:url('${g.icon}')"></i>${g.gem}<b class="num">${g.objects}</b></button>`).join('')}
+        <span class="gchip na" title="гема нет в карте tools/gem-map.json — непонятно, чьи матчи считать"><i style="background:var(--s3)"></i>${D.notInMap}<b>нет в карте</b></span></div></div>`;
+  document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const v = b.dataset.p; if (v === 'auto') st.auto = true; else { st.auto = false; st.delay = +v; } all(); });
+  document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { st.waves = +b.dataset.w; all(); });
+  document.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g = b.dataset.g; st.only.has(g) ? st.only.delete(g) : st.only.add(g); all(); });
+  const t = document.getElementById('target'); t.onchange = () => { st.target = t.value.replace(/\D/g, ''); all(); };
+}
+
+function rules() {
+  document.getElementById('rules').innerHTML = `
+    <div class="rule"><div class="k">Цель счётчика<small>с какого числа вещь считается товаром</small></div><label class="field"><input value="${fmt(D.settings.goal)}"><span>просм.</span></label></div>
+    <div class="rule"><div class="k">Как часто проверять инвентарь<small>заглядывать в Steam раз в</small></div><label class="field"><input value="${D.settings.tick / 1000}"><span>с</span></label></div>
+    <div class="rule"><div class="k">Пол паузы<small>ниже не опустится ни один аккаунт</small></div><label class="field"><input value="${D.settings.floor}"><span>мс</span></label></div>`;
+}
+
+function side() {
+  const L = U.log.map(l => ({ t: new Date(l.ts).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' }), a: l.action, w: l.why }));
+  if (st.running) L.unshift({ t:'сейчас', a:'start', w:'включён вручную · пауза ' + pauseWord() + ' · имитация' });
+  document.getElementById('side').innerHTML = `
+    <section class="panel">
+      <div class="ph">Работник «${A.label}» <span class="chip ${st.running ? 'c-ok' : 'c-idle'}">${st.running ? 'идёт' : 'стоит'}</span></div>
+      <div class="grid2">
+        <div class="fact"><div class="k">процесс</div><b>${st.running ? 'запущен' : 'стоит'}</b></div>
+        <div class="fact"><div class="k">падений подряд</div><b class="num">${U.failures}</b></div>
+        <div class="fact"><div class="k">выбило сессией</div><b class="num">0</b></div>
+        <div class="fact"><div class="k">в очереди</div><b class="num">${fmt(U.queueLength)}</b></div>
+      </div>
+      <div class="why2"><b>Последнее решение:</b> ${st.running ? 'работает по очереди' : U.why}</div>
+    </section>
+    <section class="panel log">
+      <div class="ph">Журнал решений <span class="n">что и почему</span></div>
+      ${L.map(e => `<div class="e"><span class="ts num">${e.t}</span><span class="w"><b>${e.a}</b> · ${e.w}</span></div>`).join('')}
+    </section>
+    <section class="panel">
+      <div class="ph">Если что-то сломалось</div>
+      <div class="why2"><b>Сессию отозвали</b> (сменили пароль, «выйти на всех устройствах») — работник не войдёт. Кнопка «обновить по QR» в карточке, без отвязки.</div>
+      <div class="why2"><b>Выбило сессией</b> — с этого аккаунта зашли в Steam где-то ещё. Два раза подряд — и работник встаёт: «закройте игру и клиент, тогда продолжу».</div><div class="why2"><b>Отвязать</b> можно, только когда аккаунтов больше одного. Окно подтверждения — <button class="sbtn" data-open="unlink" style="height:24px">посмотреть</button></div>
+    </section>`;
+}
+
+function all() {
+  cards(); settings(); rules(); side(); bindOpen();
+  document.getElementById('runningN').textContent = st.running ? 1 : 0;
+  document.getElementById('dDot').className = 'dot ' + (st.running ? 'ok' : 'warn');
+  document.getElementById('dSt').textContent = st.running ? 'идёт' : 'стоит';
+  document.getElementById('dSub').textContent = st.running ? 'имитация на макете' : 'работник выключен';
+  document.getElementById('dPause').textContent = pauseWord();
+}
+
+/* окна */
+function bindOpen() { document.querySelectorAll('[data-open]').forEach(b => b.onclick = e => { e.stopPropagation(); open(b.dataset.open); }); }
+function open(id) { document.getElementById(id).classList.add('open'); if (id === 'link') drawQR(); if (id === 'unlink') { const c = document.getElementById('cf'); c.value = ''; document.getElementById('cfb').disabled = true; setTimeout(() => c.focus(), 50); } }
+document.querySelectorAll('.veil').forEach(v => v.onclick = e => { if (e.target === v || e.target.hasAttribute('data-close')) v.classList.remove('open'); });
+addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.veil.open').forEach(v => v.classList.remove('open')); });
+document.getElementById('cf').oninput = e => document.getElementById('cfb').disabled = e.target.value.trim() !== A.label;
+document.getElementById('cfb').onclick = () => { document.getElementById('unlink').classList.remove('open'); };
+
+// Картинка-пример QR: не настоящий код, просто узор того же вида.
+function drawQR() {
+  const c = document.getElementById('qr'), x = c.getContext('2d'), n = 29, s = c.width / n;
+  x.fillStyle = '#ecebe8'; x.fillRect(0, 0, c.width, c.width); x.fillStyle = '#0c0c0e';
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (rnd() > .52) x.fillRect(i * s, j * s, s, s);
+  for (const [a, b] of [[0, 0], [n - 7, 0], [0, n - 7]]) {
+    x.fillStyle = '#0c0c0e'; x.fillRect(a * s, b * s, 7 * s, 7 * s);
+    x.fillStyle = '#ecebe8'; x.fillRect((a + 1) * s, (b + 1) * s, 5 * s, 5 * s);
+    x.fillStyle = '#0c0c0e'; x.fillRect((a + 2) * s, (b + 2) * s, 3 * s, 3 * s);
+  }
+}
+
+all();
+</script>
+</body>
+</html>

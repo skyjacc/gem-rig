@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gemtrack · Продажи (макет)</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0c0c0e; --s1:#141416; --s2:#1b1b1e; --s3:#232327; --line:#ffffff0f; --line2:#ffffff17;
+    --ink:#ecebe8; --ink2:#a7a5a0; --mute:#76746f;
+    --ac:#b8f25c; --acg:#b8f25c55; --acs:#b8f25c1a;
+    --warn:#f2b44a; --warns:#f2b44a17; --stop:#ff7a7a; --stops:#ff7a7a17; --est:#9db8ff; --ests:#8fb2ff18;
+    --r1:16px; --r2:10px; --gap:8px;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:"Geist",ui-sans-serif,system-ui,sans-serif; font-size:13px; -webkit-font-smoothing:antialiased; }
+  .num { font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+  .mono { font-family:"Geist Mono",ui-monospace,monospace; }
+  button, input, select { font:inherit; color:inherit; border:0; background:none; }
+  button { cursor:pointer; }
+
+  .app { display:grid; grid-template-columns:64px minmax(0,1fr) 380px; grid-template-rows:60px minmax(0,1fr); height:100vh; min-height:720px; }
+  .rail { grid-row:1/3; grid-column:1; display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:8px; }
+  .rail .logo { width:40px; height:40px; display:grid; place-items:center; margin-bottom:12px; }
+  .rail .logo svg { filter:drop-shadow(0 0 8px var(--acg)); }
+  .rail .grp { background:var(--s1); border:1px solid var(--line); border-radius:999px; padding:6px; display:flex; flex-direction:column; gap:4px; }
+  .rail .it { width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:var(--mute); }
+  .rail .it.on { background:var(--ink); color:var(--bg); }
+
+  .top { grid-column:2/4; grid-row:1; display:flex; align-items:center; gap:8px; padding:0 16px 0 4px; min-width:0; overflow:hidden; }
+  .pill { height:32px; display:inline-flex; align-items:center; gap:8px; padding:0 12px; border-radius:999px; background:var(--s1); border:1px solid var(--line); color:var(--ink2); font-size:12px; white-space:nowrap; }
+  .pill b { color:var(--ink); font-weight:500; }
+  .pill.acc { padding-left:4px; }
+  .ava { width:24px; height:24px; border-radius:999px; background:linear-gradient(135deg,#3a3a40,#202024); display:grid; place-items:center; font-size:11px; color:var(--ink); flex:none; }
+  .dot { width:7px; height:7px; border-radius:999px; background:var(--mute); flex:none; }
+  .dot.warn { background:var(--warn); }
+  .top .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .demo { color:var(--warn); background:var(--warns); border-color:transparent; }
+
+  .page { grid-column:2; grid-row:2; position:relative; margin:0 0 16px 4px; border-radius:20px; background:var(--s1); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; }
+  .scroll { flex:1; overflow:auto; padding:20px 20px 40px; scrollbar-width:thin; scrollbar-color:#ffffff24 transparent; }
+  .phead { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+  .phead h1 { margin:0; font-size:22px; font-weight:600; letter-spacing:-.02em; line-height:1.2; }
+  .phead .sub { color:var(--mute); font-size:12px; margin-top:4px; }
+  .phead .right { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--s2); }
+  .seg button { height:26px; padding:0 11px; border-radius:999px; color:var(--ink2); font-size:12px; white-space:nowrap; }
+  .seg button.on { background:var(--s3); color:var(--ink); }
+
+  .src { display:inline-flex; align-items:center; height:16px; padding:0 6px; border-radius:999px; font-family:"Geist Mono",monospace; font-size:9.5px; color:var(--mute); background:var(--s3); white-space:nowrap; vertical-align:1px; }
+  .src.e { color:var(--warn); background:var(--warns); }
+  .src.u { color:var(--est); background:var(--ests); }
+  .src.na { color:var(--mute); background:transparent; border:1px dashed #ffffff22; }
+
+  /* три итога */
+  .totals { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--gap); margin-top:18px; }
+  .tot { background:var(--s2); border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .tot .l { display:flex; justify-content:space-between; align-items:center; color:var(--ink2); font-size:12.5px; }
+  .tot .v { font-size:30px; letter-spacing:-.03em; line-height:1.05; }
+  .tot .v small { font-size:14px; color:var(--mute); }
+  .tot .orig { color:var(--mute); font-size:11.5px; }
+  .tot .rows { margin-top:6px; display:flex; flex-direction:column; gap:4px; }
+  .tot .rows div { display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink2); }
+  .tot .rows div b { font-weight:500; color:var(--ink); }
+  .tot.real { background:linear-gradient(180deg,#b8f25c12,var(--s2) 60%); }
+  .tot.real .v { color:var(--ac); }
+  .result { margin-top:var(--gap); display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--s2); border-radius:12px; padding:10px 16px; font-size:12.5px; color:var(--ink2); }
+  .result b { color:var(--ink); font-weight:500; }
+  .result .sep { width:1px; height:18px; background:var(--line2); }
+
+  .sec { margin-top:26px; }
+  .sech { display:flex; align-items:baseline; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .sech h2 { margin:0; font-size:15px; font-weight:600; letter-spacing:-.01em; }
+  .sech .n { color:var(--mute); font-size:12px; }
+  .sech .right { margin-left:auto; }
+
+  /* таблицы */
+  .tbox { background:var(--s2); border-radius:14px; overflow:hidden; }
+  .th, .tr, .tf { display:grid; align-items:center; gap:12px; padding:0 14px; }
+  .th { height:34px; color:var(--mute); font-size:11px; }
+  .tr { min-height:42px; border-top:1px solid var(--line); font-size:12.5px; }
+  .tf { min-height:40px; border-top:1px solid var(--line2); font-weight:500; font-size:12.5px; }
+  .r { text-align:right; }
+  .m { color:var(--mute); }
+  .sales .th, .sales .tr, .sales .tf { grid-template-columns:62px minmax(0,1.4fr) 92px 82px 82px 96px; }
+  .buys .th, .buys .tr, .buys .tf { grid-template-columns:62px minmax(0,1fr) 54px 92px 120px; }
+  .keys .th, .keys .tr, .keys .tf { grid-template-columns:56px 40px 84px 84px minmax(0,1.3fr); }
+  .hold { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; background:var(--line); border-bottom:1px solid var(--line); }
+  .hold div { background:var(--s2); padding:10px 14px; }
+  .hold span { display:block; color:var(--mute); font-size:11px; }
+  .hold b { display:block; font-size:18px; font-weight:500; margin-top:3px; }
+  .hold small { display:block; color:var(--ink2); font-size:11px; margin-top:2px; }
+  .when { display:inline-flex; flex-direction:column; align-items:flex-end; line-height:1.3; cursor:help; }
+  .when small { color:var(--mute); font-size:10.5px; }
+  .fee { color:var(--ink2); }
+  .got { color:var(--ac); font-weight:500; }
+  .refund { color:var(--est); }
+  .chip { height:20px; padding:0 7px; border-radius:999px; font-size:10.5px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+  .chip::before { content:""; width:5px; height:5px; border-radius:999px; background:currentColor; }
+  .c-ok { color:var(--ac); background:var(--acs); } .c-warn { color:var(--warn); background:var(--warns); } .c-idle { color:var(--ink2); background:var(--s3); } .c-est { color:var(--est); background:var(--ests); }
+  .two { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; }
+  .note { margin-top:8px; color:var(--mute); font-size:11.5px; line-height:1.5; }
+  .note b { color:var(--ink2); font-weight:500; }
+  .formula { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:11.5px; color:var(--ink2); background:var(--s2); border-radius:10px; padding:8px 12px; margin-top:8px; }
+  .formula b { color:var(--ink); font-weight:500; }
+
+  /* правая колонка */
+  .side { grid-column:3; grid-row:2; padding:0 16px 16px 0; display:flex; flex-direction:column; gap:12px; overflow:auto; scrollbar-width:none; }
+  .panel { background:var(--s1); border:1px solid var(--line); border-radius:var(--r1); padding:16px; display:flex; flex-direction:column; gap:var(--gap); }
+  .ph { display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:500; margin-bottom:2px; }
+  .ph .n { color:var(--mute); font-weight:400; font-size:11.5px; }
+  .ctrl { display:flex; gap:8px; align-items:center; flex-wrap:wrap; color:var(--ink2); font-size:12px; }
+  .field { height:32px; border-radius:10px; background:#0f0f11; border:1px solid var(--line); display:inline-flex; align-items:center; padding:0 10px; gap:6px; }
+  .field input { width:56px; outline:none; text-align:right; }
+  .field span { color:var(--mute); font-size:11.5px; }
+  .ven { background:var(--s2); border-radius:12px; padding:11px 12px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 10px; transition:box-shadow 150ms; }
+  .ven.best { box-shadow:inset 0 0 0 1px #b8f25c66; background:linear-gradient(180deg,#b8f25c0e,var(--s2) 70%); }
+  .ven .name { font-weight:600; display:flex; align-items:center; gap:6px; }
+  .ven .net { text-align:right; font-size:16px; font-weight:500; }
+  .ven.best .net { color:var(--ac); }
+  .ven .meta { grid-column:1/3; display:flex; flex-wrap:wrap; gap:4px 10px; color:var(--mute); font-size:11px; }
+  .ven .meta b { color:var(--ink2); font-weight:500; }
+  .ven .warnl { grid-column:1/3; color:var(--warn); font-size:11.5px; }
+  .ptype { height:18px; padding:0 7px; border-radius:999px; font-size:10px; font-weight:500; display:inline-flex; align-items:center; }
+  .pt-instant { background:var(--acs); color:var(--ac); } .pt-bid { background:var(--s3); color:var(--ink2); } .pt-listing { background:transparent; color:var(--mute); border:1px dashed #ffffff26; }
+  .accept { display:flex; flex-direction:column; gap:6px; }
+  .accept > span { color:var(--ink2); font-size:12px; }
+  .chips { display:flex; flex-wrap:wrap; gap:4px; }
+  .mchip { height:26px; padding:0 10px; border-radius:999px; background:var(--s2); border:1px solid var(--line); color:var(--ink2); font-size:11.5px; transition:background-color 150ms, color 150ms, border-color 150ms; }
+  .mchip.on { background:var(--acs); color:var(--ac); border-color:#b8f25c44; }
+  .mchip.more { border-style:dashed; color:var(--mute); }
+  .watch { grid-column:1/3; display:flex; align-items:center; gap:6px; color:var(--mute); font-size:10.5px; }
+  .watch i { width:6px; height:6px; border-radius:999px; background:var(--ac); }
+  .watch.bad i { background:var(--warn); }
+  .payrow { display:grid; grid-template-columns:62px minmax(0,1fr) auto; gap:8px; align-items:center; height:40px; border-top:1px solid var(--line); font-size:12px; }
+  .payrow:first-child { border-top:0; }
+  .form { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+  .form > * { min-width:0; }
+  .form .field { width:100%; }
+  .form .field input { width:100%; text-align:left; }
+  .form select { height:32px; border-radius:10px; background:#0f0f11; border:1px solid var(--line); padding:0 8px; color:var(--ink); }
+  .form .full { grid-column:1/3; }
+  .addb { height:34px; border-radius:999px; background:var(--acs); color:var(--ac); font-weight:500; font-size:12.5px; }
+  .err { color:var(--stop); font-size:11.5px; min-height:14px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b8f25c" stroke-width="1.6"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M12 21 8 9l4-6 4 6z"/></svg></div>
+    <div class="grp">
+      <span class="it" title="Обзор">⌁</span><span class="it" title="Инвентарь">▦</span><span class="it" title="Скупка">⊕</span>
+      <span class="it on" title="Продажи"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>
+      <span class="it" title="Аккаунты">☺</span><span class="it" title="Журнал">≡</span>
+    </div>
+  </nav>
+
+  <header class="top">
+    <span class="pill acc"><span class="ava">О</span><b>основной</b></span>
+    <span class="pill">кошелёк Steam <b class="num" id="pWallet"></b><span class="src">Steam · 12:40</span></span>
+    <span class="pill">свободных ключей <b class="num" id="pKeys"></b></span>
+    <div class="right"><span class="pill demo"><span class="dot warn"></span>макет · все цифры выдуманы, кроме цен площадок</span></div>
+  </header>
+
+  <main class="page">
+    <div class="scroll">
+      <div class="phead">
+        <div><h1>Продажи</h1><div class="sub">отчёт в $ по курсу на дату каждой операции · валюты операций — свои</div></div>
+        <div class="right"><div class="seg"><button class="on">всё время</button><button>месяц</button><button>7 дней</button></div></div>
+      </div>
+
+      <!-- три итога -->
+      <div class="totals" id="totals"></div>
+      <div class="result" id="result"></div>
+
+      <!-- продажи на рынке Steam -->
+      <section class="sec">
+        <div class="sech"><h2>Продажи на рынке Steam</h2><span class="n">по каждой — четыре числа из истории рынка</span><span class="right src">история рынка Steam · 12:40</span></div>
+        <div class="tbox sales">
+          <div class="th"><span>день</span><span>вещь</span><span class="r">заплатил покупатель</span><span class="r">Steam 5 %</span><span class="r">Dota 2 10 %</span><span class="r">пришло на кошелёк</span></div>
+          <div id="sales"></div>
+          <div class="tf" id="salesF"></div>
+        </div>
+        <div class="formula" id="ratio"></div>
+      </section>
+
+      <div class="two sec">
+        <!-- покупки гемов и возвраты -->
+        <section>
+          <div class="sech"><h2>Покупки гемов</h2><span class="n">market.dota2.net · с возвратами</span></div>
+          <div class="tbox buys">
+            <div class="th"><span>день</span><span>гем</span><span class="r">шт</span><span class="r">сумма</span><span class="r">статус</span></div>
+            <div id="buys"></div>
+            <div class="tf" id="buysF"></div>
+          </div>
+          <div class="note"><b>Возврат</b> — площадка вернула деньги за лот, который продавец не передал (статус «трейд просрочен» в истории площадки). Уменьшает «вложено».</div>
+        </section>
+
+        <!-- ключи -->
+        <section>
+          <div class="sech"><h2>Ключи Mann Co.</h2><span class="n">куплены на деньги кошелька</span></div>
+          <div class="tbox keys">
+            <div class="hold" id="hold"></div>
+            <div class="th"><span>день</span><span class="r">шт</span><span class="r">за шт</span><span class="r">сумма</span><span class="r">можно передать</span></div>
+            <div id="keys"></div>
+            <div class="tf" id="keysF"></div>
+          </div>
+          <div class="note">Время — по Бухаресту (настройка пользователя), в подсказке — GMT и строка Steam. В панели — точное «Tradable After» по каждому ключу (С5); до подключения — <span class="src e">оценка</span>: время покупки + 7 суток.</div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <aside class="side">
+    <section class="panel">
+      <div class="ph">Куда продать ключи <span class="n">по сумме на руки</span></div>
+      <div class="ctrl">продаю <label class="field"><input id="nKeys" inputmode="numeric"><span>ключей</span></label></div>
+      <div class="note" id="freeNote" style="margin:0"></div>
+      <div class="accept"><span>Принимаю:</span><div class="chips" id="acc"></div></div>
+      <div id="vens"></div>
+      <div class="note" style="margin-top:2px">Цены и комиссии — проверены 3 окт 2026 (§20); время «проверено» в макете условное. <b>витрина</b> — цена выставленных лотов: столько получишь, только если купят. <b>≤</b> — до комиссии сети, она у площадки заранее не указана.</div>
+    </section>
+
+    <section class="panel">
+      <div class="ph">Выплаты <span class="n" id="payTot"></span></div>
+      <div id="pays"></div>
+      <div class="form">
+        <select id="fV"><option>Clover.tf</option><option>Merchant.TF</option><option>instant.tf</option><option>Belethor</option><option>Mannco.store</option></select>
+        <select id="fM"><option>USDT</option><option>LTC</option><option>BTC</option><option>PayPal</option><option>банк</option></select>
+        <label class="field"><input id="fK" inputmode="numeric" placeholder="ключей"></label>
+        <label class="field"><input id="fU" inputmode="decimal" placeholder="получено"><span>$</span></label>
+        <label class="field full"><input id="fT" placeholder="номер транзакции (хэш / id с сайта)"></label>
+        <button class="addb full" id="fAdd">+ внести выплату</button>
+        <div class="err full" id="fErr"></div>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<script>
+/* ── данные: выдуманные, кроме цен площадок ── */
+const WALLET = { currency:'UAH', balance:1040.00 };          // валюта и баланс приходят из Steam
+const RATE = { UAH:41.5, RUB:82.0 };                          // курс к $ на дату операции; в макете один на всё
+const fmtC = (v, c) => new Intl.NumberFormat('ru-RU', { style:'currency', currency:c, minimumFractionDigits:2, maximumFractionDigits:2 }).format(v);
+const usd = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const day = d => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day:'numeric', month:'short' }).replace('.', '');
+
+// Комиссии Steam: считаются от цены вещи (= что получает продавец), минимум по 0,01.
+// 5 % Steam + 10 % Dota 2 — из FAQ Steam, проверено 2026-10-03. Ставки — параметры, не зашиты в итоги.
+const FEE = { steam:.05, game:.10 };
+function sale(net) {
+  const steam = Math.max(.01, Math.floor(net * FEE.steam * 100) / 100);
+  const game = Math.max(.01, Math.floor(net * FEE.game * 100) / 100);
+  return { buyer: +(net + steam + game).toFixed(2), steam, game, net };
+}
+const SALES = [
+  ['2026-09-28', 'Wings of Obelis Staff', 1, 128.70], ['2026-09-27', 'Tail of Reminiscence', 1, 118.26],
+  ['2026-09-27', "Nether Lord's Cape", 2, 112.18], ['2026-09-25', 'Shark Cowl', 1, 108.70],
+  ['2026-09-24', 'Inscribed Prison Buckler', 3, 104.35], ['2026-09-22', "Nether Lord's Hat", 2, 113.04],
+].map(([d, n, q, net]) => ({ d, n, q, ...sale(net) }));
+
+const BUYS = [
+  { d:'2026-09-10', g:'BZZ', q:40, sum:126.00, st:'получено' },
+  { d:'2026-09-10', g:'Alliance', q:12, sum:48.60, st:'получено' },
+  { d:'2026-09-11', g:'Team Empire', q:20, sum:62.00, st:'получено' },
+  { d:'2026-09-11', g:'Team Empire', q:3, sum:9.30, st:'возврат' },
+  { d:'2026-09-14', g:'NaVi', q:8, sum:47.20, st:'получено' },
+];
+const KEYS = [
+  { d:'2026-09-24', at:'2026-09-24T18:42:10Z', q:6, per:100.40 }, { d:'2026-09-27', at:'2026-09-27T14:23:51Z', q:2, per:101.10 },
+  { d:'2026-09-27', at:'2026-09-27T21:05:33Z', q:1, per:101.30 }, { d:'2026-09-30', at:'2026-09-30T09:17:02Z', q:2, per:101.25 },
+];
+const TODAY = new Date('2026-10-03T12:00:00Z');
+const TZ = 'Europe/Bucharest';   // часовой пояс пользователя — настройка; по умолчанию Румыния
+
+// Площадки: цены, глубина и способы выплаты — проверены 2026-10-03 (§20 спецификации).
+// method + coin + network: USDT в BEP20 и USDT в ERC-20 — разные способы.
+// fee: { fix, pct } или null, если комиссия заранее неизвестна.
+const VENUES = [
+  { n:'Merchant.TF', price:1.70, type:'instant', fee:0, depth:null, src:'страница', t:'12:40', next:'12:55', ok:true,
+    pay:[ ['PayPal', null, { fix:.25, pct:.02 }], ['LTC', null, { fix:0, pct:0 }], ['BTC', null, { fix:.96, pct:0 }], ['ETH', null, { fix:.12, pct:0 }],
+          ['USDT', 'ERC-20', { fix:.12, pct:0 }], ['USDC', 'ERC-20', { fix:.12, pct:0 }] ] },
+  { n:'Clover.tf', price:1.66, type:'instant', fee:0, depth:4000, src:'API', t:'12:42', next:'12:52', ok:true,
+    // без комиссии подтверждён только USDT BEP20; у остальных «котировка всё включено», но сколько съест сеть — заранее не видно
+    pay:[ ['USDT', 'BEP20', { fix:0, pct:0 }], ['USDT', 'TRC20', null], ['USDT', 'ERC-20', null], ['USDC', 'ERC-20', null],
+          ['LTC', null, null], ['BTC', null, null], ['ETH', null, null], ['SOL', null, null] ] },
+  { n:'instant.tf', price:1.62, type:'instant', fee:0, depth:957, src:'страница', t:'12:38', next:'12:53', ok:true,
+    // только крипта; список монет и комиссии — на экране вывода, не проверены: совпадает с любой принятой криптой
+    pay:'any-crypto', payNote:'список монет не проверен' },
+  { n:'Belethor', price:1.66, type:'bid', fee:.0025, depth:20, src:'страница', t:'12:31', next:'—', ok:false,
+    pay:[ ['USDT', 'BEP20', { fix:.01, pct:0 }], ['USDC', 'BEP20', { fix:.01, pct:0 }] ] },
+  { n:'Mannco.store', price:1.76, type:'listing', fee:.05, depth:null, src:'страница', t:'12:40', next:'12:55', ok:true,
+    pay:[ ['PayPal', null, null], ['банк', null, null] ] },
+];
+const TYPE = { instant:['мгновенно','pt-instant'], bid:['заявка','pt-bid'], listing:['витрина','pt-listing'] };
+
+const payouts = [{ d:'2026-09-29', v:'Clover.tf', m:'USDT', k:5, usd:8.30, tx:'0x9f…a41c' }];
+
+/* ── итоги ── */
+function totals() {
+  const gross = BUYS.filter(b => b.st === 'получено').reduce((a, b) => a + b.sum, 0);
+  const refunds = BUYS.filter(b => b.st === 'возврат').reduce((a, b) => a + b.sum, 0);
+  const investRub = gross;   // возвраты уже не входят в «получено»
+  const investUsd = investRub / RATE.RUB;
+  const realized = payouts.reduce((a, p) => a + p.usd, 0);
+  const keysHeld = KEYS.reduce((a, k) => a + k.q, 0) - payouts.reduce((a, p) => a + p.k, 0);
+  const clover = VENUES.find(v => v.n === 'Clover.tf').price;
+  const walletUsd = WALLET.balance / RATE.UAH;
+  const keysUsd = keysHeld * clover;
+  const itemsUsd = 9 * (110 / RATE.UAH);        // 9 готовых вещей × типичная выручка — оценка
+  const wip = walletUsd + keysUsd + itemsUsd;
+  document.getElementById('pWallet').textContent = fmtC(WALLET.balance, WALLET.currency);
+  document.getElementById('pKeys').textContent = keysHeld;
+  document.getElementById('totals').innerHTML = `
+    <div class="tot"><div class="l">Вложено <span class="src">журнал закупки</span></div>
+      <div class="v num">${usd(investUsd)}</div>
+      <div class="orig num">${fmtC(investRub, 'RUB')} по курсу на дату покупки <span class="src e">оценка $</span></div>
+      <div class="rows"><div>покупки гемов<b class="num">${fmtC(gross + refunds, 'RUB')}</b></div><div>возвраты<b class="num refund">− ${fmtC(refunds, 'RUB')}</b></div></div></div>
+    <div class="tot real"><div class="l">Реализовано <span class="src">выплаты</span></div>
+      <div class="v num">${usd(realized)}</div>
+      <div class="orig">дошло до рук — точные суммы, без пересчёта</div>
+      <div class="rows"><div>выплат<b class="num">${payouts.length}</b></div><div>ключей продано<b class="num">${payouts.reduce((a, p) => a + p.k, 0)}</b></div></div></div>
+    <div class="tot"><div class="l">В работе <span class="src e">оценка · 3 окт 12:40</span></div>
+      <div class="v num">≈ ${usd(wip)}</div>
+      <div class="orig">если продать всё сейчас по текущим ценам</div>
+      <div class="rows"><div>кошелёк ${fmtC(WALLET.balance, WALLET.currency)}<b class="num">≈ ${usd(walletUsd)}</b></div><div>ключи ${keysHeld} × $${clover} Clover<b class="num">≈ ${usd(keysUsd)}</b></div><div>готовые вещи 9 шт<b class="num">≈ ${usd(itemsUsd)}</b></div></div></div>`;
+  document.getElementById('result').innerHTML = `реализовано − вложено <b class="num" style="color:${realized - investUsd >= 0 ? 'var(--ac)' : 'var(--ink)'}">${realized - investUsd >= 0 ? '+' : '−'}${usd(Math.abs(realized - investUsd))}</b>
+    <span class="sep"></span>с тем, что в работе <b class="num">≈ ${usd(realized + wip - investUsd)}</b> <span class="src e">оценка</span>
+    <span class="sep"></span><span class="m">реализованное не меняется от цены ключа; «в работе» — меняется</span>`;
+}
+
+/* ── таблицы ── */
+function tables() {
+  const c = WALLET.currency;
+  document.getElementById('sales').innerHTML = SALES.map(s => `<div class="tr"><span class="m">${day(s.d)}</span><span>${s.n}${s.q > 1 ? ' <span class="m">×' + s.q + '</span>' : ''}</span>
+    <span class="r num">${fmtC(s.buyer * s.q, c)}</span><span class="r num fee">− ${fmtC(s.steam * s.q, c)}</span><span class="r num fee">− ${fmtC(s.game * s.q, c)}</span><span class="r num got">${fmtC(s.net * s.q, c)}</span></div>`).join('');
+  const S = k => SALES.reduce((a, s) => a + s[k] * s.q, 0);
+  document.getElementById('salesF').innerHTML = `<span>итого</span><span class="m">${SALES.reduce((a, s) => a + s.q, 0)} вещей</span><span class="r num">${fmtC(S('buyer'), c)}</span><span class="r num fee">− ${fmtC(S('steam'), c)}</span><span class="r num fee">− ${fmtC(S('game'), c)}</span><span class="r num got">${fmtC(S('net'), c)}</span>`;
+  const share = S('net') / S('buyer');
+  document.getElementById('ratio').innerHTML = `пришло / заплатил покупатель = <b class="num">${(share * 100).toFixed(1)} %</b> <span class="src">вычислено из строк выше</span> · ставки: Steam <b>${FEE.steam * 100} %</b>, Dota 2 <b>${FEE.game * 100} %</b> <span class="src">FAQ Steam · 3 окт</span>`;
+
+  document.getElementById('buys').innerHTML = BUYS.map(b => `<div class="tr"><span class="m">${day(b.d)}</span><span>${b.g}</span><span class="r num">${b.q}</span>
+    <span class="r num ${b.st === 'возврат' ? 'refund' : ''}">${b.st === 'возврат' ? '+ ' : ''}${fmtC(b.sum, 'RUB')}</span>
+    <span class="r"><span class="chip ${b.st === 'возврат' ? 'c-est' : 'c-idle'}">${b.st}</span></span></div>`).join('');
+  const got = BUYS.filter(b => b.st === 'получено'), ref = BUYS.filter(b => b.st === 'возврат');
+  document.getElementById('buysF').innerHTML = `<span>итого</span><span class="m">возврат ${fmtC(ref.reduce((a, b) => a + b.sum, 0), 'RUB')}</span><span class="r num">${got.reduce((a, b) => a + b.q, 0)}</span><span class="r num">${fmtC(got.reduce((a, b) => a + b.sum, 0), 'RUB')}</span><span></span>`;
+
+  const unlock = k => new Date(new Date(k.at).getTime() + 7 * 864e5);   // оценка; в панели — Tradable After из Steam
+  const steamStr = d => 'Tradable After: ' + d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric', timeZone:'UTC' })
+    + ' (' + d.toLocaleTimeString('en-GB', { hour:'numeric', minute:'2-digit', second:'2-digit', timeZone:'UTC' }).replace(/^0/, '') + ') GMT';
+  const local = d => d.toLocaleString('ru-RU', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', timeZone:TZ });
+  const gmt = d => d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'UTC' }) + ' GMT';
+  const left = d => { const ms = d - TODAY; if (ms <= 0) return null; const h = Math.floor(ms / 36e5), mn = Math.floor(ms % 36e5 / 6e4); return h >= 24 ? `через ${Math.floor(h / 24)} д ${h % 24} ч` : `через ${h} ч ${mn} мин`; };
+  const held = KEYS.filter(k => left(unlock(k))), free = KEYS.filter(k => !left(unlock(k)));
+  const next = held.map(unlock).sort((a, b) => a - b)[0];
+  const sold = payouts.reduce((a, p) => a + p.k, 0);   // проданы из уже свободных — те, что на hold, продать нельзя
+  window.FREE_NOW = Math.max(0, free.reduce((a, k) => a + k.q, 0) - sold);
+  window.NEXT_FREE = next ? { n: held.filter(k => +unlock(k) === +next).reduce((a, k) => a + k.q, 0), when: local(next), left: left(next) } : null;
+  document.getElementById('hold').innerHTML = `
+    <div><span>на руках</span><b class="num">${KEYS.reduce((a, k) => a + k.q, 0) - sold}</b><small>куплено ${KEYS.reduce((a, k) => a + k.q, 0)} − продано ${sold}</small></div>
+    <div><span>можно передать</span><b class="num" style="color:var(--ac)">${Math.max(0, free.reduce((a, k) => a + k.q, 0) - sold)}</b></div>
+    <div><span>на hold</span><b class="num" style="color:var(--warn)">${held.reduce((a, k) => a + k.q, 0)}</b>${next ? `<small>ближайшие — ${local(next)}, ${left(next)}</small>` : ''}</div>`;
+  document.getElementById('keys').innerHTML = KEYS.map(k => {
+    const u = unlock(k), l = left(u);
+    return `<div class="tr"><span class="m">${day(k.d)}</span><span class="r num">${k.q}</span><span class="r num">${fmtC(k.per, c)}</span><span class="r num">${fmtC(k.per * k.q, c)}</span>
+      <span class="r">${l ? `<span class="when" title="${steamStr(u)}"><span class="chip c-warn">${local(u)}</span><small>${gmt(u)} · ${l}</small></span>` : '<span class="chip c-ok">можно</span>'}</span></div>`;
+  }).join('');
+  document.getElementById('keysF').innerHTML = `<span>итого</span><span class="r num">${KEYS.reduce((a, k) => a + k.q, 0)}</span><span></span><span class="r num">${fmtC(KEYS.reduce((a, k) => a + k.per * k.q, 0), c)}</span><span></span>`;
+}
+
+/* ── куда продать ── */
+// Набор «Принимаю» — монета и, если важно, сеть. По умолчанию — то, чем человек реально пользуется.
+const ALL = ['PayPal', 'банк', 'USDT BEP20', 'USDT TRC20', 'USDT ERC-20', 'USDC ERC-20', 'USDC BEP20', 'LTC', 'BTC', 'ETH', 'SOL'];
+const MAIN = ['PayPal', 'банк', 'USDT BEP20', 'USDT TRC20', 'USDT ERC-20', 'LTC', 'BTC'];
+let showAll = false;
+const accepted = new Set(['PayPal', 'USDT BEP20', 'USDT TRC20', 'LTC']);
+const key = ([m, net]) => net ? m + ' ' + net : m;
+let N = 0;
+function chips() {
+  const list = showAll ? ALL : MAIN;
+  document.getElementById('acc').innerHTML = list.map(m => `<button class="mchip ${accepted.has(m) ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')
+    + `<button class="mchip more" id="more">${showAll ? 'меньше' : 'ещё ' + (ALL.length - MAIN.length)}</button>`;
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const m = b.dataset.m; accepted.has(m) ? accepted.delete(m) : accepted.add(m); chips(); venues();
+if (window.NEXT_FREE) document.getElementById('freeNote').innerHTML = `сейчас свободно <b>${window.FREE_NOW}</b> · ещё <b>${window.NEXT_FREE.n}</b> освободятся ${window.NEXT_FREE.when}, ${window.NEXT_FREE.left} — тогда пересчитаю`; });
+  document.getElementById('more').onclick = () => { showAll = !showAll; chips(); };
+}
+function venues() {
+  const rows = VENUES.map(v => {
+    const watch = `<div class="watch ${v.ok ? '' : 'bad'}"><i></i>${v.ok ? `проверено ${v.t} · следующая ${v.next} · ${v.src}` : `не удалось прочитать в ${v.next === '—' ? '12:46' : v.next} — цифры от ${v.t}, устарели`}</div>`;
+    if (v.type === 'listing') return { v, net:null, watch, note:`выставить по $${v.price.toFixed(2)} и ждать; после ${v.fee * 100} % — $${(v.price * (1 - v.fee)).toFixed(3)} за ключ, если купят` };
+    const pays = v.pay === 'any-crypto' ? [...accepted].filter(m => !['PayPal', 'банк'].includes(m)).map(m => [m, null, null]) : v.pay;
+    const opts = pays.filter(p => accepted.has(key(p)));
+    if (!opts.length) return { v, net:null, watch, note: v.pay === 'any-crypto' ? 'только крипта — выбери хоть одну монету' : `нет твоих способов: у площадки ${[...new Set(v.pay.map(key))].join(', ')}` };
+    const can = v.depth == null ? N : Math.min(N, v.depth);
+    const gross = can * v.price * (1 - v.fee);
+    // лучший способ: известная комиссия важнее неизвестной; среди известных — меньшая
+    const scored = opts.map(p => ({ p, net: p[2] ? Math.max(0, gross * (1 - p[2].pct) - p[2].fix) : gross, known: !!p[2] }))
+      .sort((a, b) => Number(b.known) - Number(a.known) || b.net - a.net);
+    const b = scored[0];
+    const how = key(b.p) + (b.known ? (b.p[2].fix || b.p[2].pct ? ` · ${b.p[2].fix ? '$' + b.p[2].fix : ''}${b.p[2].fix && b.p[2].pct ? ' + ' : ''}${b.p[2].pct ? b.p[2].pct * 100 + ' %' : ''}` : ' · без комиссии') : ' · комиссия сети неизвестна');
+    const notes = [];
+    if (v.depth != null && v.depth < N) notes.push(`сразу только ${v.depth} — остальные ${N - v.depth} выставлять заявкой`);
+    if (v.depth == null && v.type === 'instant') notes.push('сколько купят разом — не проверено');
+    if (!b.known) notes.push('сумма до комиссии сети');
+    if (v.payNote) notes.push(v.payNote);
+    return { v, net:b.net, can, how, watch, note:notes.join(' · '), known:b.known };
+  });
+  rows.sort((a, b) => (b.net ?? -1) - (a.net ?? -1));
+  const best = rows.find(r => r.net != null && r.can === N && r.known && r.v.ok);
+  document.getElementById('vens').innerHTML = rows.map(r => `<div class="ven ${r === best ? 'best' : ''}">
+      <div class="name">${r.v.n} <span class="ptype ${TYPE[r.v.type][1]}">${TYPE[r.v.type][0]}</span></div>
+      <div class="net num">${r.net != null ? (r.known ? '' : '≤ ') + usd(r.net) : '<span class="m" style="font-size:13px">—</span>'}</div>
+      <div class="meta"><span><b class="num">$${r.v.price.toFixed(2)}</b> за ключ</span>${r.v.fee ? `<span>комиссия ${r.v.fee * 100} %</span>` : ''}${r.how ? `<span>${r.how}</span>` : ''}${r.can != null && r.can < N ? `<span>за ${r.can} шт</span>` : ''}</div>
+      ${r.note ? `<div class="warnl">${r.note}</div>` : ''}${r.watch}</div>`).join('');
+}
+function payList() {
+  document.getElementById('pays').innerHTML = payouts.map(p => `<div class="payrow"><span class="m">${day(p.d)}</span><span>${p.v} · ${p.k} ключ. · ${p.m}<br><span class="mono m" style="font-size:10.5px">${p.tx}</span></span><b class="num">${usd(p.usd)}</b></div>`).join('');
+  document.getElementById('payTot').textContent = usd(payouts.reduce((a, p) => a + p.usd, 0)) + ' всего';
+}
+document.getElementById('fAdd').onclick = () => {
+  const v = document.getElementById('fV').value, m = document.getElementById('fM').value;
+  const k = parseInt(document.getElementById('fK').value), u = parseFloat(document.getElementById('fU').value.replace(',', '.')), tx = document.getElementById('fT').value.trim();
+  const err = document.getElementById('fErr');
+  if (!k || !u) return err.textContent = 'нужны число ключей и сумма';
+  if (!tx) return err.textContent = 'нужен номер транзакции — без него одну выплату можно внести дважды';
+  if (payouts.some(p => p.v === v && p.tx === tx)) return err.textContent = 'эта выплата уже внесена';
+  err.textContent = '';
+  payouts.unshift({ d:'2026-10-03', v, m, k, usd:u, tx });
+  ['fK', 'fU', 'fT'].forEach(id => document.getElementById(id).value = '');
+  payList(); totals(); tables();
+  N = Math.max(0, N - k); nk.value = N; venues();
+};
+const nk = document.getElementById('nKeys');
+totals(); tables(); payList();
+N = window.FREE_NOW;   // продать можно только свободные; ключи на hold Steam не отдаст
+nk.value = N; nk.oninput = () => { N = Math.max(0, parseInt(nk.value) || 0); venues(); };
+chips(); venues();
+if (window.NEXT_FREE) document.getElementById('freeNote').innerHTML = `сейчас свободно <b>${window.FREE_NOW}</b> · ещё <b>${window.NEXT_FREE.n}</b> освободятся ${window.NEXT_FREE.when}, ${window.NEXT_FREE.left} — тогда пересчитаю`;
+</script>
+</body>
+</html>

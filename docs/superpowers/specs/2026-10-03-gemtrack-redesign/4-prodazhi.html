@@ -117,6 +117,15 @@
   .ven .warnl { grid-column:1/3; color:var(--warn); font-size:11.5px; }
   .ptype { height:18px; padding:0 7px; border-radius:999px; font-size:10px; font-weight:500; display:inline-flex; align-items:center; }
   .pt-instant { background:var(--acs); color:var(--ac); } .pt-bid { background:var(--s3); color:var(--ink2); } .pt-listing { background:transparent; color:var(--mute); border:1px dashed #ffffff26; }
+  .accept { display:flex; flex-direction:column; gap:6px; }
+  .accept > span { color:var(--ink2); font-size:12px; }
+  .chips { display:flex; flex-wrap:wrap; gap:4px; }
+  .mchip { height:26px; padding:0 10px; border-radius:999px; background:var(--s2); border:1px solid var(--line); color:var(--ink2); font-size:11.5px; transition:background-color 150ms, color 150ms, border-color 150ms; }
+  .mchip.on { background:var(--acs); color:var(--ac); border-color:#b8f25c44; }
+  .mchip.more { border-style:dashed; color:var(--mute); }
+  .watch { grid-column:1/3; display:flex; align-items:center; gap:6px; color:var(--mute); font-size:10.5px; }
+  .watch i { width:6px; height:6px; border-radius:999px; background:var(--ac); }
+  .watch.bad i { background:var(--warn); }
   .payrow { display:grid; grid-template-columns:62px minmax(0,1fr) auto; gap:8px; align-items:center; height:40px; border-top:1px solid var(--line); font-size:12px; }
   .payrow:first-child { border-top:0; }
   .form { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
@@ -198,10 +207,10 @@
   <aside class="side">
     <section class="panel">
       <div class="ph">Куда продать ключи <span class="n">по сумме на руки</span></div>
-      <div class="ctrl">продаю <label class="field"><input id="nKeys" inputmode="numeric"><span>ключей</span></label> выплата
-        <div class="seg" id="pay"><button class="on" data-p="crypto">крипта</button><button data-p="paypal">PayPal</button></div></div>
+      <div class="ctrl">продаю <label class="field"><input id="nKeys" inputmode="numeric"><span>ключей</span></label></div>
+      <div class="accept"><span>Принимаю:</span><div class="chips" id="acc"></div></div>
       <div id="vens"></div>
-      <div class="note" style="margin-top:2px">Цены проверены 3 окт 2026 (§20 спецификации). <b>витрина</b> — цена выставленных лотов: столько получишь, только если купят.</div>
+      <div class="note" style="margin-top:2px">Цены и комиссии — проверены 3 окт 2026 (§20); время «проверено» в макете условное. <b>витрина</b> — цена выставленных лотов: столько получишь, только если купят. <b>≤</b> — до комиссии сети, она у площадки заранее не указана.</div>
     </section>
 
     <section class="panel">
@@ -254,13 +263,24 @@ const KEYS = [
 ];
 const TODAY = new Date('2026-10-03T12:00:00');
 
-// Площадки: цены и комиссии — проверены 2026-10-03 (§20). depth — сколько берут по этой цене, если известно.
+// Площадки: цены, глубина и способы выплаты — проверены 2026-10-03 (§20 спецификации).
+// method + coin + network: USDT в BEP20 и USDT в ERC-20 — разные способы.
+// fee: { fix, pct } или null, если комиссия заранее неизвестна.
 const VENUES = [
-  { n:'Merchant.TF', price:1.70, type:'instant', fee:0, payout:{ crypto:{ fix:0, pct:0, how:'LTC без комиссии' }, paypal:{ fix:.25, pct:.02, how:'$0.25 + 2 %' } }, depth:null, src:'страница', t:'3 окт' },
-  { n:'Clover.tf', price:1.66, type:'instant', fee:0, payout:{ crypto:{ fix:0, pct:0, how:'всё включено' } }, depth:4000, src:'API', t:'3 окт' },
-  { n:'instant.tf', price:1.62, type:'instant', fee:0, payout:{ crypto:{ fix:0, pct:0, how:'без скрытых комиссий' } }, depth:null, src:'страница', t:'3 окт' },
-  { n:'Belethor', price:1.66, type:'bid', fee:.0025, payout:{ crypto:{ fix:0, pct:0, how:'USDT/USDC' } }, depth:20, src:'страница', t:'3 окт' },
-  { n:'Mannco.store', price:1.76, type:'listing', fee:.05, payout:{ paypal:{ fix:0, pct:0, how:'банк / PayPal' }, crypto:null }, depth:null, src:'страница', t:'3 окт' },
+  { n:'Merchant.TF', price:1.70, type:'instant', fee:0, depth:null, src:'страница', t:'12:40', next:'12:55', ok:true,
+    pay:[ ['PayPal', null, { fix:.25, pct:.02 }], ['LTC', null, { fix:0, pct:0 }], ['BTC', null, { fix:.96, pct:0 }], ['ETH', null, { fix:.12, pct:0 }],
+          ['USDT', 'ERC-20', { fix:.12, pct:0 }], ['USDC', 'ERC-20', { fix:.12, pct:0 }] ] },
+  { n:'Clover.tf', price:1.66, type:'instant', fee:0, depth:4000, src:'API', t:'12:42', next:'12:52', ok:true,
+    // без комиссии подтверждён только USDT BEP20; у остальных «котировка всё включено», но сколько съест сеть — заранее не видно
+    pay:[ ['USDT', 'BEP20', { fix:0, pct:0 }], ['USDT', 'TRC20', null], ['USDT', 'ERC-20', null], ['USDC', 'ERC-20', null],
+          ['LTC', null, null], ['BTC', null, null], ['ETH', null, null], ['SOL', null, null] ] },
+  { n:'instant.tf', price:1.62, type:'instant', fee:0, depth:957, src:'страница', t:'12:38', next:'12:53', ok:true,
+    // только крипта; список монет и комиссии — на экране вывода, не проверены: совпадает с любой принятой криптой
+    pay:'any-crypto', payNote:'список монет не проверен' },
+  { n:'Belethor', price:1.66, type:'bid', fee:.0025, depth:20, src:'страница', t:'12:31', next:'—', ok:false,
+    pay:[ ['USDT', 'BEP20', { fix:.01, pct:0 }], ['USDC', 'BEP20', { fix:.01, pct:0 }] ] },
+  { n:'Mannco.store', price:1.76, type:'listing', fee:.05, depth:null, src:'страница', t:'12:40', next:'12:55', ok:true,
+    pay:[ ['PayPal', null, null], ['банк', null, null] ] },
 ];
 const TYPE = { instant:['мгновенно','pt-instant'], bid:['заявка','pt-bid'], listing:['витрина','pt-listing'] };
 
@@ -324,24 +344,48 @@ function tables() {
 }
 
 /* ── куда продать ── */
-let N = 0, PAY = 'crypto';
+// Набор «Принимаю» — монета и, если важно, сеть. По умолчанию — то, чем человек реально пользуется.
+const ALL = ['PayPal', 'банк', 'USDT BEP20', 'USDT TRC20', 'USDT ERC-20', 'USDC ERC-20', 'USDC BEP20', 'LTC', 'BTC', 'ETH', 'SOL'];
+const MAIN = ['PayPal', 'банк', 'USDT BEP20', 'USDT TRC20', 'USDT ERC-20', 'LTC', 'BTC'];
+let showAll = false;
+const accepted = new Set(['PayPal', 'USDT BEP20', 'USDT TRC20', 'LTC']);
+const key = ([m, net]) => net ? m + ' ' + net : m;
+let N = 0;
+function chips() {
+  const list = showAll ? ALL : MAIN;
+  document.getElementById('acc').innerHTML = list.map(m => `<button class="mchip ${accepted.has(m) ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')
+    + `<button class="mchip more" id="more">${showAll ? 'меньше' : 'ещё ' + (ALL.length - MAIN.length)}</button>`;
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const m = b.dataset.m; accepted.has(m) ? accepted.delete(m) : accepted.add(m); chips(); venues(); });
+  document.getElementById('more').onclick = () => { showAll = !showAll; chips(); };
+}
 function venues() {
   const rows = VENUES.map(v => {
-    const po = v.payout[PAY];
-    if (v.type === 'listing') return { v, net:null, note:`выставить по $${v.price.toFixed(2)} и ждать; после 5 % — $${(v.price * (1 - v.fee)).toFixed(3)} за ключ, если купят` };
-    if (!po) return { v, net:null, note:'этот способ выплаты площадка не поддерживает' };
+    const watch = `<div class="watch ${v.ok ? '' : 'bad'}"><i></i>${v.ok ? `проверено ${v.t} · следующая ${v.next} · ${v.src}` : `не удалось прочитать в ${v.next === '—' ? '12:46' : v.next} — цифры от ${v.t}, устарели`}</div>`;
+    if (v.type === 'listing') return { v, net:null, watch, note:`выставить по $${v.price.toFixed(2)} и ждать; после ${v.fee * 100} % — $${(v.price * (1 - v.fee)).toFixed(3)} за ключ, если купят` };
+    const pays = v.pay === 'any-crypto' ? [...accepted].filter(m => !['PayPal', 'банк'].includes(m)).map(m => [m, null, null]) : v.pay;
+    const opts = pays.filter(p => accepted.has(key(p)));
+    if (!opts.length) return { v, net:null, watch, note: v.pay === 'any-crypto' ? 'только крипта — выбери хоть одну монету' : `нет твоих способов: у площадки ${[...new Set(v.pay.map(key))].join(', ')}` };
     const can = v.depth == null ? N : Math.min(N, v.depth);
     const gross = can * v.price * (1 - v.fee);
-    const net = Math.max(0, gross * (1 - po.pct) - po.fix);
-    return { v, net, can, how:po.how, note: v.depth != null && v.depth < N ? `сразу только ${v.depth} — остальные ${N - v.depth} выставлять заявкой` : v.depth == null && v.type === 'instant' ? 'сколько купят разом — не проверено' : '' };
+    // лучший способ: известная комиссия важнее неизвестной; среди известных — меньшая
+    const scored = opts.map(p => ({ p, net: p[2] ? Math.max(0, gross * (1 - p[2].pct) - p[2].fix) : gross, known: !!p[2] }))
+      .sort((a, b) => Number(b.known) - Number(a.known) || b.net - a.net);
+    const b = scored[0];
+    const how = key(b.p) + (b.known ? (b.p[2].fix || b.p[2].pct ? ` · ${b.p[2].fix ? '$' + b.p[2].fix : ''}${b.p[2].fix && b.p[2].pct ? ' + ' : ''}${b.p[2].pct ? b.p[2].pct * 100 + ' %' : ''}` : ' · без комиссии') : ' · комиссия сети неизвестна');
+    const notes = [];
+    if (v.depth != null && v.depth < N) notes.push(`сразу только ${v.depth} — остальные ${N - v.depth} выставлять заявкой`);
+    if (v.depth == null && v.type === 'instant') notes.push('сколько купят разом — не проверено');
+    if (!b.known) notes.push('сумма до комиссии сети');
+    if (v.payNote) notes.push(v.payNote);
+    return { v, net:b.net, can, how, watch, note:notes.join(' · '), known:b.known };
   });
   rows.sort((a, b) => (b.net ?? -1) - (a.net ?? -1));
-  const best = rows.find(r => r.net != null && r.can === N);
+  const best = rows.find(r => r.net != null && r.can === N && r.known && r.v.ok);
   document.getElementById('vens').innerHTML = rows.map(r => `<div class="ven ${r === best ? 'best' : ''}">
       <div class="name">${r.v.n} <span class="ptype ${TYPE[r.v.type][1]}">${TYPE[r.v.type][0]}</span></div>
-      <div class="net num">${r.net != null ? usd(r.net) : '<span class="m" style="font-size:13px">—</span>'}</div>
-      <div class="meta"><span><b class="num">$${r.v.price.toFixed(2)}</b> за ключ</span>${r.v.fee ? `<span>комиссия ${r.v.fee * 100} %</span>` : ''}${r.how ? `<span>${r.how}</span>` : ''}${r.can != null && r.can < N ? `<span>за ${r.can} шт</span>` : ''}<span class="src ${r.v.src === 'API' ? '' : 'na'}">${r.v.src} · ${r.v.t}</span></div>
-      ${r.note ? `<div class="warnl">${r.note}</div>` : ''}</div>`).join('');
+      <div class="net num">${r.net != null ? (r.known ? '' : '≤ ') + usd(r.net) : '<span class="m" style="font-size:13px">—</span>'}</div>
+      <div class="meta"><span><b class="num">$${r.v.price.toFixed(2)}</b> за ключ</span>${r.v.fee ? `<span>комиссия ${r.v.fee * 100} %</span>` : ''}${r.how ? `<span>${r.how}</span>` : ''}${r.can != null && r.can < N ? `<span>за ${r.can} шт</span>` : ''}</div>
+      ${r.note ? `<div class="warnl">${r.note}</div>` : ''}${r.watch}</div>`).join('');
 }
 function payList() {
   document.getElementById('pays').innerHTML = payouts.map(p => `<div class="payrow"><span class="m">${day(p.d)}</span><span>${p.v} · ${p.k} ключ. · ${p.m}<br><span class="mono m" style="font-size:10.5px">${p.tx}</span></span><b class="num">${usd(p.usd)}</b></div>`).join('');
@@ -359,12 +403,11 @@ document.getElementById('fAdd').onclick = () => {
   ['fK', 'fU', 'fT'].forEach(id => document.getElementById(id).value = '');
   payList(); totals();
 };
-document.querySelectorAll('#pay button').forEach(b => b.onclick = () => { PAY = b.dataset.p; document.querySelectorAll('#pay button').forEach(x => x.classList.toggle('on', x === b)); venues(); });
 const nk = document.getElementById('nKeys');
 totals(); tables(); payList();
 N = KEYS.reduce((a, k) => a + k.q, 0) - payouts.reduce((a, p) => a + p.k, 0);
 nk.value = N; nk.oninput = () => { N = Math.max(0, parseInt(nk.value) || 0); venues(); };
-venues();
+chips(); venues();
 </script>
 </body>
 </html>

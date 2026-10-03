@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { nf, post, useJson, type Settings, type State, type Unit } from '../lib/api.ts'
 import { Button, Field, ItemIcon, Label, Note, Segmented } from './ui.tsx'
 import { Modal } from './Modal.tsx'
@@ -62,13 +62,18 @@ export function Tune({
   onClose,
   state,
   unit,
+  initial,
 }: {
   open: boolean
   onClose: () => void
   state: State
   unit: Unit
+  // С какой вкладки открыть. Без него — как раньше: вкладка остаётся той,
+  // на которой окно закрыли.
+  initial?: 'run' | 'rules'
 }) {
-  const [tab, setTab] = useState<'run' | 'rules'>('run')
+  const [tab, setTab] = useState<'run' | 'rules'>(initial ?? 'run')
+  useEffect(() => { if (open && initial) setTab(initial) }, [open, initial])
 
   return (
     <Modal

@@ -59,6 +59,8 @@
    он не занимает места и ничего не сдвигает. */
 .v2 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
+.v2 .v2-h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+
 /* ── слои ── */
 
 .v2 .v2-panel { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r1); padding: 16px; }
@@ -163,6 +165,100 @@
 /* ── скелетон ── */
 
 .v2 .v2-skel { background: var(--s2); border-radius: var(--r2); animation: v2-breathe 1.6s ease-in-out infinite; }
+
+/* ── раскладка (§4.2) ──
+ *
+ * Широко (≥ 1100): рейка 64 · страница · правая колонка 360–392; экран не
+ * прокручивается целиком — прокручиваются страница и колонка, каждая своя.
+ * Уже 1100 (§4.4): правая колонка уходит под страницу, прокрутка — общая.
+ * Уже 768 (§4.4): рейки нет, экраны — строкой под полосой.
+ * Других порогов нет.
+ */
+
+.v2 .v2-app {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) clamp(360px, 24vw, 392px);
+  grid-template-rows: 60px minmax(0, 1fr);
+  height: 100svh;
+}
+.v2 .v2-rail { grid-column: 1; grid-row: 1 / 3; }
+.v2 .v2-top { grid-column: 2 / 4; grid-row: 1; }
+.v2 .v2-railrow { display: none; }
+.v2 .v2-page { grid-column: 2; grid-row: 2; margin: 0 0 16px 4px; }
+.v2 .v2-side { grid-column: 3; grid-row: 2; padding: 0 16px 16px 16px; overflow: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+
+.v2 .v2-page {
+  position: relative; min-width: 0; min-height: 0;
+  background: var(--s1); border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+}
+.v2 .v2-page-scroll { position: absolute; inset: 0; overflow: auto; padding: 20px 20px 96px; scrollbar-width: thin; }
+
+/* ── рейка ── */
+
+.v2 .v2-rail { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 0; }
+.v2 .v2-logo { width: 40px; height: 40px; display: grid; place-items: center; margin-bottom: 12px; color: var(--ac); filter: drop-shadow(0 0 8px var(--acg)); }
+.v2 .v2-rail-grp { background: var(--s1); border: 1px solid var(--line); border-radius: 999px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.v2 .v2-rail-sp { flex: 1; }
+
+.v2 .v2-railrow { gap: 6px; padding: 0 16px 12px; overflow-x: auto; scrollbar-width: none; }
+.v2 .v2-railrow-it {
+  height: 32px; flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px;
+  border-radius: 999px; background: var(--s1); border: 1px solid var(--line); color: var(--ink2); font-size: 12px;
+  transition: background-color var(--t-color), color var(--t-color);
+}
+.v2 .v2-railrow-it:hover { background: var(--s2); color: var(--ink); }
+.v2 .v2-railrow-it[aria-current='page'] { background: var(--ink); color: var(--bg); }
+
+/* ── верхняя полоса ── */
+
+.v2 .v2-top { display: flex; align-items: center; gap: 8px; padding: 0 16px 0 4px; min-width: 0; }
+/* KPI режутся, а не толкают соседей: полоса никогда не переносится. */
+.v2 .v2-top-kpi { display: flex; gap: 8px; align-items: center; min-width: 0; overflow: hidden; flex: 1; }
+.v2 .v2-top-right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
+
+.v2 .v2-acc { position: relative; flex: none; min-width: 0; }
+.v2 .v2-acc-btn { padding-left: 4px; cursor: pointer; transition: background-color var(--t-color); }
+.v2 .v2-acc-btn:hover { background: var(--s2); }
+.v2 .v2-acc-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.v2 .v2-ava {
+  width: 24px; height: 24px; border-radius: 999px; flex: none; display: grid; place-items: center;
+  background: linear-gradient(135deg, #3a3a40, #202024); color: var(--ink); font-size: 11px;
+}
+
+.v2 .v2-menu {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 220px; margin: 0; padding: 6px; list-style: none;
+  background: var(--s1); border: 1px solid var(--line2); border-radius: var(--r1); box-shadow: 0 20px 50px #000000aa;
+  animation: v2-in var(--t-in) ease-out;
+}
+.v2 .v2-menu-it {
+  width: 100%; height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: var(--r2);
+  text-align: left; transition: background-color var(--t-color);
+}
+.v2 .v2-menu-it:hover { background: var(--s2); }
+.v2 .v2-menu-it[aria-selected='true'] { box-shadow: inset 0 0 0 1px var(--ac); }
+.v2 .v2-menu-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
+   базового с той же специфичностью, иначе базовое его перебьёт (§10). */
+
+@media (max-width: 1099.98px) {
+  .v2 .v2-app { grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: 60px auto auto; height: auto; min-height: 100svh; }
+  .v2 .v2-rail { grid-row: 1 / 4; position: sticky; top: 0; height: 100svh; }
+  .v2 .v2-top { grid-column: 2; }
+  /* Колонка ушла вниз — правый отступ страницы теперь свой, а не зазор до колонки. */
+  .v2 .v2-page { margin: 0 16px 16px 4px; min-height: calc(100svh - 76px); }
+  .v2 .v2-page-scroll { position: static; overflow: visible; }
+  .v2 .v2-side { grid-column: 2; grid-row: 3; padding: 0 16px 16px 4px; overflow: visible; }
+}
+
+@media (max-width: 767.98px) {
+  .v2 .v2-app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 60px auto auto auto; }
+  .v2 .v2-rail { display: none; }
+  .v2 .v2-top { grid-column: 1; padding: 0 16px; }
+  .v2 .v2-railrow { display: flex; grid-column: 1; grid-row: 2; }
+  .v2 .v2-page { grid-column: 1; grid-row: 3; margin: 0 16px 16px; }
+  .v2 .v2-side { grid-column: 1; grid-row: 4; padding: 0 16px 16px; }
+}
 
 /* §4.3: без движения для тех, кто его отключил. */
 @media (prefers-reduced-motion: reduce) {

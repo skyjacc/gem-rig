@@ -18,7 +18,16 @@
 // и переходим к следующей позиции, а в журнале видно обе цены.
 
 import { settings } from './settings.ts'
-import { balance, bestOffer, buyOne, type Currency } from './market.ts'
+import { balance, bestOffer, buyInfo, buyOne, type Currency } from './market.ts'
+
+// Паузы закупки. Вынесены, чтобы тесты шли без ожидания.
+//   settle   сколько дать площадке записать покупку, прежде чем спрашивать
+//   gap      между проверками по custom_id
+//   tries    сколько раз спросить
+//   between  между лотами
+export const pace = { settle: 2000, gap: 3000, tries: 3, between: 350 }
+
+const sleep = (ms: number) => (ms > 0 ? new Promise(r => setTimeout(r, ms)) : Promise.resolve())
 
 export type Line = { name: string; take: number; price: number }
 
@@ -63,6 +72,50 @@ export function after(reason: string, failsInARow: number): 'стоп' | 'поз
   if (reason === 'цена выросла' || reason === 'нет лотов' || reason === 'цена ушла') return 'позиция'
   if (reason === 'отказ') return failsInARow >= 3 ? 'дальше' : 'ещё'
   return 'дальше'
+}
+
+// Что ответила площадка на вопрос «что с покупкой по custom_id».
+//
+// «Отказ» — только когда площадка сама это сказала: stage 5, трейд отменён.
+// «not found» отказом не считается: видна ли покупка по custom_id сразу,
+// не доказано, а ложный отказ исказил бы журнал. Это промежуточное
+// «не найдено» — по нему проверку повторяют, а в журнал оно не попадает.
+export function judgeBuyInfo(res: any): { reason: 'куплено' | 'отказ' | 'неясно' | 'не найдено'; paid: number | null; detail: string } {
+  if (res?.success === false && res?.error === 'not found') {
+    return { reason: 'не найдено', paid: null, detail: 'площадка не знает эту покупку' }
+  }
+  if (!res?.success || !res?.data) {
+    return { reason: 'неясно', paid: null, detail: 'проверка не удалась: ' + String(res?.error ?? 'нет ответа').slice(0, 60) }
+  }
+  const stage = String(res.data.stage ?? '')
+  const paid = Number(res.data.paid)
+  if (stage === '1' || stage === '2') return { reason: 'куплено', paid: paid > 0 ? paid : null, detail: 'подтверждено по custom_id' }
+  if (stage === '5') return { reason: 'отказ', paid: null, detail: 'трейд отменён площадкой, деньги возвращаются' }
+  return { reason: 'неясно', paid: null, detail: 'площадка вернула stage ' + (stage || '—') }
+}
+
+type Settled = { reason: 'куплено' | 'отказ' | 'неясно'; paid: number | null; detail: string }
+
+// Ответ на покупку потерялся. Заново не покупаем — спрашиваем, что стало
+// с этой покупкой. «not found» сразу может значить «ещё не записалась»,
+// поэтому до трёх вопросов с паузой. Отказом он не становится никогда:
+// отсутствие ответа — не доказательство, что покупки нет.
+//
+// buyInfo сейчас не бросает (call в market.ts ловит сбои сам), но запись
+// в журнале не должна застрять на «проверяю…», если это когда-то изменится:
+// исключение здесь — тоже «неясно».
+export async function resolveAmbiguous(key: string, customId: string, ask: typeof buyInfo = buyInfo): Promise<Settled> {
+  await sleep(pace.settle)
+  for (let i = 0; i < pace.tries; i++) {
+    if (i) await sleep(pace.gap)
+    let res: any
+    try { res = await ask(key, customId) } catch (e: any) {
+      res = { success: false, ambiguous: true, error: String(e?.message ?? e) }
+    }
+    const v = judgeBuyInfo(res)
+    if (v.reason !== 'не найдено') return v as Settled
+  }
+  return { reason: 'неясно', paid: null, detail: 'площадка не нашла покупку по custom_id за ' + pace.tries + ' проверки' }
 }
 
 // Сверка заказа с тем, что сервер сам видел на площадке.
@@ -117,6 +170,7 @@ export type Entry = {
   reason: 'куплено' | 'цена выросла' | 'нет лотов' | 'цена ушла' | 'нет денег' | 'отказ' | 'неясно' | 'остановлено'
   detail?: string
   planned?: number   // сколько собирались платить
+  customId?: string  // с каким custom_id ушёл buy — по нему площадка отдаёт статус
 }
 
 type Job = {
@@ -297,12 +351,41 @@ async function run(lines: Line[], key: string, currency: Currency, tolerance: nu
               ? undefined
               : res?.success ? 'предложений не осталось' : 'площадка: ' + String(res?.error ?? 'нет ответа').slice(0, 60)
           } else {
-            const r: any = await buyOne(key, w.name, call.price, currency, 'gt-' + Date.now() + '-' + w.left)
+            const customId = 'gt-' + Date.now() + '-' + w.left
+            const r: any = await buyOne(key, w.name, call.price, currency, customId)
+
+            // Ответ потерялся: лот мог уже списаться. Второго buy нет ни при
+            // каком исходе — закупка встаёт, а что стало с этой покупкой,
+            // спрашиваем у площадки по custom_id.
+            if (r?.ambiguous) {
+              job.done++
+              const e: Entry = {
+                ts: Date.now(), gem: w.gem, ok: false, price: call.price, planned: w.price,
+                reason: 'неясно', detail: 'ответ не получен — проверяю по custom_id…', customId,
+              }
+              note(e)
+              w.why = 'неясно'
+              mark(i)
+              push()
+
+              const v = await resolveAmbiguous(key, customId)
+              e.reason = v.reason
+              e.detail = v.detail + (v.reason === 'неясно' ? ' — сверьте историю покупок' : '') + '; закупка остановлена'
+              if (v.reason === 'куплено') {
+                e.ok = true
+                if (v.paid) e.price = v.paid
+                job.ok++
+                job.spent += e.price
+                w.left--
+              }
+              mark(i)
+              push()
+              return
+            }
+
             ok = !!r?.success
-            reason = ok ? 'куплено' : r?.ambiguous ? 'неясно' : classify(r?.error ?? '')
-            detail = ok ? undefined
-              : r?.ambiguous ? 'ответ не получен — проверьте историю покупок, закупка остановлена'
-                : String(r?.error ?? '').slice(0, 80)
+            reason = ok ? 'куплено' : classify(r?.error ?? '')
+            detail = ok ? undefined : String(r?.error ?? '').slice(0, 80)
           }
 
           job.done++
@@ -328,7 +411,7 @@ async function run(lines: Line[], key: string, currency: Currency, tolerance: nu
             if (step === 'дальше') { mark(i); break }
           }
 
-          await new Promise(res2 => setTimeout(res2, 350))
+          await sleep(pace.between)
         }
       }
     }

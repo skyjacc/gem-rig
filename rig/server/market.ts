@@ -229,4 +229,10 @@ export function buyOne(key: string, hashName: string, max: number, currency: Cur
   })
 }
 
+// Что стало с покупкой, ответ на которую потерялся. custom_id мы сами
+// передали в buy — по нему площадка отдаёт статус, ничего не покупая.
+// Неизвестный custom_id: {"success":false,"error":"not found"} (проверено 2026-10-04).
+export const buyInfo = (key: string, customId: string) =>
+  call('get-buy-info-by-custom-id', key, { custom_id: customId })
+
 export const goal = () => settings().goal

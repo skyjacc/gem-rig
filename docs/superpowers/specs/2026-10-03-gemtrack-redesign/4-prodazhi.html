@@ -85,7 +85,14 @@
   .m { color:var(--mute); }
   .sales .th, .sales .tr, .sales .tf { grid-template-columns:62px minmax(0,1.4fr) 92px 82px 82px 96px; }
   .buys .th, .buys .tr, .buys .tf { grid-template-columns:62px minmax(0,1fr) 54px 92px 120px; }
-  .keys .th, .keys .tr, .keys .tf { grid-template-columns:62px 52px 92px 92px minmax(0,1fr); }
+  .keys .th, .keys .tr, .keys .tf { grid-template-columns:56px 40px 84px 84px minmax(0,1.3fr); }
+  .hold { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; background:var(--line); border-bottom:1px solid var(--line); }
+  .hold div { background:var(--s2); padding:10px 14px; }
+  .hold span { display:block; color:var(--mute); font-size:11px; }
+  .hold b { display:block; font-size:18px; font-weight:500; margin-top:3px; }
+  .hold small { display:block; color:var(--ink2); font-size:11px; margin-top:2px; }
+  .when { display:inline-flex; flex-direction:column; align-items:flex-end; line-height:1.3; cursor:help; }
+  .when small { color:var(--mute); font-size:10.5px; }
   .fee { color:var(--ink2); }
   .got { color:var(--ac); font-weight:500; }
   .refund { color:var(--est); }
@@ -194,11 +201,12 @@
         <section>
           <div class="sech"><h2>Ключи Mann Co.</h2><span class="n">куплены на деньги кошелька</span></div>
           <div class="tbox keys">
-            <div class="th"><span>день</span><span class="r">шт</span><span class="r">за шт</span><span class="r">сумма</span><span class="r">передать можно</span></div>
+            <div class="hold" id="hold"></div>
+            <div class="th"><span>день</span><span class="r">шт</span><span class="r">за шт</span><span class="r">сумма</span><span class="r">можно передать</span></div>
             <div id="keys"></div>
             <div class="tf" id="keysF"></div>
           </div>
-          <div class="note">Даты «передать можно» — из инвентаря TF2 (С5); до подключения — <span class="src e">оценка · 7 дней</span>.</div>
+          <div class="note">Время — по Бухаресту (настройка пользователя), в подсказке — GMT и строка Steam. В панели — точное «Tradable After» по каждому ключу (С5); до подключения — <span class="src e">оценка</span>: время покупки + 7 суток.</div>
         </section>
       </div>
     </div>
@@ -208,6 +216,7 @@
     <section class="panel">
       <div class="ph">Куда продать ключи <span class="n">по сумме на руки</span></div>
       <div class="ctrl">продаю <label class="field"><input id="nKeys" inputmode="numeric"><span>ключей</span></label></div>
+      <div class="note" id="freeNote" style="margin:0"></div>
       <div class="accept"><span>Принимаю:</span><div class="chips" id="acc"></div></div>
       <div id="vens"></div>
       <div class="note" style="margin-top:2px">Цены и комиссии — проверены 3 окт 2026 (§20); время «проверено» в макете условное. <b>витрина</b> — цена выставленных лотов: столько получишь, только если купят. <b>≤</b> — до комиссии сети, она у площадки заранее не указана.</div>
@@ -259,9 +268,11 @@ const BUYS = [
   { d:'2026-09-14', g:'NaVi', q:8, sum:47.20, st:'получено' },
 ];
 const KEYS = [
-  { d:'2026-09-24', q:6, per:100.40 }, { d:'2026-09-28', q:3, per:101.10 }, { d:'2026-09-30', q:2, per:101.25 },
+  { d:'2026-09-24', at:'2026-09-24T18:42:10Z', q:6, per:100.40 }, { d:'2026-09-27', at:'2026-09-27T14:23:51Z', q:2, per:101.10 },
+  { d:'2026-09-27', at:'2026-09-27T21:05:33Z', q:1, per:101.30 }, { d:'2026-09-30', at:'2026-09-30T09:17:02Z', q:2, per:101.25 },
 ];
-const TODAY = new Date('2026-10-03T12:00:00');
+const TODAY = new Date('2026-10-03T12:00:00Z');
+const TZ = 'Europe/Bucharest';   // часовой пояс пользователя — настройка; по умолчанию Румыния
 
 // Площадки: цены, глубина и способы выплаты — проверены 2026-10-03 (§20 спецификации).
 // method + coin + network: USDT в BEP20 и USDT в ERC-20 — разные способы.
@@ -335,10 +346,25 @@ function tables() {
   const got = BUYS.filter(b => b.st === 'получено'), ref = BUYS.filter(b => b.st === 'возврат');
   document.getElementById('buysF').innerHTML = `<span>итого</span><span class="m">возврат ${fmtC(ref.reduce((a, b) => a + b.sum, 0), 'RUB')}</span><span class="r num">${got.reduce((a, b) => a + b.q, 0)}</span><span class="r num">${fmtC(got.reduce((a, b) => a + b.sum, 0), 'RUB')}</span><span></span>`;
 
+  const unlock = k => new Date(new Date(k.at).getTime() + 7 * 864e5);   // оценка; в панели — Tradable After из Steam
+  const steamStr = d => 'Tradable After: ' + d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric', timeZone:'UTC' })
+    + ' (' + d.toLocaleTimeString('en-GB', { hour:'numeric', minute:'2-digit', second:'2-digit', timeZone:'UTC' }).replace(/^0/, '') + ') GMT';
+  const local = d => d.toLocaleString('ru-RU', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', timeZone:TZ });
+  const gmt = d => d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'UTC' }) + ' GMT';
+  const left = d => { const ms = d - TODAY; if (ms <= 0) return null; const h = Math.floor(ms / 36e5), mn = Math.floor(ms % 36e5 / 6e4); return h >= 24 ? `через ${Math.floor(h / 24)} д ${h % 24} ч` : `через ${h} ч ${mn} мин`; };
+  const held = KEYS.filter(k => left(unlock(k))), free = KEYS.filter(k => !left(unlock(k)));
+  const next = held.map(unlock).sort((a, b) => a - b)[0];
+  const sold = payouts.reduce((a, p) => a + p.k, 0);   // проданы из уже свободных — те, что на hold, продать нельзя
+  window.FREE_NOW = Math.max(0, free.reduce((a, k) => a + k.q, 0) - sold);
+  window.NEXT_FREE = next ? { n: held.filter(k => +unlock(k) === +next).reduce((a, k) => a + k.q, 0), when: local(next), left: left(next) } : null;
+  document.getElementById('hold').innerHTML = `
+    <div><span>на руках</span><b class="num">${KEYS.reduce((a, k) => a + k.q, 0) - sold}</b><small>куплено ${KEYS.reduce((a, k) => a + k.q, 0)} − продано ${sold}</small></div>
+    <div><span>можно передать</span><b class="num" style="color:var(--ac)">${Math.max(0, free.reduce((a, k) => a + k.q, 0) - sold)}</b></div>
+    <div><span>на hold</span><b class="num" style="color:var(--warn)">${held.reduce((a, k) => a + k.q, 0)}</b>${next ? `<small>ближайшие — ${local(next)}, ${left(next)}</small>` : ''}</div>`;
   document.getElementById('keys').innerHTML = KEYS.map(k => {
-    const free = new Date(new Date(k.d + 'T12:00:00').getTime() + 7 * 864e5), left = Math.ceil((free - TODAY) / 864e5);
+    const u = unlock(k), l = left(u);
     return `<div class="tr"><span class="m">${day(k.d)}</span><span class="r num">${k.q}</span><span class="r num">${fmtC(k.per, c)}</span><span class="r num">${fmtC(k.per * k.q, c)}</span>
-      <span class="r">${left > 0 ? `<span class="chip c-warn">через ${left} дн</span>` : '<span class="chip c-ok">можно</span>'}</span></div>`;
+      <span class="r">${l ? `<span class="when" title="${steamStr(u)}"><span class="chip c-warn">${local(u)}</span><small>${gmt(u)} · ${l}</small></span>` : '<span class="chip c-ok">можно</span>'}</span></div>`;
   }).join('');
   document.getElementById('keysF').innerHTML = `<span>итого</span><span class="r num">${KEYS.reduce((a, k) => a + k.q, 0)}</span><span></span><span class="r num">${fmtC(KEYS.reduce((a, k) => a + k.per * k.q, 0), c)}</span><span></span>`;
 }
@@ -355,7 +381,8 @@ function chips() {
   const list = showAll ? ALL : MAIN;
   document.getElementById('acc').innerHTML = list.map(m => `<button class="mchip ${accepted.has(m) ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')
     + `<button class="mchip more" id="more">${showAll ? 'меньше' : 'ещё ' + (ALL.length - MAIN.length)}</button>`;
-  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const m = b.dataset.m; accepted.has(m) ? accepted.delete(m) : accepted.add(m); chips(); venues(); });
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const m = b.dataset.m; accepted.has(m) ? accepted.delete(m) : accepted.add(m); chips(); venues();
+if (window.NEXT_FREE) document.getElementById('freeNote').innerHTML = `сейчас свободно <b>${window.FREE_NOW}</b> · ещё <b>${window.NEXT_FREE.n}</b> освободятся ${window.NEXT_FREE.when}, ${window.NEXT_FREE.left} — тогда пересчитаю`; });
   document.getElementById('more').onclick = () => { showAll = !showAll; chips(); };
 }
 function venues() {
@@ -401,13 +428,15 @@ document.getElementById('fAdd').onclick = () => {
   err.textContent = '';
   payouts.unshift({ d:'2026-10-03', v, m, k, usd:u, tx });
   ['fK', 'fU', 'fT'].forEach(id => document.getElementById(id).value = '');
-  payList(); totals();
+  payList(); totals(); tables();
+  N = Math.max(0, N - k); nk.value = N; venues();
 };
 const nk = document.getElementById('nKeys');
 totals(); tables(); payList();
-N = KEYS.reduce((a, k) => a + k.q, 0) - payouts.reduce((a, p) => a + p.k, 0);
+N = window.FREE_NOW;   // продать можно только свободные; ключи на hold Steam не отдаст
 nk.value = N; nk.oninput = () => { N = Math.max(0, parseInt(nk.value) || 0); venues(); };
 chips(); venues();
+if (window.NEXT_FREE) document.getElementById('freeNote').innerHTML = `сейчас свободно <b>${window.FREE_NOW}</b> · ещё <b>${window.NEXT_FREE.n}</b> освободятся ${window.NEXT_FREE.when}, ${window.NEXT_FREE.left} — тогда пересчитаю`;
 </script>
 </body>
 </html>

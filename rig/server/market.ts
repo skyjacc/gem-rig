@@ -14,6 +14,7 @@
 // умеет накручивать, но не покупать.
 
 import { settings } from './settings.ts'
+import { createLimiter } from './ratelimit.ts'
 
 const API = 'https://market.dota2.net/api/v2/'
 
@@ -158,21 +159,47 @@ export async function fetchPrices(currency: Currency = 'USD'): Promise<{ items: 
   }
 }
 
+// Один ограничитель на всю площадку. Через него идут все вызовы с ключом —
+// закупка, баланс, проверка ключа, — поэтому новый путь не может обойти лимит.
+// Больше пяти запросов в секунду — и площадка удаляет ключ.
+export const marketLimiter = createLimiter(4)
+
+// Сколько молчать ключу после ответа «слишком часто». Наша защитная мера:
+// что площадка делает после 429, в её документации не описано.
+const COOL_429 = 5_000
+
+// Ключ ни при каких условиях не должен уйти в текст ошибки: ошибки
+// попадают в журнал закупки и на экран.
+const scrub = (s: string, key: string) => (key ? s.split(key).join('***') : s)
+
 // Ответ, по которому нельзя понять, прошла ли операция: связь оборвалась,
 // площадка отдала не JSON. Для покупки это не «отказ», а «неизвестно» —
 // лот мог уже списаться. Раньше сетевая ошибка улетала исключением и рвала
 // всю закупку, а нечитаемый ответ считался отказом и покупка повторялась
 // с новым custom_id, то есть могла пройти дважды.
+//
+// Ключ — только заголовком X-API-KEY: в адресе он оседает в логах и истории.
 async function call(method: string, key: string, params: Record<string, string | number>) {
-  const q = new URLSearchParams({ key, ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])) })
+  const q = String(new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))))
+  const url = API + method + (q ? '?' + q : '')
+  let status = 0
   let text = ''
   try {
-    const r = await fetch(API + method + '?' + q, { headers: { 'User-Agent': 'gemtrack' } })
+    const r = await marketLimiter.run(key, () => fetch(url, { headers: { 'User-Agent': 'gemtrack', 'X-API-KEY': key } }))
+    status = r.status
     text = await r.text()
   } catch (e: any) {
-    return { success: false, ambiguous: true, error: 'нет связи с площадкой: ' + String(e?.message ?? e).slice(0, 120) }
+    return { success: false, ambiguous: true, error: 'нет связи с площадкой: ' + scrub(String(e?.message ?? e), key).slice(0, 120) }
   }
-  try { return JSON.parse(text) } catch { return { success: false, ambiguous: true, error: text.slice(0, 200) } }
+  if (status === 429) {
+    marketLimiter.cool(key, COOL_429)
+    // Для покупки «слишком часто» — всё равно неизвестность: прошла ли, не знаем.
+    // Вслепую не повторяем — закупка встанет, как при любом неясном ответе.
+    return method === 'buy'
+      ? { success: false, ambiguous: true, error: 'площадка: слишком часто (429)' }
+      : { success: false, rateLimited: true, error: 'площадка: слишком часто (429)' }
+  }
+  try { return JSON.parse(text) } catch { return { success: false, ambiguous: true, error: scrub(text, key).slice(0, 200) } }
 }
 
 export const balance = (key: string) => call('get-money', key, {})

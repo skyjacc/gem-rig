@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Gemtrack · Журнал (макет)</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0c0c0e; --s1:#141416; --s2:#1b1b1e; --s3:#232327; --line:#ffffff0f; --line2:#ffffff17;
+    --ink:#ecebe8; --ink2:#a7a5a0; --mute:#76746f;
+    --ac:#b8f25c; --acg:#b8f25c55; --acs:#b8f25c1a;
+    --warn:#f2b44a; --warns:#f2b44a17; --stop:#ff7a7a; --stops:#ff7a7a17;
+    --r1:16px; --r2:10px; --pad:16px; --gap:8px;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:"Geist",ui-sans-serif,system-ui,sans-serif; font-size:13px; -webkit-font-smoothing:antialiased; }
+  .num { font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+  .mono { font-family:"Geist Mono",ui-monospace,monospace; }
+  button, input { font:inherit; color:inherit; border:0; background:none; }
+  button { cursor:pointer; }
+
+  .app { display:grid; grid-template-columns:64px minmax(0,1fr) 360px; grid-template-rows:60px minmax(0,1fr); height:100vh; min-height:720px; }
+  .rail { grid-row:1/3; grid-column:1; display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:8px; }
+  .rail .logo { width:40px; height:40px; display:grid; place-items:center; margin-bottom:12px; }
+  .rail .logo svg { filter:drop-shadow(0 0 8px var(--acg)); }
+  .rail .grp { background:var(--s1); border:1px solid var(--line); border-radius:999px; padding:6px; display:flex; flex-direction:column; gap:4px; }
+  .rail .it { width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:var(--mute); transition:background-color 150ms, color 150ms; }
+  .rail .it:hover { background:var(--s2); color:var(--ink); }
+  .rail .it.on { background:var(--ink); color:var(--bg); }
+
+  .top { grid-column:2/4; grid-row:1; display:flex; align-items:center; gap:8px; padding:0 16px 0 4px; min-width:0; overflow:hidden; }
+  .pill { height:32px; display:inline-flex; align-items:center; gap:8px; padding:0 12px; border-radius:999px; background:var(--s1); border:1px solid var(--line); color:var(--ink2); font-size:12px; white-space:nowrap; }
+  .pill b { color:var(--ink); font-weight:500; }
+  .pill.acc { padding-left:4px; }
+  .ava { width:24px; height:24px; border-radius:999px; background:linear-gradient(135deg,#3a3a40,#202024); display:grid; place-items:center; font-size:11px; color:var(--ink); flex:none; }
+  .dot { width:7px; height:7px; border-radius:999px; background:var(--mute); flex:none; }
+  .dot.ok { background:var(--ac); box-shadow:0 0 8px var(--acg); } .dot.warn { background:var(--warn); } .dot.stop { background:var(--stop); }
+  .top .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .demo { color:var(--warn); background:var(--warns); border-color:transparent; }
+
+  .page { grid-column:2; grid-row:2; position:relative; margin:0 0 16px 4px; border-radius:20px; background:var(--s1); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; }
+  .scroll { flex:1; overflow:auto; padding:20px 20px 112px; scrollbar-width:thin; scrollbar-color:#ffffff24 transparent; }
+  .phead { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+  .phead h1 { margin:0; font-size:22px; font-weight:600; letter-spacing:-.02em; line-height:1.2; }
+  .phead .sub { color:var(--mute); font-size:12px; margin-top:4px; max-width:560px; line-height:1.45; }
+  .phead .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .primary { height:36px; padding:0 16px 0 12px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 20px #b8f25c33; }
+  .src { display:inline-flex; align-items:center; height:16px; padding:0 6px; border-radius:999px; font-family:"Geist Mono",monospace; font-size:9.5px; color:var(--mute); background:var(--s3); white-space:nowrap; vertical-align:1px; }
+
+  .sec { margin-top:24px; }
+  .sech { display:flex; align-items:baseline; gap:8px; margin-bottom:12px; }
+  .sech h2 { margin:0; font-size:15px; font-weight:600; letter-spacing:-.01em; }
+  .sech .n { color:var(--mute); font-size:12px; }
+
+  /* карточки аккаунтов */
+  .cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px,1fr)); gap:12px; margin-top:20px; }
+  .acard { background:linear-gradient(180deg,#1d1d21,#18181b); border:1px solid var(--line2); border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:14px; box-shadow:0 12px 30px #0006, inset 0 1px 0 #ffffff0a; cursor:pointer; transition:box-shadow 150ms; }
+  .acard.sel { box-shadow:0 12px 30px #0006, inset 0 0 0 1px var(--ac); }
+  .acard .h { display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:12px; align-items:center; }
+  .acard .ava { width:44px; height:44px; border-radius:12px; font-size:17px; position:relative; }
+  .acard .ava .dot { position:absolute; right:-3px; bottom:-3px; width:12px; height:12px; border:2.5px solid #1b1b1e; }
+  .acard .nm { font-size:16px; font-weight:600; letter-spacing:-.01em; display:flex; align-items:center; gap:6px; }
+  .acard .nm button { color:var(--mute); width:22px; height:22px; border-radius:6px; display:grid; place-items:center; }
+  .acard .nm button:hover { background:var(--s3); color:var(--ink); }
+  .acard .sid { color:var(--mute); font-size:11px; margin-top:2px; }
+  .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+  .stats div { background:#111113; border-radius:10px; padding:8px 10px; min-width:0; }
+  .stats span { display:block; color:var(--mute); font-size:10.5px; white-space:nowrap; }
+  .stats b { display:block; font-weight:500; font-size:14px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .checks { display:flex; flex-direction:column; gap:6px; }
+  .ck { display:grid; grid-template-columns:28px minmax(0,1fr) auto; gap:10px; align-items:center; background:var(--s2); border-radius:12px; padding:8px 8px 8px 10px; }
+  .ck .ic { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; }
+  .ck .ic.ok { background:var(--acs); color:var(--ac); } .ck .ic.warn { background:var(--warns); color:var(--warn); } .ck .ic.stop { background:var(--stops); color:var(--stop); }
+  .ck .t { font-size:12.5px; }
+  .ck .d { color:var(--mute); font-size:11px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ck .a { display:flex; gap:4px; }
+  .sbtn { height:28px; padding:0 10px; border-radius:999px; background:var(--s3); font-size:11.5px; color:var(--ink); white-space:nowrap; transition:background-color 150ms; }
+  .sbtn:hover { background:#2c2c31; }
+  .sbtn.ac { background:var(--acs); color:var(--ac); }
+  .acard .foot { display:flex; gap:8px; align-items:center; }
+  .run { height:36px; padding:0 16px 0 12px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 18px #b8f25c33; transition:background-color 150ms, color 150ms, box-shadow 150ms; }
+  .run.on { background:var(--s3); color:var(--ink); box-shadow:none; }
+  .foot .ghost { height:36px; padding:0 14px; border-radius:999px; background:var(--s3); color:var(--ink); font-size:12.5px; }
+  .foot .danger { margin-left:auto; height:36px; padding:0 12px; border-radius:999px; color:var(--mute); font-size:12px; }
+  .foot .danger:hover { color:var(--stop); background:var(--stops); }
+
+  .addcard { border:1px dashed #ffffff26; border-radius:18px; padding:20px; display:flex; flex-direction:column; justify-content:center; gap:12px; min-height:300px; transition:background-color 150ms, border-color 150ms; cursor:pointer; }
+  .addcard:hover { background:#ffffff05; border-color:#ffffff40; }
+  .addcard .qr { width:52px; height:52px; border-radius:14px; background:var(--s2); display:grid; place-items:center; color:var(--ac); }
+  .addcard h3 { margin:0; font-size:15px; font-weight:600; }
+  .addcard p { margin:0; color:var(--ink2); font-size:12.5px; line-height:1.5; }
+  .addcard .why { background:linear-gradient(90deg,#b8f25c10,transparent 70%); border-radius:12px; padding:10px 12px; font-size:12px; color:var(--ink2); line-height:1.45; }
+  .addcard .why b { color:var(--ink); font-weight:500; }
+
+  /* настройки */
+  .set { background:var(--s2); border-radius:14px; }
+  .row { display:grid; grid-template-columns:220px minmax(0,1fr); gap:16px; align-items:center; padding:14px 16px; border-top:1px solid var(--line); }
+  .row:first-child { border-top:0; }
+  .row .k { font-size:13px; }
+  .row .k small { display:block; color:var(--mute); font-size:11.5px; margin-top:3px; line-height:1.4; }
+  .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--s1); flex-wrap:wrap; }
+  .seg button { height:28px; padding:0 12px; border-radius:999px; color:var(--ink2); font-size:12px; transition:background-color 150ms,color 150ms; }
+  .seg button.on { background:var(--s3); color:var(--ink); }
+  .seg button.on.ac { background:var(--acs); color:var(--ac); }
+  .field { height:34px; width:140px; border-radius:10px; background:#0f0f11; border:1px solid var(--line); display:inline-flex; align-items:center; padding:0 10px; gap:6px; transition:border-color 150ms, box-shadow 150ms; }
+  .field:focus-within { border-color:#b8f25c80; box-shadow:0 0 0 3px #b8f25c1a; }
+  .field input { flex:1; min-width:0; outline:none; text-align:right; }
+  .field span { color:var(--mute); font-size:12px; }
+  .inline { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .inline .hint { color:var(--mute); font-size:11.5px; }
+  .gems { display:flex; gap:6px; flex-wrap:wrap; }
+  .gchip { height:34px; padding:0 10px 0 4px; border-radius:999px; background:var(--s1); border:1px solid var(--line); display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink2); transition:background-color 150ms, border-color 150ms, color 150ms, opacity 150ms; }
+  .gchip i { width:26px; height:26px; border-radius:999px; background:center/cover; }
+  .gchip b { font-weight:500; color:var(--mute); font-size:11px; }
+  .gchip.on { color:var(--ink); border-color:#b8f25c55; background:#b8f25c0d; }
+  .gchip:not(.on) i { opacity:.35; filter:grayscale(1); }
+  .gchip.na { border-style:dashed; cursor:not-allowed; }
+
+  .rules { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--gap); }
+  .rule { background:var(--s2); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
+  .rule .k { font-size:12.5px; }
+  .rule .k small { display:block; color:var(--mute); font-size:11px; margin-top:2px; line-height:1.4; }
+  .rule .field { width:100%; }
+
+  /* боковая */
+  .side { grid-column:3; grid-row:2; padding:0 16px 16px 0; display:flex; flex-direction:column; gap:12px; overflow:auto; scrollbar-width:none; }
+  .panel { background:var(--s1); border:1px solid var(--line); border-radius:var(--r1); padding:var(--pad); display:flex; flex-direction:column; gap:var(--gap); }
+  .ph { display:flex; align-items:center; justify-content:space-between; height:20px; font-weight:500; margin-bottom:4px; }
+  .ph .n { color:var(--mute); font-weight:400; font-size:11.5px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
+  .fact { background:var(--s2); border-radius:var(--r2); padding:10px 12px; min-width:0; }
+  .fact .k { color:var(--mute); font-size:11px; white-space:nowrap; }
+  .fact b { font-weight:500; font-size:14px; display:block; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .why2 { background:var(--s2); border-radius:12px; padding:12px; font-size:12px; color:var(--ink2); line-height:1.45; }
+  .why2 b { color:var(--ink); font-weight:500; }
+  .log .e { display:grid; grid-template-columns:44px minmax(0,1fr); gap:10px; padding:8px 0; border-top:1px solid var(--line); font-size:12px; }
+  .log .e:first-child { border-top:0; }
+  .log .e .ts { color:var(--mute); font-size:11px; }
+  .log .e .w { color:var(--ink2); }
+  .log .e .w b { color:var(--ink); font-weight:500; }
+
+  .chip { height:20px; padding:0 7px; border-radius:999px; font-size:10.5px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; flex:none; }
+  .chip::before { content:""; width:5px; height:5px; border-radius:999px; background:currentColor; }
+  .c-ok { color:var(--ac); background:var(--acs); } .c-warn { color:var(--warn); background:var(--warns); } .c-stop { color:var(--stop); background:var(--stops); } .c-idle { color:var(--ink2); background:var(--s3); }
+
+  .dock { position:absolute; left:50%; bottom:16px; translate:-50% 0; z-index:4; display:flex; align-items:center; gap:6px; padding:6px; border-radius:999px;
+          background:#1a1a1dee; border:1px solid var(--line2); box-shadow:0 20px 50px #000000aa, inset 0 1px 0 #ffffff0d; backdrop-filter:blur(10px); white-space:nowrap; }
+  .dock .st { display:flex; align-items:center; gap:8px; padding:0 12px 0 10px; height:40px; }
+  .dock .st b { font-weight:500; } .dock .st span { color:var(--mute); font-size:12px; }
+  .dock .div { width:1px; height:24px; background:var(--line2); }
+  .dock .kv { padding:0 10px; display:flex; flex-direction:column; justify-content:center; height:40px; }
+  .dock .kv span { color:var(--mute); font-size:10.5px; } .dock .kv b { font-size:13px; font-weight:500; }
+  .go { height:40px; padding:0 18px 0 14px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 24px var(--acg); }
+
+
+  .sum { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:20px; }
+  .tile { background:var(--s2); border-radius:12px; padding:12px 14px; min-width:0; }
+  .tile .l { color:var(--mute); font-size:12px; white-space:nowrap; display:flex; justify-content:space-between; gap:6px; }
+  .tile .v { font-size:24px; margin-top:6px; letter-spacing:-.02em; line-height:1; }
+  .tile .n { color:var(--mute); font-size:11.5px; margin-top:8px; line-height:1.4; }
+  .src.h { color:var(--warn); background:var(--warns); }
+  .tabs { display:flex; align-items:center; gap:8px; margin-top:24px; flex-wrap:wrap; }
+  .tabs .seg button .c { color:var(--mute); margin-left:4px; }
+  .tabs .seg button.on .c { color:var(--ink2); }
+  .tabs .right { margin-left:auto; display:flex; gap:6px; }
+  .fchip { height:28px; padding:0 6px 0 11px; border-radius:999px; background:var(--s2); color:var(--ink2); font-size:12px; display:inline-flex; align-items:center; gap:7px; transition:background-color 150ms,color 150ms; }
+  .fchip:hover { background:var(--s3); color:var(--ink); }
+  .fchip .c { min-width:20px; height:18px; padding:0 5px; border-radius:999px; background:var(--s3); font-size:10.5px; display:grid; place-items:center; }
+  .fchip.on { background:var(--ink); color:var(--bg); }
+  .fchip.on .c { background:#0c0c0e1f; }
+
+  /* пульс отправок */
+  .pulse { background:var(--s2); border-radius:14px; padding:12px 14px; margin-top:12px; }
+  .pulse .t { display:flex; justify-content:space-between; font-size:12px; color:var(--ink2); }
+  .pulse .t span { color:var(--mute); font-size:11px; }
+  .ticks { display:flex; gap:3px; align-items:flex-end; height:34px; margin-top:10px; }
+  .ticks i { flex:1; border-radius:3px; cursor:pointer; transition:opacity 120ms, transform 120ms; min-width:3px; }
+  .ticks i:hover { opacity:.75; }
+  .ticks i.sel { box-shadow:0 0 0 1.5px var(--ink); }
+  .ticks .u { background:var(--ac); height:100%; }
+  .ticks .d { background:var(--warn); height:55%; }
+  .ticks .s { background:var(--s3); height:30%; }
+  .pulse .ax { display:flex; justify-content:space-between; color:var(--mute); font-size:10.5px; margin-top:6px; }
+
+  .list { background:var(--s2); border-radius:14px; margin-top:12px; overflow:hidden; }
+  .lh, .lr { display:grid; align-items:center; gap:12px; padding:0 14px; }
+  .lh { height:32px; color:var(--mute); font-size:11px; }
+  .lr { min-height:42px; border-top:1px solid var(--line); font-size:12.5px; cursor:pointer; transition:background-color 150ms, box-shadow 150ms; }
+  .lr:hover { background:#ffffff06; }
+  .lr.sel { background:#b8f25c0b; box-shadow:inset 3px 0 0 var(--ac); }
+  .feed .lh, .feed .lr { grid-template-columns:16px 64px 110px minmax(0,1fr) 120px 96px; }
+  .queue .lh, .queue .lr { grid-template-columns:110px 70px minmax(0,1fr) 64px; }
+  .lr .m { color:var(--mute); font-size:11.5px; }
+  .lr a { color:var(--ink); text-decoration:none; border-bottom:1px dashed #ffffff30; }
+  .lr a:hover { color:var(--ac); border-color:var(--ac); }
+  .r { text-align:right; }
+  .scrollv { max-height:440px; overflow:auto; scrollbar-width:thin; scrollbar-color:#ffffff24 transparent; }
+  .gtags { display:flex; gap:4px; flex-wrap:wrap; }
+  .gt { height:22px; padding:0 8px 0 3px; border-radius:999px; background:var(--s3); font-size:11px; color:var(--ink2); display:inline-flex; align-items:center; gap:5px; }
+  .gt i { width:16px; height:16px; border-radius:5px; background:center/cover; }
+  .x2 { height:20px; padding:0 7px; border-radius:999px; background:var(--acs); color:var(--ac); font-size:11px; font-weight:600; display:inline-grid; place-items:center; }
+  .note { margin-top:10px; color:var(--mute); font-size:11.5px; line-height:1.5; }
+
+  /* израсходовано */
+  .used { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:8px; margin-top:12px; }
+  .ug { background:var(--s2); border-radius:14px; padding:12px 14px; }
+  .ug .h { display:grid; grid-template-columns:34px minmax(0,1fr) auto; gap:10px; align-items:center; }
+  .ug .h i { width:34px; height:34px; border-radius:9px; background:center/cover; border:1px solid var(--line); }
+  .ug .h b { font-weight:500; display:block; }
+  .ug .h span { color:var(--mute); font-size:11px; }
+  .ug .h .v { text-align:right; }
+  .ug .h .v b { font-size:16px; }
+  .ug .lg { margin-top:10px; display:flex; flex-direction:column; gap:5px; }
+  .ug .lg div { display:grid; grid-template-columns:minmax(0,1fr) 72px; gap:10px; align-items:center; font-size:11.5px; color:var(--ink2); }
+  .ug .lg div span:first-child { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ug .lg .bar { height:3px; margin-top:3px; }
+  .ug .lg .r { color:var(--mute); }
+
+  .empty3 { margin-top:12px; background:var(--s2); border-radius:14px; padding:28px; text-align:center; color:var(--ink2); font-size:12.5px; line-height:1.55; }
+  .empty3 .ico { width:44px; height:44px; border-radius:12px; background:var(--s3); display:grid; place-items:center; margin:0 auto 12px; color:var(--mute); }
+  .verdicts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:16px; text-align:left; }
+  .verdicts div { background:var(--s1); border-radius:10px; padding:10px 12px; font-size:11.5px; color:var(--mute); line-height:1.4; }
+  .verdicts b { display:block; margin-bottom:4px; }
+
+  .legend .row3 { display:grid; grid-template-columns:22px minmax(0,1fr); gap:10px; padding:8px 0; border-top:1px solid var(--line); font-size:12px; color:var(--ink2); line-height:1.45; }
+  .legend .row3:first-of-type { border-top:0; }
+  .legend .row3 b { color:var(--ink); font-weight:500; display:block; }
+  .legend i { width:22px; height:22px; border-radius:999px; display:grid; place-items:center; font-style:normal; font-size:10px; }
+  .kv2 { display:grid; grid-template-columns:110px minmax(0,1fr); gap:6px 12px; font-size:12.5px; }
+  .kv2 span { color:var(--mute); }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b8f25c" stroke-width="1.6"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M12 21 8 9l4-6 4 6z"/></svg></div>
+    <div class="grp">
+      <button class="it" title="Обзор"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.5 12c5 0 5-7 9-7M7.5 12c5 0 5 7 9 7"/></svg></button>
+      <button class="it" title="Инвентарь"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+      <button class="it" title="Скупка"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6"/></svg></button>
+      <button class="it" title="Продажи"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></button>
+      <button class="it" title="Аккаунты"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg></button>
+      <button class="it on" title="Журнал"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+    </div>
+  </nav>
+
+  <header class="top">
+    <span class="pill acc"><span class="ava">О</span><b>основной</b><span class="dot"></span></span>
+    <span class="pill">последнее подтверждение <b>43 дня назад</b></span>
+    <div class="right"><span class="pill demo"><span class="dot warn"></span>макет · снимок 21 августа</span></div>
+  </header>
+
+  <main class="page">
+    <div class="scroll">
+      <div class="phead">
+        <div><h1>Журнал</h1><div class="sub">Что уйдёт, что ушло и почему работник решил именно так. Сюда смотрят, когда что-то пошло не так.</div></div>
+      </div>
+
+      <div class="sum" id="sum"></div>
+
+      <div class="tabs">
+        <div class="seg" id="tabs"></div>
+        <div class="right" id="sub"></div>
+      </div>
+      <div id="body"></div>
+    </div>
+  </main>
+
+  <aside class="side" id="side"></aside>
+</div>
+
+<script>
+const D = {"events":[{"ts":1787257352919,"n":50,"total":50,"match_id":"7437143475","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257351869,"n":49,"total":50,"match_id":"7437280975","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257351019,"n":48,"total":50,"match_id":"7437415163","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257349920,"n":47,"total":50,"match_id":"7437521667","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257348869,"n":46,"total":50,"match_id":"7437622020","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257347868,"n":45,"total":50,"match_id":"7442022728","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257346768,"n":44,"total":50,"match_id":"7442158259","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257345822,"n":43,"total":50,"match_id":"7442442568","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257345268,"n":42,"total":50,"match_id":"7442565915","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257343770,"n":41,"total":50,"match_id":"7442639464","league_id":"15909","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257342771,"n":40,"total":50,"match_id":"7449099362","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257341769,"n":39,"total":50,"match_id":"7449192881","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257340818,"n":38,"total":50,"match_id":"7451152100","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257339817,"n":37,"total":50,"match_id":"7451296373","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257338768,"n":36,"total":50,"match_id":"7456057067","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257337725,"n":35,"total":50,"match_id":"7456160602","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257336727,"n":34,"total":50,"match_id":"7461426483","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257335718,"n":33,"total":50,"match_id":"7461494871","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257334817,"n":32,"total":50,"match_id":"7462607883","league_id":"15898","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257333721,"n":31,"total":50,"match_id":"7462745768","league_id":"15898","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257332618,"n":30,"total":50,"match_id":"7462848455","league_id":"15898","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257331723,"n":29,"total":50,"match_id":"7464071056","league_id":"15898","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257330669,"n":28,"total":50,"match_id":"7464203665","league_id":"15898","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257329670,"n":27,"total":50,"match_id":"7464299576","league_id":"15898","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257328669,"n":26,"total":50,"match_id":"7467036875","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257327588,"n":25,"total":50,"match_id":"7467150327","league_id":"15931","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257326619,"n":24,"total":50,"match_id":"7468791092","league_id":"15931","result":"update","bytes":576,"account":"7656119800000000"},{"ts":1787257325720,"n":23,"total":50,"match_id":"7468909994","league_id":"15931","result":"update","bytes":576,"account":"7656119800000000"},{"ts":1787257324619,"n":22,"total":50,"match_id":"7972169966","league_id":"17119","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257323724,"n":21,"total":50,"match_id":"7972235565","league_id":"17119","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257322720,"n":20,"total":50,"match_id":"7972307189","league_id":"17119","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257321670,"n":19,"total":50,"match_id":"7973889148","league_id":"17119","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257320671,"n":18,"total":50,"match_id":"7973999193","league_id":"17119","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257319618,"n":17,"total":50,"match_id":"7974106301","league_id":"17119","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257318621,"n":16,"total":50,"match_id":"7975330082","league_id":"17119","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257317522,"n":15,"total":50,"match_id":"7975406864","league_id":"17119","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257316669,"n":14,"total":50,"match_id":"7978710029","league_id":"17119","result":"update","bytes":576,"account":"7656119800000000"},{"ts":1787257315568,"n":13,"total":50,"match_id":"7978813381","league_id":"17119","result":"update","bytes":576,"account":"7656119800000000"},{"ts":1787257314619,"n":12,"total":50,"match_id":"7978911604","league_id":"17119","result":"update","bytes":576,"account":"7656119800000000"},{"ts":1787257313620,"n":11,"total":50,"match_id":"7980095953","league_id":"17119","result":"update","bytes":504,"account":"7656119800000000"},{"ts":1787257312519,"n":10,"total":50,"match_id":"7980205862","league_id":"17119","result":"update","bytes":504,"account":null},{"ts":1787257311618,"n":9,"total":50,"match_id":"7980310157","league_id":"17119","result":"update","bytes":504,"account":null},{"ts":1787257310519,"n":8,"total":50,"match_id":"7999076295","league_id":"16710","result":"update","bytes":504,"account":null},{"ts":1787257309621,"n":7,"total":50,"match_id":"7999136145","league_id":"16710","result":"update","bytes":504,"account":null},{"ts":1787257308617,"n":6,"total":50,"match_id":"8000290335","league_id":"16710","result":"update","bytes":504,"account":null},{"ts":1787257307542,"n":5,"total":50,"match_id":"8000360861","league_id":"16710","result":"update","bytes":504,"account":null},{"ts":1787257306870,"n":4,"total":50,"match_id":"8001816022","league_id":"16710","result":"update","bytes":504,"account":null},{"ts":1787257305568,"n":3,"total":50,"match_id":"8001906304","league_id":"16710","result":"update","bytes":504,"account":null},{"ts":1787257304468,"n":2,"total":50,"match_id":"8002024045","league_id":"16710","result":"update","bytes":504,"account":null},{"ts":1787257303420,"n":1,"total":50,"match_id":"8003174782","league_id":"16710","result":"update","bytes":504,"account":null},{"ts":1787239199395,"n":1,"total":1,"match_id":"8003261364","league_id":"16710","result":"update","bytes":507,"account":null},{"ts":1787239119238,"n":1,"total":1,"match_id":"8003261364","league_id":"","result":"dup","bytes":0,"account":null},{"ts":1787236493731,"n":5,"total":5,"match_id":"8940059913","league_id":"19944","result":"dup","bytes":0,"account":null},{"ts":1787236490718,"n":4,"total":5,"match_id":"8940117837","league_id":"19944","result":"dup","bytes":0,"account":null},{"ts":1787236487706,"n":3,"total":5,"match_id":"8942003788","league_id":"19944","result":"dup","bytes":0,"account":null},{"ts":1787236484696,"n":2,"total":5,"match_id":"8942152024","league_id":"19944","result":"dup","bytes":0,"account":null},{"ts":1787236481684,"n":1,"total":5,"match_id":"8942262723","league_id":"19944","result":"dup","bytes":0,"account":null},{"ts":1787232572351,"n":1,"total":1,"match_id":"8003356741","league_id":"16710","result":"update","bytes":507,"account":null}],"queue":{"total":11580,"weight2":840,"rows":[{"match":"100421057","league":"22","weight":2,"entities":["Team Empire","Alliance"]},{"match":"100470497","league":"22","weight":2,"entities":["Team Empire","Alliance"]},{"match":"100497659","league":"22","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1010766419","league":"2140","weight":2,"entities":["NaVi","Alliance"]},{"match":"1010880836","league":"2140","weight":2,"entities":["NaVi","Alliance"]},{"match":"1012964699","league":"2140","weight":2,"entities":["Alliance","BZZ"]},{"match":"1013123648","league":"2140","weight":2,"entities":["Alliance","BZZ"]},{"match":"1031898571","league":"2190","weight":2,"entities":["Alliance","BZZ"]},{"match":"1032027051","league":"2190","weight":2,"entities":["Alliance","BZZ"]},{"match":"1037911761","league":"1942","weight":2,"entities":["Alliance","BZZ"]},{"match":"1038004017","league":"1942","weight":2,"entities":["Alliance","BZZ"]},{"match":"104113022","league":"22","weight":2,"entities":["NaVi","Team Empire"]},{"match":"104149178","league":"22","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1042703753","league":"2140","weight":2,"entities":["NaVi","BZZ"]},{"match":"1042893534","league":"2140","weight":2,"entities":["NaVi","BZZ"]},{"match":"1084571354","league":"2158","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1093219385","league":"2158","weight":2,"entities":["Team Empire","BZZ"]},{"match":"1095107671","league":"2158","weight":2,"entities":["Alliance","BZZ"]},{"match":"1113329131","league":"2158","weight":2,"entities":["NaVi","BZZ"]},{"match":"1113763348","league":"2158","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1117591334","league":"2158","weight":2,"entities":["NaVi","Alliance"]},{"match":"1153655041","league":"2339","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1153795442","league":"2339","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1153915079","league":"2339","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1155037686","league":"2339","weight":2,"entities":["NaVi","Alliance"]},{"match":"1155133074","league":"2339","weight":2,"entities":["NaVi","Alliance"]},{"match":"1155187590","league":"2339","weight":2,"entities":["NaVi","Alliance"]},{"match":"1167015394","league":"2158","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1167145191","league":"2158","weight":2,"entities":["NaVi","Team Empire"]},{"match":"119177565","league":"21","weight":2,"entities":["NaVi","Team Empire"]},{"match":"119230193","league":"21","weight":2,"entities":["NaVi","Team Empire"]},{"match":"119264746","league":"21","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1198691369","league":"2339","weight":2,"entities":["NaVi","Ohaiyo"]},{"match":"123045204","league":"28","weight":2,"entities":["NaVi","Team Empire"]},{"match":"123770039","league":"28","weight":2,"entities":["NaVi","Alliance"]},{"match":"1245084038","league":"2129","weight":2,"entities":["Team Empire","BZZ"]},{"match":"1245236323","league":"2129","weight":2,"entities":["Team Empire","BZZ"]},{"match":"1289764896","league":"2358","weight":2,"entities":["Team Empire","BZZ"]},{"match":"1289907137","league":"2358","weight":2,"entities":["Team Empire","BZZ"]},{"match":"1292425601","league":"2358","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1296851498","league":"2337","weight":2,"entities":["Team Empire","BZZ"]},{"match":"1296948458","league":"2337","weight":2,"entities":["Team Empire","BZZ"]},{"match":"130305090","league":"28","weight":2,"entities":["Team Empire","Alliance"]},{"match":"130332575","league":"28","weight":2,"entities":["Team Empire","Alliance"]},{"match":"130366651","league":"28","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1307838367","league":"2358","weight":2,"entities":["NaVi","Alliance"]},{"match":"1307951861","league":"2358","weight":2,"entities":["NaVi","Alliance"]},{"match":"1312430615","league":"2358","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1312540214","league":"2358","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1317443503","league":"2418","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1317554278","league":"2418","weight":2,"entities":["NaVi","Team Empire"]},{"match":"131825949","league":"29","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1336672432","league":"2511","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1336844548","league":"2511","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1354002621","league":"2661","weight":2,"entities":["NaVi","Alliance"]},{"match":"1354131679","league":"2661","weight":2,"entities":["NaVi","Alliance"]},{"match":"135860970","league":"29","weight":2,"entities":["NaVi","Alliance"]},{"match":"135906523","league":"28","weight":2,"entities":["NaVi","BZZ"]},{"match":"1366806163","league":"2686","weight":2,"entities":["NaVi","Alliance"]},{"match":"1366919280","league":"2686","weight":2,"entities":["NaVi","Alliance"]},{"match":"136776337","league":"28","weight":2,"entities":["NaVi","Alliance"]},{"match":"136809868","league":"28","weight":2,"entities":["NaVi","Alliance"]},{"match":"1379736543","league":"2129","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1379831715","league":"2129","weight":2,"entities":["Team Empire","Alliance"]},{"match":"138475498","league":"22","weight":2,"entities":["NaVi","Alliance"]},{"match":"138499495","league":"22","weight":2,"entities":["NaVi","Alliance"]},{"match":"1402441735","league":"2877","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1407499045","league":"2358","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1407667715","league":"2358","weight":2,"entities":["Team Empire","Alliance"]},{"match":"141415958","league":"29","weight":2,"entities":["Alliance","BZZ"]},{"match":"142118048","league":"29","weight":2,"entities":["Team Empire","BZZ"]},{"match":"143566340","league":"29","weight":2,"entities":["NaVi","BZZ"]},{"match":"143604369","league":"29","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1450521374","league":"2790","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1450619002","league":"2790","weight":2,"entities":["NaVi","Team Empire"]},{"match":"1452657632","league":"2790","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1452843012","league":"2790","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1452942532","league":"2790","weight":2,"entities":["NaVi","Alliance"]},{"match":"1453048038","league":"2790","weight":2,"entities":["NaVi","Alliance"]},{"match":"146859743","league":"28","weight":2,"entities":["Team Empire","BZZ"]},{"match":"147540020","league":"28","weight":2,"entities":["Alliance","BZZ"]},{"match":"1478538518","league":"2790","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1478715033","league":"2790","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1491720521","league":"2815","weight":2,"entities":["Ohaiyo","Alliance"]},{"match":"1491777059","league":"2815","weight":2,"entities":["Ohaiyo","Alliance"]},{"match":"1491858707","league":"2815","weight":2,"entities":["Ohaiyo","Alliance"]},{"match":"152786463","league":"27","weight":2,"entities":["Team Empire","BZZ"]},{"match":"152810709","league":"27","weight":2,"entities":["Team Empire","BZZ"]},{"match":"1532667249","league":"2980","weight":2,"entities":["Ohaiyo","Alliance"]},{"match":"1532798131","league":"2980","weight":2,"entities":["Ohaiyo","Alliance"]},{"match":"1532906867","league":"2980","weight":2,"entities":["Ohaiyo","Alliance"]},{"match":"1552110156","league":"2790","weight":2,"entities":["NaVi","Alliance"]},{"match":"1552291760","league":"2790","weight":2,"entities":["NaVi","Alliance"]},{"match":"158529518","league":"28","weight":2,"entities":["Team Empire","BZZ"]},{"match":"159320515","league":"27","weight":2,"entities":["Team Empire","Alliance"]},{"match":"159359627","league":"27","weight":2,"entities":["Team Empire","Alliance"]},{"match":"159385035","league":"27","weight":2,"entities":["Team Empire","Alliance"]},{"match":"165557656","league":"29","weight":2,"entities":["Team Empire","Alliance"]},{"match":"165619530","league":"29","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1670592135","league":"2733","weight":2,"entities":["NaVi","Ohaiyo"]},{"match":"1670702068","league":"2733","weight":2,"entities":["NaVi","Ohaiyo"]},{"match":"169967039","league":"27","weight":2,"entities":["Alliance","BZZ"]},{"match":"170017292","league":"27","weight":2,"entities":["Alliance","BZZ"]},{"match":"173840671","league":"32","weight":2,"entities":["Alliance","BZZ"]},{"match":"173904244","league":"32","weight":2,"entities":["Alliance","BZZ"]},{"match":"178398387","league":"28","weight":2,"entities":["NaVi","BZZ"]},{"match":"178430425","league":"28","weight":2,"entities":["NaVi","BZZ"]},{"match":"178480618","league":"28","weight":2,"entities":["NaVi","BZZ"]},{"match":"181621275","league":"34","weight":2,"entities":["NaVi","Alliance"]},{"match":"181653484","league":"34","weight":2,"entities":["NaVi","Alliance"]},{"match":"181713732","league":"34","weight":2,"entities":["NaVi","Alliance"]},{"match":"1824893669","league":"3502","weight":2,"entities":["NaVi","Alliance"]},{"match":"182550849","league":"32","weight":2,"entities":["NaVi","BZZ"]},{"match":"182621742","league":"32","weight":2,"entities":["NaVi","BZZ"]},{"match":"182676229","league":"32","weight":2,"entities":["NaVi","BZZ"]},{"match":"182717635","league":"32","weight":2,"entities":["NaVi","BZZ"]},{"match":"182748691","league":"32","weight":2,"entities":["NaVi","BZZ"]},{"match":"1856641262","league":"3671","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1856786199","league":"3671","weight":2,"entities":["Team Empire","Alliance"]},{"match":"1866787646","league":"3865","weight":2,"entities":["Team Empire","Alliance"]}]},"tree":[{"gem":"NaVi","value":2844,"burned":5,"counter":10,"leagues":[{"label":"Dota 2 Asia Championship 2015","value":38,"burned":0},{"label":"The International 2019","value":36,"burned":0},{"label":"DreamLeague Season 11","value":33,"burned":0},{"label":"The International 2015","value":30,"burned":0},{"label":"Epic League","value":30,"burned":0},{"label":"2017 Mars Dota 2 League","value":30,"burned":0},{"label":"Star Series Season III","value":30,"burned":0},{"label":"WePlay Dota 2","value":30,"burned":0},{"label":"RaidCall Dota 2 League Season 3","value":30,"burned":0},{"label":"WePlay.TV Dota 2 League - Season 2","value":30,"burned":0},{"label":"The International 2013","value":30,"burned":0},{"label":"The Summit 5","value":27,"burned":0},{"label":"ещё 198 турниров","value":2470,"burned":0}]},{"gem":"Team Empire","value":2594,"burned":9,"counter":18,"leagues":[{"label":"Dota 2 Champions League 2021-2022 Season","value":135,"burned":0},{"label":"Uprise Champions Cup: Special","value":46,"burned":0},{"label":"WePlay League Season 3","value":39,"burned":0},{"label":"The International 2017","value":38,"burned":0},{"label":"ProDotA Cup Series by Azubu.tv","value":35,"burned":0},{"label":"RaidCall Dota 2 League Season 2","value":34,"burned":0},{"label":"The Summit 5","value":32,"burned":0},{"label":"The Manila Major 2016","value":32,"burned":0},{"label":"D2CL Season 5","value":32,"burned":0},{"label":"ASUS ROG DreamLeague Season 4","value":32,"burned":0},{"label":"Dota 2 Asia Championships 2017","value":30,"burned":0},{"label":"Star Series Season III","value":30,"burned":0},{"label":"ещё 173 турниров","value":2079,"burned":0}]},{"gem":"Alliance","value":2483,"burned":52,"counter":54,"leagues":[{"label":"Epic League","value":41,"burned":0},{"label":"The International 2016","value":36,"burned":0},{"label":"Star Series Season V","value":34,"burned":0},{"label":"EPICENTER Major 2019","value":31,"burned":0},{"label":"The Premier League Season 4","value":30,"burned":0},{"label":"MDL Chengdu Major","value":29,"burned":0},{"label":"StarLadder ImbaTV Dota2 Minor #2","value":29,"burned":0},{"label":"ASUS ROG DreamLeague Season 1","value":29,"burned":0},{"label":"The Kuala Lumpur Major","value":28,"burned":0},{"label":"RaidCall Dota 2 League Season 2","value":28,"burned":0},{"label":"DreamLeague Season 13","value":27,"burned":0},{"label":"HyperX D2L Season 4","value":27,"burned":0},{"label":"ещё 167 турниров","value":2114,"burned":0}]},{"gem":"BZZ","value":2155,"burned":7,"counter":12,"leagues":[{"label":"Dota 2 Champions League 2021-2022 Season","value":54,"burned":0},{"label":"WellPlay Invitational by VitalBet","value":46,"burned":0},{"label":"Uprise Champions Cup: Special","value":41,"burned":0},{"label":"ProDotA Cup by Azubu.tv","value":35,"burned":0},{"label":"D2CL","value":35,"burned":0},{"label":"Esportal Dota 2 League","value":34,"burned":0},{"label":"ASUS ROG DreamLeague Season 2","value":31,"burned":0},{"label":"ProDotA Cup Series by Azubu.tv","value":29,"burned":0},{"label":"WePlay Dota 2","value":27,"burned":0},{"label":"WINLINE INSIGHT Dota2","value":26,"burned":0},{"label":"ESL One Birmingham 2020 Online powered by Intel","value":25,"burned":0},{"label":"OMEGA League","value":24,"burned":0},{"label":"ещё 183 турниров","value":1748,"burned":0}]},{"gem":"Ohaiyo","value":1849,"burned":0,"counter":0,"leagues":[{"label":"Dota 2 Asia Championship 2015","value":45,"burned":0},{"label":"The International 2016","value":42,"burned":0},{"label":"MPGL Presented by Gigabyte Season 6 SEA Qualifiers","value":40,"burned":0},{"label":"The Summit 5","value":38,"burned":0},{"label":"Moon Studio Asia ","value":37,"burned":0},{"label":"The International 2017","value":29,"burned":0},{"label":"Winter Major 2016","value":28,"burned":0},{"label":"Asia New Star Cup","value":28,"burned":0},{"label":"The International 2013","value":28,"burned":0},{"label":"REDBULL Esports Champion League 2013","value":28,"burned":0},{"label":"Asian New Bloom","value":27,"burned":0},{"label":"世界电子竞技职业精英赛 WPC-DOTA2联赛","value":26,"burned":0},{"label":"ещё 137 турниров","value":1453,"burned":0}]},{"gem":"DD","value":568,"burned":0,"counter":0,"leagues":[{"label":"WPC-ACE Dota 2 League","value":47,"burned":0},{"label":"The International 2014","value":43,"burned":0},{"label":"CDEC Master","value":28,"burned":0},{"label":"The International 2012","value":24,"burned":0},{"label":"HyperX D2L Season 4","value":24,"burned":0},{"label":"Alienware Cup - 2013 Season 1","value":23,"burned":0},{"label":"i League Season 3","value":22,"burned":0},{"label":"世界电子竞技职业精英赛 WPC-DOTA2联赛","value":22,"burned":0},{"label":"Dota 2 Super League","value":20,"burned":0},{"label":"G-1 Champions League Season 5","value":18,"burned":0},{"label":"The International 2013","value":17,"burned":0},{"label":"ESL One Frankfurt 2014","value":16,"burned":0},{"label":"ещё 30 турниров","value":264,"burned":0}]}],"log":[{"ts":1787318353113,"action":"idle","why":"работник выключен"}],"confirmed":{"ts":1787257352919,"match_id":"7437143475","league_id":"15909","bytes":504},"icons":{"BZZ":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/96fx96f","Ohaiyo":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mb0SRLkkpLl721L_fujbbJsLM-ABmiFzepzoq87G37hkB50tWyHyo39I3qXOFMjCZt2QucI5ELukN3nML-04wzcjowQ02yg2end0mr0/96fx96f","Team Empire":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbmUxDi0ZLh7ylk_ferbptsMv2AQDHBwOgn5LU9FnznwR4h4jzczN36dC3DaAYgDcB4EeNes0S8ktK0Ybn8p1uJsrguhiE/96fx96f","Alliance":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5Frifgnwl5qv7ydW5vyne6doLvOWMXORyOI44uU5GCixwBwk5G6HyI2ocC6Ub1MlWMRwQ-cPtBGxk9C1YrmwsQHbg5UFk3uFdbU1HQ/96fx96f","DD":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZjl_ikU6uSreqhsM-SaAGCYxO9ij-9sTCL9wUtz62vRmN6ucnvGPAV0WJYkQuIO4xG-lYHkYrjmtgXe2otCn3j9ijQJsHg2iKUokw/96fx96f","NaVi":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_XcxsTuIn6W9Vl7y4n1_FCoVhjwjpnuwixa-fvgMKJoePGRCjHFwuslsrdtTXzjw0pwt2_cmIupIH3BPAYgCpF2F-MN5g74zIN9SriQmw/96fx96f","CaspeRRR":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_jR0d-jPHqZ2ldm54bn-VDpDg75n5Lv6h1P_fOtbbZ-b-ObD2Of1tFiouBqSjug2xwk5WmGwtr_IHOUaAFyW5QiQLVZ5BHqw9zuP-PnsgOMi4IQzy75iyxXrnE8d9MIDIs/96fx96f"},"burned":66};
+const fmt = n => Math.round(n).toLocaleString('ru-RU');
+const time = ts => new Date(ts).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+const date = ts => new Date(ts).toLocaleDateString('ru-RU', { day:'numeric', month:'long' });
+// Сколько вещей подняла отправка — по размеру msg 26: README даёт 97 байт на одну и 907 на тринадцать.
+const items = b => b ? Math.max(1, Math.round((b - 29.5) / 67.5)) : 0;
+const RES = { update:['засчитан','c-ok','u'], dup:['спорный','c-warn','d'], silent:['без ответа','c-idle','s'] };
+const ev = D.events.slice().sort((a, b) => b.ts - a.ts);
+const cnt = r => ev.filter(e => e.result === r).length;
+let tab = 'feed', only = 'all', sel = ev[0]?.ts;
+
+function sum() {
+  document.getElementById('sum').innerHTML = `
+    <div class="tile"><div class="l">засчитано <span class="src">msg 26</span></div><div class="v num" style="color:var(--ac)">${cnt('update')}</div><div class="n">единственное подтверждение, которому верим</div></div>
+    <div class="tile"><div class="l">спорных</div><div class="v num" style="color:var(--warn)">${cnt('dup')}</div><div class="n">дубль или отказ — снаружи не различить; матч не вычитается</div></div>
+    <div class="tile"><div class="l">сожжено на аккаунте</div><div class="v num">${fmt(D.burned)}</div><div class="n">навсегда и только здесь; другому аккаунту они свежие</div></div>
+    <div class="tile"><div class="l">в очереди</div><div class="v num">${fmt(D.queue.total)}</div><div class="n">${fmt(D.queue.weight2)} из них поднимают сразу два гема</div></div>`;
+}
+
+const TABS = [['feed','Отправки',ev.length],['queue','Очередь',D.queue.total],['used','Израсходовано',D.burned],['arr','Приход',0],['why','Решения',D.log.length]];
+function tabs() {
+  document.getElementById('tabs').innerHTML = TABS.map(([k, l, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${l}<span class="c num">${fmt(n)}</span></button>`).join('');
+  document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; render(); });
+  document.getElementById('sub').innerHTML = tab === 'feed'
+    ? [['all','все',ev.length],['update','засчитаны',cnt('update')],['dup','спорные',cnt('dup')],['silent','без ответа',cnt('silent')]].map(([k, l, n]) => `<button class="fchip ${only === k ? 'on' : ''}" data-o="${k}">${l}<span class="c num">${n}</span></button>`).join('')
+    : '';
+  document.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { only = b.dataset.o; render(); });
+}
+
+function feed() {
+  const rows = ev.filter(e => only === 'all' || e.result === only);
+  const asc = ev.slice().reverse();
+  return `
+    <div class="pulse"><div class="t">Пульс отправок <span>каждая черта — одна отправка, слева направо по времени · клик — подробности</span></div>
+      <div class="ticks">${asc.map(e => `<i class="${RES[e.result][2]} ${e.ts === sel ? 'sel' : ''}" data-e="${e.ts}" title="${time(e.ts)} · ${RES[e.result][0]}"></i>`).join('')}</div>
+      <div class="ax"><span>${date(asc[0].ts)}, ${time(asc[0].ts)}</span><span>${time(asc[asc.length - 1].ts)}</span></div></div>
+    <div class="list feed">
+      <div class="lh"><span></span><span>время</span><span>матч</span><span>турнир (лига)</span><span>ответ</span><span class="r">подняло</span></div>
+      <div class="scrollv">${rows.map(e => `<div class="lr ${e.ts === sel ? 'sel' : ''}" data-e="${e.ts}">
+        <span class="dot ${e.result === 'update' ? 'ok' : e.result === 'dup' ? 'warn' : ''}"></span>
+        <span class="num m">${time(e.ts)}</span>
+        <span class="mono"><a href="https://www.opendota.com/matches/${e.match_id}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${e.match_id}</a></span>
+        <span class="m num">лига ${e.league_id}</span>
+        <span><span class="chip ${RES[e.result][1]}">${RES[e.result][0]}</span>${e.bytes ? ` <span class="m num">${e.bytes} Б</span>` : ''}</span>
+        <span class="r num">${e.bytes ? '≈ ' + items(e.bytes) + ' вещ.' : '—'}</span></div>`).join('')}</div>
+    </div>
+    <div class="note">«Спорный» и «уже израсходован» снаружи неразличимы: ответ Valve (7204) пустой по протоколу. Поэтому спорное не вычитается из остатка — матч мог остаться целым. «Подняло» — оценка по размеру ответа msg 26.</div>`;
+}
+
+function queue() {
+  return `
+    <div class="list queue">
+      <div class="lh"><span>матч</span><span>лига</span><span>каким гемам</span><span class="r">поднимет</span></div>
+      <div class="scrollv">${D.queue.rows.map(r => `<div class="lr">
+        <span class="mono"><a href="https://www.opendota.com/matches/${r.match}" target="_blank" rel="noopener">${r.match}</a></span>
+        <span class="m num">${r.league}</span>
+        <span class="gtags">${r.entities.map(g => `<span class="gt"><i style="background-image:url('${D.icons[g] ?? ''}')"></i>${g}</span>`).join('')}</span>
+        <span class="r">${r.weight > 1 ? `<span class="x2">×${r.weight}</span>` : '<span class="m">×1</span>'}</span></div>`).join('')}</div>
+    </div>
+    <div class="note">Показаны первые ${D.queue.rows.length} из ${fmt(D.queue.total)}. Порядок не случайный: матчи, поднимающие два гема разом, идут первыми — чтобы остановка пришлась на дешёвый хвост.</div>`;
+}
+
+function used() {
+  return `<div class="used">${D.tree.map(g => {
+    const top = Math.max(...g.leagues.map(l => l.value), 1);
+    return `<div class="ug"><div class="h"><i style="background-image:url('${D.icons[g.gem] ?? ''}')"></i><div><b>${g.gem}</b><span>матчей всего ${fmt(g.value)}</span></div><div class="v"><b class="num">${g.burned}</b><span>сожжено</span></div></div>
+      <div class="lg">${g.leagues.slice(0, 5).map(l => `<div><span>${l.label}<div class="bar"><i style="width:${l.value / top * 100}%;background:${l.burned ? 'var(--warn)' : '#ffffff30'}"></i></div></span><span class="r num">${l.burned ? l.burned + ' / ' : ''}${fmt(l.value)}</span></div>`).join('')}</div></div>`;
+  }).join('')}</div>
+  <div class="note">Матч сгорает навсегда и только на этом аккаунте. По каждому гему — крупнейшие турниры его матчей. Номер конкретного матча кликается и открывает его страницу.</div>`;
+}
+
+function arr() {
+  return `<div class="empty3"><div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></div>
+    Приходов пока нет — в снимке закупок не было.<br>Здесь появится каждая купленная вещь: с каким числом приехала и чьё оно.
+    <div class="verdicts">
+      <div><b style="color:var(--ink2)">старое</b>лежало до сканера</div>
+      <div><b style="color:var(--ink2)">чисто</b>приехала нулевой — обычное сырьё</div>
+      <div><b style="color:var(--ink2)">наш</b>число объясняется нашими отправками</div>
+      <div><b style="color:var(--ac)">выигрыш</b>чужих просмотров от 50 — продать как есть</div>
+    </div></div>`;
+}
+
+function why() {
+  return `<div class="list" style="padding:4px 0">${D.log.slice().reverse().map(l => `<div class="lr" style="grid-template-columns:150px 90px minmax(0,1fr);cursor:default"><span class="m num">${date(l.ts)}, ${time(l.ts)}</span><span class="chip c-idle">${l.action}</span><span>${l.why}</span></div>`).join('')}</div>
+    <div class="note">Каждое решение работника — запустить, подождать, встать — с причиной словами. В снимке работник выключен, поэтому решение одно.</div>`;
+}
+
+function side() {
+  const e = ev.find(x => x.ts === sel);
+  const c = D.confirmed;
+  document.getElementById('side').innerHTML = `
+    ${e && tab === 'feed' ? `<section class="panel">
+      <div class="ph">Отправка <span class="chip ${RES[e.result][1]}">${RES[e.result][0]}</span></div>
+      <div class="kv2">
+        <span>когда</span><b class="num">${date(e.ts)}, ${time(e.ts)}</b>
+        <span>матч</span><a class="mono" style="color:var(--ink)" href="https://www.opendota.com/matches/${e.match_id}" target="_blank" rel="noopener">${e.match_id} ↗</a>
+        <span>лига</span><span style="color:var(--ink)" class="num">${e.league_id}</span>
+        <span>№ в заходе</span><span style="color:var(--ink)" class="num">${e.n} из ${e.total}</span>
+        <span>ответ</span><span style="color:var(--ink)" class="num">${e.bytes ? 'msg 26 · ' + e.bytes + ' байт' : '7204 без msg 26'}</span>
+        <span>подняло</span><span style="color:var(--ink)">${e.bytes ? '≈ ' + items(e.bytes) + ' вещей <span class="src h">оценка</span>' : 'неизвестно'}</span>
+      </div>
+    </section>` : ''}
+    <section class="panel legend">
+      <div class="ph">Как читать ответы</div>
+      <div class="row3"><i class="c-ok">✓</i><span><b>засчитан</b>пришёл msg 26 — предметы обновились. Только это считаем подтверждением.</span></div>
+      <div class="row3"><i class="c-warn">?</i><span><b>спорный</b>пришёл 7204 без msg 26: матч уже израсходован, сообщение отвергнуто или подходящих гемов не нашлось. Матч из остатка не вычитаем.</span></div>
+      <div class="row3"><i class="c-idle">…</i><span><b>без ответа</b>Valve не ответил вовсе.</span></div>
+    </section>
+    <section class="panel">
+      <div class="ph">Последнее подтверждение</div>
+      <div class="kv2"><span>когда</span><b>${date(c.ts)} · 43 дня назад</b><span>матч</span><span class="mono" style="color:var(--ink)">${c.match_id}</span><span>ответ</span><span class="num" style="color:var(--ink)">${c.bytes} байт</span></div>
+    </section>`;
+}
+
+function render() {
+  tabs();
+  document.getElementById('body').innerHTML = { feed, queue, used, arr, why }[tab]();
+  document.querySelectorAll('[data-e]').forEach(x => x.onclick = () => { sel = +x.dataset.e; render(); });
+  side();
+}
+sum(); render();
+</script>
+</body>
+</html>

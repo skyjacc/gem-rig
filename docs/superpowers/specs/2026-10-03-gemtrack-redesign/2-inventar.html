@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Gemtrack · Инвентарь v2 (макет)</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0c0c0e; --s1:#141416; --s2:#1b1b1e; --s3:#232327; --line:#ffffff0f; --line2:#ffffff17;
+    --ink:#ecebe8; --ink2:#a7a5a0; --mute:#76746f;
+    --ac:#b8f25c; --acg:#b8f25c55; --acs:#b8f25c1a;
+    --warn:#f2b44a; --warns:#f2b44a17; --stop:#ff7a7a; --stops:#ff7a7a17;
+    --r1:16px; --r2:10px; --pad:16px; --gap:8px;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:"Geist",ui-sans-serif,system-ui,sans-serif; font-size:13px; -webkit-font-smoothing:antialiased; }
+  /* Числа — тем же Geist с моноширинными цифрами: в Geist Mono пробел
+     между разрядами шириной в целую цифру, «1 946» разваливается. Mono — только для id. */
+  .num { font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+  .mono { font-family:"Geist Mono",ui-monospace,monospace; }
+  button, input { font:inherit; color:inherit; border:0; background:none; }
+  button { cursor:pointer; }
+
+  .app { display:grid; grid-template-columns:64px minmax(0,1fr) 392px; grid-template-rows:60px minmax(0,1fr); height:100vh; min-height:720px; }
+
+  .rail { grid-row:1/3; grid-column:1; display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:8px; }
+  .rail .logo { width:40px; height:40px; display:grid; place-items:center; margin-bottom:12px; }
+  .rail .logo svg { filter:drop-shadow(0 0 8px var(--acg)); }
+  .rail .grp { background:var(--s1); border:1px solid var(--line); border-radius:999px; padding:6px; display:flex; flex-direction:column; gap:4px; }
+  .rail .it { width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:var(--mute); transition:background-color 150ms, color 150ms; }
+  .rail .it:hover { background:var(--s2); color:var(--ink); }
+  .rail .it.on { background:var(--ink); color:var(--bg); }
+  .rail .sp { flex:1; }
+
+  .top { grid-column:2/4; grid-row:1; display:flex; align-items:center; gap:8px; padding:0 16px 0 4px; min-width:0; overflow:hidden; }
+  .pill { height:32px; display:inline-flex; align-items:center; gap:8px; padding:0 12px; border-radius:999px; background:var(--s1); border:1px solid var(--line); color:var(--ink2); font-size:12px; white-space:nowrap; }
+  .pill b { color:var(--ink); font-weight:500; }
+  .pill.acc { padding-left:4px; }
+  .ava { width:24px; height:24px; border-radius:999px; background:linear-gradient(135deg,#3a3a40,#202024); display:grid; place-items:center; font-size:11px; color:var(--ink); flex:none; }
+  .dot { width:7px; height:7px; border-radius:999px; background:var(--mute); flex:none; }
+  .dot.ok { background:var(--ac); box-shadow:0 0 8px var(--acg); } .dot.warn { background:var(--warn); }
+  .top .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .demo { color:var(--warn); background:var(--warns); border-color:transparent; }
+
+  /* ── страница ── */
+  .page { grid-column:2; grid-row:2; position:relative; margin:0 0 16px 4px; border-radius:20px; background:var(--s1); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; }
+  .scroll { flex:1; overflow:auto; padding:20px 20px 112px; scrollbar-width:thin; scrollbar-color:#ffffff24 transparent; }
+  .phead { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+  .phead h1 { margin:0; font-size:22px; font-weight:600; letter-spacing:-.02em; line-height:1.2; }
+  .phead .sub { color:var(--mute); font-size:12px; margin-top:4px; }
+  .phead .right { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .search { height:32px; width:200px; border-radius:999px; background:var(--s2); display:flex; align-items:center; gap:8px; padding:0 12px; color:var(--mute); }
+  .search input { flex:1; min-width:0; outline:none; color:var(--ink); font-size:12.5px; }
+  .search input::placeholder { color:var(--mute); }
+  .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--s2); }
+  .seg button { height:26px; padding:0 12px; border-radius:999px; color:var(--ink2); font-size:12px; display:inline-flex; align-items:center; gap:6px; transition:background-color 150ms,color 150ms; }
+  .seg button.on { background:var(--s3); color:var(--ink); }
+  .seg .ava { width:18px; height:18px; font-size:9.5px; }
+
+  .src { display:inline-flex; align-items:center; height:16px; padding:0 6px; border-radius:999px; font-family:"Geist Mono",monospace; font-size:9.5px; letter-spacing:.02em; color:var(--mute); background:var(--s3); vertical-align:1px; white-space:nowrap; }
+  .src.h { color:var(--warn); background:var(--warns); }
+
+  .sec { margin-top:24px; }
+  .sech { display:flex; align-items:baseline; gap:8px; margin-bottom:12px; }
+  .sech h2 { margin:0; font-size:15px; font-weight:600; letter-spacing:-.01em; }
+  .sech .n { color:var(--mute); font-size:12px; }
+  .sech .right { margin-left:auto; }
+  .lnk { color:var(--ink2); font-size:12px; height:26px; padding:0 10px; border-radius:999px; background:var(--s2); }
+  .lnk:hover { background:var(--s3); color:var(--ink); }
+
+  /* сводка */
+  .sum { display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:var(--gap); margin-top:20px; }
+  .tile { background:var(--s2); border-radius:12px; padding:12px 14px; min-width:0; }
+  .tile .l { white-space:nowrap; color:var(--mute); font-size:12px; display:flex; justify-content:space-between; gap:6px; }
+  .tile .v { font-size:24px; margin-top:6px; letter-spacing:-.02em; line-height:1; }
+  .tile .v small { font-size:13px; color:var(--mute); }
+  .tile .n { color:var(--mute); font-size:11.5px; margin-top:8px; line-height:1.4; }
+  .tile.big .v { font-size:34px; }
+  .stack { display:flex; height:4px; border-radius:999px; overflow:hidden; margin-top:12px; gap:2px; }
+  .stack i { display:block; height:100%; }
+  .bar { height:4px; border-radius:999px; background:var(--s3); overflow:hidden; position:relative; }
+  .bar i { display:block; height:100%; background:var(--ac); border-radius:999px; }
+
+  /* связки */
+  .bonds { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:var(--gap); }
+  .bond { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:12px; background:var(--s2); border-radius:12px; padding:10px 12px; cursor:pointer; transition:background-color 150ms, box-shadow 150ms; }
+  .bond:hover { background:var(--s3); }
+  .bond.on { box-shadow:inset 0 0 0 1px var(--ac); }
+  .pair { display:flex; align-items:center; }
+  .pair .ico { width:30px; height:30px; border-radius:8px; background:#0f0f11 center/cover; border:2px solid var(--s2); }
+  .pair .ico + .ico { margin-left:-8px; }
+  .bond .nm { font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bond .bar { margin-top:6px; height:3px; }
+  .bond .v { text-align:right; }
+  .bond .v b { font-weight:500; font-size:14px; display:block; }
+  .bond .v span { color:var(--mute); font-size:10.5px; }
+  .callout { display:flex; gap:12px; align-items:flex-start; background:linear-gradient(90deg,#b8f25c10,transparent 60%); border-radius:12px; padding:12px 14px; margin-bottom:var(--gap); }
+  .callout svg { color:var(--ac); flex:none; margin-top:1px; }
+  .callout .t { font-size:12.5px; line-height:1.45; }
+  .callout .t b { font-weight:500; }
+
+  /* фильтры */
+  .filters { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .fchip { height:30px; padding:0 6px 0 12px; border-radius:999px; background:var(--s2); color:var(--ink2); font-size:12px; display:inline-flex; align-items:center; gap:8px; transition:background-color 150ms,color 150ms; }
+  .fchip:hover { background:var(--s3); color:var(--ink); }
+  .fchip .c { min-width:22px; height:20px; padding:0 6px; border-radius:999px; background:var(--s3); font-size:11px; display:grid; place-items:center; }
+  .fchip.on { background:var(--ink); color:var(--bg); }
+  .fchip.on .c { background:#0c0c0e1f; }
+
+  /* отсеки */
+  .bay + .bay { margin-top:12px; }
+  .bayh { display:grid; grid-template-columns:16px 40px minmax(0,1fr) 220px; align-items:center; gap:12px; padding:12px; border-radius:12px; background:var(--s2); cursor:pointer; transition:background-color 150ms; }
+  .bayh:hover { background:var(--s3); }
+  .bayh .ico { width:40px; height:40px; border-radius:10px; background:#0f0f11 center/cover; border:1px solid var(--line); }
+  .bayh .nm { font-weight:500; font-size:14px; display:flex; align-items:center; gap:8px; }
+  .bayh .hr { color:var(--mute); font-size:11.5px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bayh .with { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
+  .tagw { height:20px; padding:0 8px 0 3px; border-radius:999px; background:var(--s3); font-size:10.5px; color:var(--ink2); display:inline-flex; align-items:center; gap:5px; }
+  .tagw i { width:14px; height:14px; border-radius:4px; background:center/cover; }
+  .tagw b { color:var(--ink); font-weight:500; }
+  .bayh .prog .t { display:flex; justify-content:space-between; font-size:11px; color:var(--mute); margin-bottom:6px; }
+  .bayh .prog .t b { color:var(--ink); font-weight:500; }
+  .bayh .chev { color:var(--mute); transition:transform 200ms; }
+  .bay.closed .chev { transform:rotate(-90deg); }
+  .bay.closed .cells { display:none; }
+
+  .cells { display:grid; grid-template-columns:repeat(auto-fill, minmax(176px, 1fr)); gap:var(--gap); margin-top:var(--gap); }
+  .cell { position:relative; border-radius:12px; border:1px dashed #ffffff1c; padding:12px; cursor:pointer; display:flex; flex-direction:column; gap:10px; transition:background-color 150ms, border-color 150ms, box-shadow 150ms; }
+  .cell:hover { background:#ffffff06; border-color:#ffffff30; }
+  .cell.sel { background:#b8f25c0b; border-color:transparent; box-shadow:inset 0 0 0 1px var(--ac); }
+  .cell .r1 { display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:10px; align-items:center; }
+  .cell .ico { width:44px; height:44px; border-radius:10px; background:#0f0f11 center/cover; border:1px solid var(--line); position:relative; }
+  .cell .cnt { position:absolute; right:-6px; bottom:-6px; height:18px; min-width:22px; padding:0 5px; border-radius:999px; background:var(--ink); color:var(--bg); font-size:10.5px; font-weight:600; display:grid; place-items:center; }
+  .cell .nm { font-size:12.5px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .cell .val { text-align:right; }
+  .cell .val b { font-size:16px; font-weight:500; display:block; line-height:1.1; }
+  .cell .val span { font-size:10.5px; color:var(--mute); }
+  /* копии стопки: по сегменту на копию, светится та, где счётчик не ноль */
+  .pips { display:flex; gap:3px; align-items:center; }
+  .pips i { flex:1; height:4px; border-radius:999px; background:var(--s3); }
+  .pips i.on { background:var(--ac); }
+  .pips i.eq { box-shadow:0 0 0 1.5px var(--s1), 0 0 0 2.5px #ffffff55; }
+  .pips span { flex:none; margin-left:6px; font-size:10.5px; color:var(--mute); }
+  .cell .chips { display:flex; gap:4px; flex-wrap:wrap; }
+
+  .chip { height:20px; padding:0 7px; border-radius:999px; font-size:10.5px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; flex:none; }
+  .chip::before { content:""; width:5px; height:5px; border-radius:999px; background:currentColor; }
+  .chip.plain::before { display:none; }
+  .c-ok { color:var(--ac); background:var(--acs); } .c-warn { color:var(--warn); background:var(--warns); } .c-stop { color:var(--stop); background:var(--stops); } .c-idle { color:var(--ink2); background:var(--s3); }
+
+  .dock { position:absolute; left:50%; bottom:16px; translate:-50% 0; z-index:4; display:flex; align-items:center; gap:6px; padding:6px; border-radius:999px;
+          background:#1a1a1dee; border:1px solid var(--line2); box-shadow:0 20px 50px #000000aa, inset 0 1px 0 #ffffff0d; backdrop-filter:blur(10px); white-space:nowrap; }
+  .dock .st { display:flex; align-items:center; gap:8px; padding:0 12px 0 10px; height:40px; }
+  .dock .st b { font-weight:500; } .dock .st span { color:var(--mute); font-size:12px; }
+  .dock .div { width:1px; height:24px; background:var(--line2); }
+  .dock .kv { padding:0 10px; display:flex; flex-direction:column; justify-content:center; height:40px; }
+  .dock .kv span { color:var(--mute); font-size:10.5px; } .dock .kv b { font-size:13px; font-weight:500; }
+  .go { height:40px; padding:0 18px 0 14px; border-radius:999px; background:var(--ac); color:#0c0c0e; font-weight:600; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 24px var(--acg); }
+  .ghost { height:40px; padding:0 14px; border-radius:999px; background:var(--s3); color:var(--ink); }
+
+  /* ── карточка справа: один шаг отступа везде — 16 снаружи, 8 между блоками ── */
+  .side { grid-column:3; grid-row:2; padding:0 16px 16px 0; display:flex; flex-direction:column; gap:12px; overflow:auto; scrollbar-width:none; }
+  .panel { background:var(--s1); border:1px solid var(--line); border-radius:var(--r1); padding:var(--pad); display:flex; flex-direction:column; gap:var(--gap); }
+  .ph { display:flex; align-items:center; justify-content:space-between; height:20px; font-weight:500; margin-bottom:4px; }
+  .ph .n { color:var(--mute); font-weight:400; font-size:11.5px; }
+  .hero { display:grid; grid-template-columns:96px minmax(0,1fr); gap:14px; align-items:center; }
+  .hero .pic { width:96px; height:96px; border-radius:14px; background:#0f0f11 center/cover; border:1px solid var(--line2); position:relative; box-shadow:0 0 0 4px var(--s2), 0 12px 30px #000a; }
+  .hero .pic .cnt { position:absolute; right:-8px; bottom:-8px; height:22px; min-width:28px; padding:0 7px; border-radius:999px; background:var(--ink); color:var(--bg); font-size:11.5px; font-weight:600; display:grid; place-items:center; }
+  .hero h3 { margin:0; font-size:16px; font-weight:600; letter-spacing:-.01em; line-height:1.25; }
+  .hero .s { color:var(--mute); font-size:12px; margin-top:4px; }
+  .hero .chips { display:flex; gap:4px; margin-top:8px; flex-wrap:wrap; }
+  .meter { background:var(--s2); border-radius:12px; padding:12px; margin-top:8px; }
+  .meter .t { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--mute); }
+  .meter .t b { font-size:22px; font-weight:500; color:var(--ink); letter-spacing:-.02em; }
+  .meter .bar { margin-top:12px; height:6px; overflow:visible; }
+  .meter .bar i { box-shadow:0 0 10px var(--acg); }
+  .capmark { position:absolute; top:-4px; width:2px; height:14px; border-radius:2px; background:var(--warn); }
+  .meter .legend { display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:var(--mute); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
+  .fact { background:var(--s2); border-radius:var(--r2); padding:10px 12px; min-width:0; }
+  .fact .k { white-space:nowrap; color:var(--mute); font-size:11px; display:flex; justify-content:space-between; gap:6px; align-items:center; }
+  .fact b { font-weight:500; font-size:14px; display:block; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .warnbox { display:grid; grid-template-columns:16px minmax(0,1fr); gap:10px; padding:12px; border-radius:var(--r2); background:#f2b44a12; color:#f6d29a; }
+  .warnbox.r { background:#ff7a7a12; color:#ffb0b0; }
+  .warnbox.i { background:var(--s2); color:var(--ink2); }
+  .warnbox .t { font-weight:500; font-size:12.5px; color:inherit; }
+  .warnbox .d { font-size:11.5px; opacity:.85; margin-top:3px; line-height:1.45; }
+  .acts { display:flex; gap:var(--gap); flex-wrap:wrap; margin-top:4px; }
+  .btn2 { height:34px; padding:0 14px; border-radius:999px; background:var(--s2); color:var(--ink); font-size:12.5px; transition:background-color 150ms; }
+  .btn2:hover { background:var(--s3); }
+  .btn2.ac { background:var(--acs); color:var(--ac); }
+
+  .rows .row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; height:42px; border-top:1px solid var(--line); font-size:12.5px; }
+  .rows .row:first-child { border-top:0; }
+  .rows .row .acc { display:flex; align-items:center; gap:6px; color:var(--ink2); }
+  .rows .row .mid { min-width:0; }
+  .rows .row .mid .id { color:var(--mute); font-size:10.5px; }
+  .rows .row .mid .bar { height:3px; margin-top:5px; }
+  .rows .row .v { text-align:right; font-weight:500; min-width:48px; }
+  .rows .row .v small { display:block; color:var(--mute); font-weight:400; font-size:10.5px; }
+  .rows .row .pair .ico { width:24px; height:24px; border-radius:6px; border-width:0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <nav class="rail">
+    <div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b8f25c" stroke-width="1.6"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M12 21 8 9l4-6 4 6z"/></svg></div>
+    <div class="grp">
+      <button class="it" title="Обзор"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.5 12c5 0 5-7 9-7M7.5 12c5 0 5 7 9 7"/></svg></button>
+      <button class="it on" title="Инвентарь"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+      <button class="it" title="Скупка"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6"/></svg></button>
+      <button class="it" title="Продажи"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></button>
+      <button class="it" title="Аккаунты"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg></button>
+      <button class="it" title="Журнал"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+    </div>
+    <div class="sp"></div>
+  </nav>
+
+  <header class="top">
+    <span class="pill acc"><span class="ava">О</span><b>основной</b><span class="dot"></span></span>
+    <span class="pill">вещей <b class="num">51</b></span>
+    <span class="pill">гемов <b class="num">7</b></span>
+    <span class="pill">в очереди <b class="num">11 580</b></span>
+    <span class="pill">готово к продаже <b class="num">0</b></span>
+    <div class="right"><span class="pill demo"><span class="dot warn"></span>макет · снимок 21 августа · ничего не отправляется</span></div>
+  </header>
+
+  <main class="page">
+    <div class="scroll" id="scroll">
+      <div class="phead">
+        <div><h1>Инвентарь</h1><div class="sub">товар — вещь со счётчиком от 1 000 · у каждой цифры подписано, откуда она</div></div>
+        <div class="right">
+          <div class="seg" id="scope">
+            <button class="on" data-s="all">все аккаунты <span class="num" style="color:var(--mute)">1</span></button>
+            <button data-s="main"><span class="ava">О</span>основной</button>
+          </div>
+          <label class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="вещь, герой, гем"></label>
+        </div>
+      </div>
+
+      <div class="sum" id="sum"></div>
+
+      <section class="sec">
+        <div class="sech"><h2>Связки</h2><span class="n">гемы, которые поднимаются одной отправкой</span><span class="right"><button class="lnk" id="moreBonds">все 14</button></span></div>
+        <div class="callout"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
+          <div class="t">Одна отправка матча поднимает <b>все</b> гемы, чьи команды или игроки в нём были — каждому по +1. <span class="src">README §2 · проверено</span><br>
+          В очереди <b class="num" id="w2"></b> из <b class="num" id="qt"></b> матчей поднимают сразу два гема. <span class="src">очередь</span></div></div>
+        <div class="bonds" id="bonds"></div>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h2>Вещи</h2><span class="n" id="itemsN"></span></div>
+        <div class="filters" id="filters"></div>
+        <div id="bays" style="margin-top:12px"></div>
+      </section>
+    </div>
+
+    <div class="dock">
+      <div class="st"><span class="dot warn"></span><b>стоит</b><span>работник выключен</span></div>
+      <div class="div"></div>
+      <div class="kv"><span>пауза</span><b class="num">1,0 с</b></div>
+      <div class="kv"><span>темп</span><b class="num">—</b></div>
+      <div class="kv"><span>подтверждено</span><b>43 дня назад</b></div>
+      <div class="div"></div>
+      <button class="ghost">настроить</button>
+      <button class="go"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>Накрутить</button>
+    </div>
+  </main>
+
+  <aside class="side" id="side"></aside>
+</div>
+
+<script>
+const D = {"gems":[{"gem":"BZZ","hero":"Pugna","icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/96fx96f","supply":2155,"left":2148,"kind":"measured","node":{"kind":"player","pool":2155,"burned":7,"price":0.03,"counter":12},"rows":[{"id":"demo-463497592","n":"Nether Heart","v":12,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/128fx128f"},{"id":"demo-468039388","n":"Nether Lord's Cape","v":12,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLyn4blsixe-_qrepthL-KXHViTwP5z_rY5TijrzB5z52TSz9iucHvFbwR0A5UjFrMLskK9k4bmMLng4QSPid9bjXKpQw2GSL8/128fx128f"},{"id":"demo-332138859","n":"Nether Lord's Bracer","v":12,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLzjJfj-DAU4fe6YKF_H_ycHGOD_uxkseJsXWfnwBh0tTjUnIuveS_EOFUkWZp0Te4Luhixw9HiNuq35AXai4tEmC_3kGoXuUU9vK3G/128fx128f"},{"id":"demo-710216020","n":"Nether Lord's Scepter","v":12,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLinZPw6SdJoPyrfKxoMs-fAXWU0tFls-R5Wyyh20wk5mvQnNeqcX6WbAIlX8d1R7UC4EOxwNSyP-6x7gWLiopAzCWtjyJXrnE8KEzbH3w/128fx128f"},{"id":"demo-355717817","n":"Nether Lord's Devourer","v":12,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiL1m4Dv6DBe_b2gbbBlJeKsAmiCxf1JtOR_QDyhkA9p5DuAm4modHyXPQEjDcYkFuZb4RPuxoHkM-i37wWMio8RzC_-3ytPuDErvbifCKi6Fg/128fx128f"},{"id":"demo-62925440","n":"Nether Lord's Hat","v":12,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiL5n4Kv8ydP5_e8V6hiMvSAMW-R1aAvs-RrS3qyxRt_52SBy4qoeHqQaQEnCcRyR-ILuhDpx4DlPuvm5gTXlcsbmg_PF721/128fx128f"},{"id":"demo-765010546","n":"Nether Lord's Belt","v":12,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLzm5r0sixe-_qrepthL-KXHViSxOJi_uNtS3HilE0mt2zXz9n4cX6RPwApDcdzEOYJthjqlofiYe3n7g3e34xbjXKpjGgLSBo/128fx128f"},{"id":"demo-661525705","n":"Nether Heart","v":12,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/128fx128f"},{"id":"demo-882811932","n":"Nether Heart","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/128fx128f"},{"id":"demo-500757704","n":"Nether Lord's Cape","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLyn4blsixe-_qrepthL-KXHViTwP5z_rY5TijrzB5z52TSz9iucHvFbwR0A5UjFrMLskK9k4bmMLng4QSPid9bjXKpQw2GSL8/128fx128f"},{"id":"demo-254650992","n":"Nether Lord's Scepter","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLinZPw6SdJoPyrfKxoMs-fAXWU0tFls-R5Wyyh20wk5mvQnNeqcX6WbAIlX8d1R7UC4EOxwNSyP-6x7gWLiopAzCWtjyJXrnE8KEzbH3w/128fx128f"},{"id":"demo-456173365","n":"Nether Lord's Devourer","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiL1m4Dv6DBe_b2gbbBlJeKsAmiCxf1JtOR_QDyhkA9p5DuAm4modHyXPQEjDcYkFuZb4RPuxoHkM-i37wWMio8RzC_-3ytPuDErvbifCKi6Fg/128fx128f"},{"id":"demo-189758896","n":"Nether Lord's Hat","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiL5n4Kv8ydP5_e8V6hiMvSAMW-R1aAvs-RrS3qyxRt_52SBy4qoeHqQaQEnCcRyR-ILuhDpx4DlPuvm5gTXlcsbmg_PF721/128fx128f"},{"id":"demo-787164148","n":"Nether Lord's Belt","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLzm5r0sixe-_qrepthL-KXHViSxOJi_uNtS3HilE0mt2zXz9n4cX6RPwApDcdzEOYJthjqlofiYe3n7g3e34xbjXKpjGgLSBo/128fx128f"},{"id":"demo-926606995","n":"Nether Heart","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/128fx128f"},{"id":"demo-969947282","n":"Nether Lord's Cape","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLyn4blsixe-_qrepthL-KXHViTwP5z_rY5TijrzB5z52TSz9iucHvFbwR0A5UjFrMLskK9k4bmMLng4QSPid9bjXKpQw2GSL8/128fx128f"},{"id":"demo-48220598","n":"Nether Lord's Scepter","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLinZPw6SdJoPyrfKxoMs-fAXWU0tFls-R5Wyyh20wk5mvQnNeqcX6WbAIlX8d1R7UC4EOxwNSyP-6x7gWLiopAzCWtjyJXrnE8KEzbH3w/128fx128f"},{"id":"demo-110096782","n":"Nether Lord's Devourer","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiL1m4Dv6DBe_b2gbbBlJeKsAmiCxf1JtOR_QDyhkA9p5DuAm4modHyXPQEjDcYkFuZb4RPuxoHkM-i37wWMio8RzC_-3ytPuDErvbifCKi6Fg/128fx128f"},{"id":"demo-296728508","n":"Nether Lord's Hat","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiL5n4Kv8ydP5_e8V6hiMvSAMW-R1aAvs-RrS3qyxRt_52SBy4qoeHqQaQEnCcRyR-ILuhDpx4DlPuvm5gTXlcsbmg_PF721/128fx128f"},{"id":"demo-134659661","n":"Nether Lord's Belt","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLzm5r0sixe-_qrepthL-KXHViSxOJi_uNtS3HilE0mt2zXz9n4cX6RPwApDcdzEOYJthjqlofiYe3n7g3e34xbjXKpjGgLSBo/128fx128f"},{"id":"demo-626295703","n":"Nether Lord's Cape","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLyn4blsixe-_qrepthL-KXHViTwP5z_rY5TijrzB5z52TSz9iucHvFbwR0A5UjFrMLskK9k4bmMLng4QSPid9bjXKpQw2GSL8/128fx128f"},{"id":"demo-279166846","n":"Nether Lord's Bracer","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLzjJfj-DAU4fe6YKF_H_ycHGOD_uxkseJsXWfnwBh0tTjUnIuveS_EOFUkWZp0Te4Luhixw9HiNuq35AXai4tEmC_3kGoXuUU9vK3G/128fx128f"},{"id":"demo-863954102","n":"Nether Lord's Scepter","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLinZPw6SdJoPyrfKxoMs-fAXWU0tFls-R5Wyyh20wk5mvQnNeqcX6WbAIlX8d1R7UC4EOxwNSyP-6x7gWLiopAzCWtjyJXrnE8KEzbH3w/128fx128f"},{"id":"demo-153642845","n":"Nether Lord's Devourer","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiL1m4Dv6DBe_b2gbbBlJeKsAmiCxf1JtOR_QDyhkA9p5DuAm4modHyXPQEjDcYkFuZb4RPuxoHkM-i37wWMio8RzC_-3ytPuDErvbifCKi6Fg/128fx128f"},{"id":"demo-460665392","n":"Nether Lord's Hat","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiL5n4Kv8ydP5_e8V6hiMvSAMW-R1aAvs-RrS3qyxRt_52SBy4qoeHqQaQEnCcRyR-ILuhDpx4DlPuvm5gTXlcsbmg_PF721/128fx128f"},{"id":"demo-63364043","n":"Nether Lord's Belt","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLzm5r0sixe-_qrepthL-KXHViSxOJi_uNtS3HilE0mt2zXz9n4cX6RPwApDcdzEOYJthjqlofiYe3n7g3e34xbjXKpjGgLSBo/128fx128f"},{"id":"demo-504220028","n":"Nether Lord's Bracer","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLzjJfj-DAU4fe6YKF_H_ycHGOD_uxkseJsXWfnwBh0tTjUnIuveS_EOFUkWZp0Te4Luhixw9HiNuq35AXai4tEmC_3kGoXuUU9vK3G/128fx128f"},{"id":"demo-642319182","n":"Nether Lord's Bracer","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgenWS8V5w5rj45UvjUiLzjJfj-DAU4fe6YKF_H_ycHGOD_uxkseJsXWfnwBh0tTjUnIuveS_EOFUkWZp0Te4Luhixw9HiNuq35AXai4tEmC_3kGoXuUU9vK3G/128fx128f"},{"id":"demo-917031878","n":"Nether Heart","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBxMSgemyW91I6-oLg4lz1fhX0n4T0sixe-_qreptlJfGBGlie0e1JtO59ThajgBopsgKLn5vxJDn4KVdiXowmF-4ItUWwm9zmY7mz41fYg99MzCz63H9B7y5usL0BWaEl_PHVjFySL_Rjtovhmev8/128fx128f"}]},{"gem":"Ohaiyo","hero":"Nature's Prophet","icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mb0SRLkkpLl721L_fujbbJsLM-ABmiFzepzoq87G37hkB50tWyHyo39I3qXOFMjCZt2QucI5ELukN3nML-04wzcjowQ02yg2end0mr0/96fx96f","supply":1849,"left":1849,"kind":"measured","node":{"kind":"player","pool":1849,"burned":0,"price":0.03,"counter":0},"rows":[{"id":"demo-65827797","n":"Primeval Shoulder","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mb0SRLkkpLl721L_fujbbJsLM-ABmiFzepzoq87G37hkB50tWyHyo39I3qXOFMjCZt2QucI5ELukN3nML-04wzcjowQ02yg2end0mr0/128fx128f"},{"id":"demo-164115643","n":"Primeval Treant","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSD91N0-pO7-kvuTBjnn5rf6TBe7vy6J7R_Kf2WGGac_vpkteBnWxa9hR4YtzKRm7D_NDnOMVhPTtAlFLlOrBTskN3gNLvgtAfa3o4QyHj4iilP6iZssu0GVPB3_PHQjQ3DN-Y55cUdZKHwkOB9CYU/128fx128f"},{"id":"demo-488042036","n":"Inscribed Primeval Staff","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mbwRBzhkZiv7TBS4ve4aahSN_WSHmiej7tz5bZtSXi1xB935WXdmImvdn2fbAN1ApEmFrMI4xC-x9PvY--z7gHAy9USxUOzWzw/128fx128f"},{"id":"demo-527345305","n":"Primeval Horns","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mbvRBz10Yby9C9e-fOiV6xoIfTdXj6Sxesn5Lc9HCzil0Ql4TiEzY2vdy2SOwcpWZNyTeRetka_x4DlZvSiuVLveR9Msw/128fx128f"},{"id":"demo-731955301","n":"Primeval Cape","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mblQB760Yby9C9e-fOiV6ZsI_vdXjLCkusv6ONsFn7qwE5x4WvTmNuhc3mRbAZ2DpEmRe8D5kG7l9PmZPSiuVLgT4H1dA/128fx128f"},{"id":"demo-364534122","n":"Primeval Bracers","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mbmUxDi0Yby9C9e-fOiV6V_LePdDDfDxLsk4bc9HXyxlxxw62zQntmpcnqWbQUoWcB0RO4Luha6kYa2MvSiuVKcYogMyw/128fx128f"},{"id":"demo-54684572","n":"Primeval Beard","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_DB0cOuOzSH91948ZH15mbpRB760Yby9C9e-fOiV6poI_vdXTPExbsn57AxHn-3lBkhsWXdmN76JHPEb1UkCpIlQ-Fb5xbtxIXiMPSiuVJ6FJRGGg/128fx128f"}]},{"gem":"Team Empire","hero":"Slark","icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbmUxDi0ZLh7ylk_ferbptsMv2AQDHBwOgn5LU9FnznwR4h4jzczN36dC3DaAYgDcB4EeNes0S8ktK0Ybn8p1uJsrguhiE/96fx96f","supply":2594,"left":2585,"kind":"measured","node":{"kind":"team","pool":2594,"burned":9,"price":0.03,"counter":18},"rows":[{"id":"demo-191170444","n":"Inscribed Prison Buckler","v":18,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbmUxDi0ZLh7ylk_ferbptsMv2AQDHBwOgn5LU9FnznwR4h4jzczN36dC3DaAYgDcB4EeNes0S8ktK0Ybn8p1uJsrguhiE/128fx128f"},{"id":"demo-90881855","n":"Prison Shank","v":18,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbwRBzhkZiv-SNJ5M28baFrH-eWD3efz6Bysrg4TXznwEsl627RztaseH-TOgZyDsEmQbIDtUW_kNbkZLux7lDXlcsbmlgjsyeb/128fx128f"},{"id":"demo-641085","n":"Shark Cowl","v":18,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GbvRBz10ZLh7ylk_ferbptlJfGXQGbFxL114ec9THngwBhw62-An938d3PFaVMnDpciR7RbtRO_x4C1Zrv8p1uJWmMKo1I/128fx128f"},{"id":"demo-577738191","n":"Bound Shark Flippers","v":18,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7Gb0SRLkkpLl7zEU6_O8Y5t_JfWVMXSYzvt6tOR7XGfmxEh0tzmEmImrdC6TPFQjDJYjTLVe5EO-k9TnN-O25gzegtlMnyv2kGoXuY1aqTFj/128fx128f"},{"id":"demo-124393279","n":"Shark Fin Cape","v":18,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-XYwtiqen-W911K5oLx7GblQB760ZLh7ylk_ferbptvIfOYQD_FwrYl4-M9G3uykEh14DnRmN2ueC2WbQAkXJVxROcJ4RjskIWzPr78p1uJeeZGxcc/128fx128f"}]},{"gem":"Alliance","hero":"Puck","icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5Frifgnwl5qv7ydW5vyne6doLvOWMXORyOI44uU5GCixwBwk5G6HyI2ocC6Ub1MlWMRwQ-cPtBGxk9C1YrmwsQHbg5UFk3uFdbU1HQ/96fx96f","supply":2483,"left":2431,"kind":"measured","node":{"kind":"team","pool":2483,"burned":52,"price":0.04,"counter":54},"rows":[{"id":"demo-354286698","n":"Spectator: Alliance","v":54,"e":false,"c":"gem","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGJa52EC1ROWbxM-sCmiH4FVh9ZP7-Be-RR_3mM7lrHNa6vP-PPY4JPPAWTGSxO0g57NqH3q3lkR1tWqHm42gbzvJOf4mTb1q/128fx128f"},{"id":"demo-614985184","n":"Tail of Reminiscence","v":52,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5Frifgnwl5qv7ydW5vyne6doLvOWMXORyOI44uU5GCixwBwk5G6HyI2ocC6Ub1MlWMRwQ-cPtBGxk9C1YrmwsQHbg5UFk3uFdbU1HQ/128fx128f"},{"id":"demo-669595784","n":"Wings of Reminiscence","v":52,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5Frifgr4kJHzsjBe4vugYbduJf6QC1iHyOBxo685Fn7ix0wj42qHz4qucS6RZwEjA8F0F-Jfsxi5x9XnMemwsQ3d2tlE02yg2acYDfb_/128fx128f"},{"id":"demo-243790505","n":"Inscribed Orb of Reminiscence","v":52,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH-bBwMHuJ36a7Fh854Tx5FrifhX0n5Kv7ydW5vyne6doLvOWMW-VwOo4tuQ4HnmxwUQksm2Dztv4d36RPVIpXsB5QuQK4UaxmtHmPrvrtFOP2pUFk3vUPSigvQ/128fx128f"}]},{"gem":"DD","hero":"Lina","icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZjl_ikU6uSreqhsM-SaAGCYxO9ij-9sTCL9wUtz62vRmN6ucnvGPAV0WJYkQuIO4xG-lYHkYrjmtgXe2otCn3j9ijQJsHg2iKUokw/96fx96f","supply":568,"left":568,"kind":"measured","node":{"kind":"player","pool":568,"burned":0,"price":0.04,"counter":0},"rows":[{"id":"demo-153905090","n":"Everlasting Tails","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZjl_ikU6uSreqhsM-SaAGCYxO9ij-9sTCL9wUtz62vRmN6ucnvGPAV0WJYkQuIO4xG-lYHkYrjmtgXe2otCn3j9ijQJsHg2iKUokw/128fx128f"},{"id":"demo-106160436","n":"Everlasting Hair","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZ7h9DAU6uSreqhsM-SaAGCYxO9ij-loRjv9w01142TWzd2od3uUbwMiDMd0FO5f50O9ldXuPu7itACPidkTzSz83DQJsHi4Hp0RjA/128fx128f"},{"id":"demo-602029707","n":"Everlasting Belt","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZTl8TYU6uSreqhsM-SaAGCYxO9ij-NsQz39kU5-sjzUzYmveS7FaVInCsN3Q7QDuxnrm9G2Yu_j4Qzd2oxByST93DQJsHisgVBwbQ/128fx128f"},{"id":"demo-497562706","n":"Everlasting Arms","v":0,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_rdzcvuMG2S91p055P95F7vRBzloZfy8DEU6uSreqhsM-SaAGCYxO9ij-B7Qjr9x0tx6mzcwtv_d3-UZgV2C8B5ReUOskbpkNa1NL-35VbfiI0Xmy_-3zQJsHiyPpQfSA/128fx128f"}]},{"gem":"NaVi","hero":"Chen","icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_XcxsTuIn6W9Vl7y4n1_FCoVhjwjpnuwixa-fvgMKJoePGRCjHFwuslsrdtTXzjw0pwt2_cmIupIH3BPAYgCpF2F-MN5g74zIN9SriQmw/96fx96f","supply":2844,"left":2839,"kind":"measured","node":{"kind":"team","pool":2844,"burned":5,"price":0.06,"counter":10},"rows":[{"id":"demo-697723584","n":"Wings of Obelis Staff","v":10,"e":true,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_XcxsTuIn6W9Vl7y4n1_FCoVhjwjpnuwixa-fvgMKJoePGRCjHFwuslsrdtTXzjw0pwt2_cmIupIH3BPAYgCpF2F-MN5g74zIN9SriQmw/128fx128f"}]},{"gem":"CaspeRRR","hero":"Nyx Assassin","icon":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_jR0d-jPHqZ2ldm54bn-VDpDg75n5Lv6h1P_fOtbbZ-b-ObD2Of1tFiouBqSjug2xwk5WmGwtr_IHOUaAFyW5QiQLVZ5BHqw9zuP-PnsgOMi4IQzy75iyxXrnE8d9MIDIs/96fx96f","supply":3,"left":null,"kind":"estimated","node":null,"rows":[{"id":"demo-829754924","n":"Shadow Tracers","v":0,"e":false,"c":"item","i":"https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttydbPaERSR0Wqmu7LAocGIyi3kajH_jR0d-jPHqZ2ldm54bn-VDpDg75n5Lv6h1P_fOtbbZ-b-ObD2Of1tFiouBqSjug2xwk5WmGwtr_IHOUaAFyW5QiQLVZ5BHqw9zuP-PnsgOMi4IQzy75iyxXrnE8d9MIDIs/128fx128f"}]}],"edges":[{"a":"BZZ","b":"Team Empire","shared":217},{"a":"NaVi","b":"Team Empire","shared":165},{"a":"Alliance","b":"NaVi","shared":124},{"a":"Alliance","b":"Team Empire","shared":100},{"a":"BZZ","b":"NaVi","shared":76},{"a":"Alliance","b":"BZZ","shared":53},{"a":"DD","b":"Ohaiyo","shared":42},{"a":"NaVi","b":"Ohaiyo","shared":24},{"a":"Alliance","b":"Ohaiyo","shared":23},{"a":"DD","b":"NaVi","shared":14},{"a":"Ohaiyo","b":"Team Empire","shared":7},{"a":"Alliance","b":"DD","shared":3},{"a":"BZZ","b":"DD","shared":3},{"a":"DD","b":"Team Empire","shared":1}],"queue":{"total":11580,"weight2":840},"account":{"id":"main","label":"основной","steamid":"7656119800000000","token":"session.json","added":1787162422453,"session":true,"burned":66}};
+const GOAL = 1000;   // цель из общих правил
+const ORDER = ['Alliance','Team Empire','BZZ','NaVi','Ohaiyo','DD','CaspeRRR'];
+const gems = ORDER.map(n => D.gems.find(g => g.gem === n)).filter(Boolean);
+const G = Object.fromEntries(gems.map(g => [g.gem, g]));
+const ACC = D.account;
+
+const fmt = n => n == null ? '—' : n.toLocaleString('ru-RU');
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
+const cap = g => g.kind === 'measured' ? g.supply : null;
+function stateOf(g, v) {
+  if (v >= GOAL) return 'ready';
+  if (cap(g) == null) return 'unknown';
+  if (cap(g) < GOAL) return 'stuck';
+  return 'going';
+}
+const ST = { ready:{chip:'готово',cls:'c-ok'}, going:{chip:'дойдёт',cls:'c-idle'}, stuck:{chip:'не дойдёт',cls:'c-warn'}, unknown:{chip:'потолок неизвестен',cls:'c-stop'} };
+const withOf = name => D.edges.filter(e => e.a === name || e.b === name).map(e => ({ gem: e.a === name ? e.b : e.a, n: e.shared })).sort((a, b) => b.n - a.n);
+
+// стопки: одинаковые вещи одного гема — одна ячейка
+const stacks = gems.flatMap(g => {
+  const by = new Map();
+  for (const r of g.rows) { const k = r.c === 'gem' ? '§gem' : r.n; if (!by.has(k)) by.set(k, []); by.get(k).push(r); }
+  return [...by.entries()].map(([k, rows]) => {
+    rows.sort((a, b) => b.v - a.v);
+    const max = rows[0].v;
+    return { key: g.gem + '|' + k, g, name: k === '§gem' ? 'Spectator: ' + g.gem : k, bare: k === '§gem', rows, max, s: stateOf(g, max), icon: rows[0].i };
+  });
+});
+
+let filter = 'all', query = '', sel = stacks[0].key, bondSel = null, allBonds = false;
+const closed = new Set();
+
+function summary() {
+  const rows = gems.flatMap(g => g.rows.map(r => ({ g, r, s: stateOf(g, r.v) })));
+  const n = rows.length, ready = rows.filter(x => x.s === 'ready').length, going = rows.filter(x => x.s === 'going').length;
+  const stuck = n - ready - going, views = rows.reduce((a, x) => a + x.r.v, 0);
+  document.getElementById('sum').innerHTML = `
+    <div class="tile big"><div class="l">готово к продаже <span class="src">инвентарь</span></div><div class="v num">${ready} <small>/ ${n}</small></div>
+      <div class="stack"><i style="flex:${ready || 0.001};background:var(--ac)"></i><i style="flex:${going};background:#b8f25c55"></i><i style="flex:${stuck};background:#f2b44a88"></i></div>
+      <div class="n">готово · дойдут · не дойдут</div></div>
+    <div class="tile"><div class="l">дойдут при этой работе</div><div class="v num" style="color:var(--ac)">${going}</div><div class="n">матчей у их команд больше 1 000</div></div>
+    <div class="tile"><div class="l">не дойдут</div><div class="v num" style="color:var(--warn)">${stuck}</div><div class="n">потолок ниже цели или неизвестен</div></div>
+    <div class="tile"><div class="l">сожжено <span class="src">журнал</span></div><div class="v num">${fmt(ACC.burned)}</div><div class="n">у аккаунта «${ACC.label}»; другому аккаунту эти матчи ещё доступны</div></div>`;
+  document.getElementById('w2').textContent = fmt(D.queue.weight2);
+  document.getElementById('qt').textContent = fmt(D.queue.total);
+  document.getElementById('itemsN').textContent = `${n} ${plural(n,'вещь','вещи','вещей')} · одинаковые сложены в стопку`;
+}
+
+function bonds() {
+  const list = D.edges.slice().sort((a, b) => b.shared - a.shared).slice(0, allBonds ? 99 : 6);
+  const top = D.edges.reduce((m, e) => Math.max(m, e.shared), 1);
+  document.getElementById('bonds').innerHTML = list.map(e => {
+    const k = e.a + '+' + e.b;
+    return `<div class="bond ${bondSel === k ? 'on' : ''}" data-b="${k}">
+      <div class="pair"><div class="ico" style="background-image:url('${G[e.a].icon}')"></div><div class="ico" style="background-image:url('${G[e.b].icon}')"></div></div>
+      <div style="min-width:0"><div class="nm">${e.a} <span style="color:var(--mute)">+</span> ${e.b}</div><div class="bar"><i style="width:${e.shared / top * 100}%"></i></div></div>
+      <div class="v"><b class="num">${fmt(e.shared)}</b><span>общих матчей</span></div></div>`;
+  }).join('');
+  document.getElementById('moreBonds').textContent = allBonds ? 'свернуть' : 'все ' + D.edges.length;
+  document.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { bondSel = bondSel === b.dataset.b ? null : b.dataset.b; bonds(); bays(); });
+}
+document.getElementById('moreBonds').onclick = () => { allBonds = !allBonds; bonds(); };
+
+function pass(st) {
+  if (bondSel && !bondSel.split('+').includes(st.g.gem)) return false;
+  if (filter === 'stuck' && !(st.s === 'stuck' || st.s === 'unknown')) return false;
+  if (filter === 'going' && st.s !== 'going') return false;
+  if (filter === 'ready' && st.s !== 'ready') return false;
+  if (filter === 'dups' && st.rows.length < 2) return false;
+  if (query) return (st.name + ' ' + st.g.gem + ' ' + st.g.hero).toLowerCase().includes(query.toLowerCase());
+  return true;
+}
+
+function filters() {
+  const c = f => { const o = filter; filter = f; const n = stacks.filter(pass).reduce((a, s) => a + s.rows.length, 0); filter = o; return n; };
+  const items = [['all','все'],['going','дойдут'],['stuck','не дойдут'],['ready','готово'],['dups','есть копии']];
+  document.getElementById('filters').innerHTML = items.map(([k, l]) => `<button class="fchip ${filter === k ? 'on' : ''}" data-f="${k}">${l}<span class="c num">${c(k)}</span></button>`).join('')
+    + (bondSel ? `<button class="fchip on" data-f="bond">связка ${bondSel.replace('+', ' + ')} ✕</button>` : '');
+  document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { if (b.dataset.f === 'bond') { bondSel = null; bonds(); } else filter = b.dataset.f; bays(); });
+}
+
+function bays() {
+  filters();
+  const host = document.getElementById('bays');
+  host.innerHTML = gems.map(g => {
+    const mine = stacks.filter(s => s.g === g && pass(s));
+    if (!mine.length) return '';
+    const max = Math.max(...g.rows.map(r => r.v)), c = cap(g), s = stateOf(g, max);
+    const eq = g.rows.filter(r => r.e).length;
+    const chip = s === 'stuck' ? `<span class="chip c-warn">потолок ${fmt(c)}</span>` : s === 'unknown' ? '<span class="chip c-stop">потолок неизвестен</span>' : '';
+    const w = withOf(g.gem).slice(0, 3);
+    return `<section class="bay ${closed.has(g.gem) ? 'closed' : ''}">
+      <div class="bayh" data-t="${g.gem}">
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        <div class="ico" style="background-image:url('${g.icon}')"></div>
+        <div style="min-width:0"><div class="nm">${g.gem} ${chip}</div>
+          <div class="hr">${g.hero} · ${g.rows.length} ${plural(g.rows.length,'вещь','вещи','вещей')} · надето ${eq} · ${c != null ? 'матчей у ' + (g.node?.kind === 'player' ? 'игрока' : 'команды') + ' ' + fmt(c) : 'потолок не измерен'}</div>
+          ${w.length ? `<div class="with"><span style="color:var(--mute);font-size:10.5px;align-self:center">вместе с</span>${w.map(x => `<span class="tagw"><i style="background-image:url('${G[x.gem].icon}')"></i>${x.gem} <b class="num">${x.n}</b></span>`).join('')}</div>` : ''}
+        </div>
+        <div class="prog"><div class="t"><span>лучший счётчик</span><span><b class="num">${max}</b> / 1 000</span></div>
+          <div class="bar"><i style="width:${Math.max(max / GOAL * 100, max ? 1.5 : 0)}%;background:${s === 'stuck' ? 'var(--warn)' : 'var(--ac)'}"></i></div></div>
+      </div>
+      <div class="cells">${mine.map(cell).join('')}</div>
+    </section>`;
+  }).join('') || '<div class="tile" style="text-align:center;padding:40px;color:var(--mute)">ничего не нашлось — сбросьте фильтр</div>';
+  host.querySelectorAll('[data-t]').forEach(h => h.onclick = () => { const k = h.dataset.t; closed.has(k) ? closed.delete(k) : closed.add(k); bays(); });
+  host.querySelectorAll('.cell').forEach(c => c.onclick = () => { sel = c.dataset.k; host.querySelectorAll('.cell').forEach(x => x.classList.toggle('sel', x === c)); card(); });
+}
+
+function cell(st) {
+  const n = st.rows.length, eq = st.rows.filter(r => r.e).length;
+  const top = Math.max(st.max, 1);
+  const pips = n > 1 ? `<div class="pips" title="${st.rows.map(r => r.v).join(' · ')}">${st.rows.map(r => `<i class="${r.v > 0 ? 'on' : ''} ${r.e ? 'eq' : ''}"></i>`).join('')}<span class="num">${st.rows.map(r => r.v).join(' · ')}</span></div>` : '';
+  return `<div class="cell ${st.key === sel ? 'sel' : ''}" data-k="${st.key}">
+    <div class="r1"><div class="ico" style="background-image:url('${st.icon}')">${n > 1 ? `<span class="cnt num">×${n}</span>` : ''}</div>
+      <div class="nm">${st.name}</div>
+      <div class="val"><b class="num">${st.max}</b><span class="num">/ 1 000</span></div></div>
+    ${pips}
+    <div class="chips"><span class="chip ${ST[st.s].cls}">${ST[st.s].chip}</span>${eq ? `<span class="chip plain c-idle">надето ${n > 1 ? eq : ''}</span>` : ''}${st.bare ? '<span class="chip plain c-idle">голый самоцвет</span>' : ''}</div>
+  </div>`;
+}
+
+function card() {
+  const st = stacks.find(s => s.key === sel); if (!st) return;
+  const g = st.g, c = cap(g), n = st.rows.length, node = g.node;
+  const pct = st.max / GOAL * 100, capPct = c != null ? Math.min(c / GOAL * 100, 100) : null;
+  const differ = new Set(st.rows.map(r => r.v)).size > 1;
+  const w = withOf(g.gem);
+  const warn = st.s === 'stuck'
+    ? `<div class="warnbox"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 21h20zM12 10v5M12 18v.5"/></svg><div><div class="t">До 1 000 не дойдёт <span class="src">карта матчей</span></div><div class="d">у ${node?.kind === 'player' ? 'игрока' : 'команды'} ${g.gem} всего ${fmt(c)} матчей — выше счётчик подняться не может.</div></div></div>`
+    : st.s === 'unknown'
+    ? `<div class="warnbox r"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg><div><div class="t">Потолок не измерен</div><div class="d">гема ${g.gem} нет в карте tools/gem-map.json: оценка ${fmt(g.supply)} матчей, вещь в работу не пойдёт.</div></div></div>`
+    : '';
+  const why = differ
+    ? `<div class="warnbox i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/></svg><div><div class="t" style="color:var(--ink)">Почему у копий разные счётчики <span class="src h">догадка</span></div><div class="d">Отправка поднимает все копии разом, по +1 каждой <span class="src">README §4.7</span>. Значит, копии с 0 скорее всего пришли в инвентарь позже — после того как ${st.max} матчей уже сгорели, а сгоревший матч второй раз не засчитается <span class="src">README §4.1</span>. Следующие матчи поднимут все ${n} вместе.</div></div></div>`
+    : '';
+
+  document.getElementById('side').innerHTML = `
+    <section class="panel">
+      <div class="ph">${n > 1 ? 'Стопка' : 'Вещь'} <span class="n">${g.gem}</span></div>
+      <div class="hero">
+        <div class="pic" style="background-image:url('${st.icon.replace('128fx128f','256fx256f')}')">${n > 1 ? `<span class="cnt num">×${n}</span>` : ''}</div>
+        <div style="min-width:0"><h3>${st.name}</h3><div class="s">${g.hero} · гем ${g.gem}</div>
+          <div class="chips"><span class="chip ${ST[st.s].cls}">${ST[st.s].chip}</span>${st.bare ? '<span class="chip plain c-idle">голый самоцвет</span>' : ''}</div></div>
+      </div>
+      <div class="meter">
+        <div class="t"><span>лучший счётчик в стопке <span class="src">инвентарь</span></span><span><b class="num">${st.max}</b> / 1 000</span></div>
+        <div class="bar"><i style="width:${Math.max(pct, st.max ? 1.5 : 0)}%;background:${st.s === 'stuck' ? 'var(--warn)' : 'var(--ac)'}"></i>${capPct != null && capPct < 100 ? `<span class="capmark" style="left:${capPct}%"></span>` : ''}</div>
+        <div class="legend"><span>0</span>${capPct != null && capPct < 100 ? `<span style="color:var(--warn)">потолок ${fmt(c)}</span>` : ''}<span>1 000</span></div>
+      </div>
+      <div class="grid2">
+        <div class="fact"><div class="k">копий у меня <span class="src">инв.</span></div><b class="num">${n}</b></div>
+        <div class="fact"><div class="k">до цели</div><b class="num">${fmt(GOAL - st.max)}</b></div>
+        <div class="fact"><div class="k">матчей всего <span class="src">карта</span></div><b class="num">${c != null ? fmt(c) : '≈ ' + fmt(g.supply)}</b></div>
+        <div class="fact"><div class="k">сожжено <span class="src">журнал</span></div><b class="num">${node ? fmt(node.burned) : '—'}</b></div>
+      </div>
+      ${warn}
+      <div class="acts"><button class="btn2 ac">показать в Обзоре</button><button class="btn2">на маркете ↗</button>${st.s === 'stuck' ? '<button class="btn2">не считать товаром</button>' : ''}</div>
+    </section>
+
+    <section class="panel">
+      <div class="ph">Копии <span class="n">${n} · по аккаунтам</span></div>
+      <div class="rows">${st.rows.map(r => `<div class="row">
+          <span class="acc"><span class="ava" style="width:22px;height:22px;font-size:10px">О</span></span>
+          <div class="mid"><div>${ACC.label}${r.e ? ' <span class="chip plain c-idle" style="height:18px;margin-left:4px">надето</span>' : ''}</div><div class="id mono">${r.id}</div></div>
+          <div class="v num">${r.v}<small>/ 1 000</small></div></div>`).join('')}</div>
+      ${why}
+    </section>
+
+    ${w.length ? `<section class="panel">
+      <div class="ph">Поднимается вместе с <span class="n">общие матчи · граф</span></div>
+      <div class="rows">${w.map(x => `<div class="row">
+        <div class="pair"><div class="ico" style="background-image:url('${G[x.gem].icon}')"></div></div>
+        <div class="mid"><div>${x.gem}</div><div class="bar"><i style="width:${x.n / w[0].n * 100}%"></i></div></div>
+        <div class="v num">${fmt(x.n)}<small>матчей</small></div></div>`).join('')}</div>
+    </section>` : ''}`;
+}
+
+document.getElementById('q').oninput = e => { query = e.target.value.trim(); bays(); };
+document.querySelectorAll('#scope button').forEach(b => b.onclick = () => document.querySelectorAll('#scope button').forEach(x => x.classList.toggle('on', x === b)));
+
+summary(); bonds(); bays(); card();
+</script>
+</body>
+</html>

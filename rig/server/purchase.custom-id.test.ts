@@ -125,3 +125,12 @@ test('сбой проверки — «неясно», как раньше, и п
   assert.equal(s.log[0].reason, 'неясно')
   assert.match(String(s.log[0].detail), /сверьте историю/)
 })
+
+test('если проверка бросит исключение — «неясно», а не обрыв закупки', async () => {
+  const { resolveAmbiguous } = await import('./purchase.ts')
+  let asked = 0
+  const v = await resolveAmbiguous(T.key, 'gt-1-1', async () => { asked++; throw new Error('boom') })
+  assert.equal(v.reason, 'неясно')
+  assert.match(v.detail, /boom/)
+  assert.equal(asked, 1, 'после сбоя проверка не повторяется вслепую')
+})

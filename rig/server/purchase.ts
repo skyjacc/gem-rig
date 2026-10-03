@@ -100,11 +100,19 @@ type Settled = { reason: 'куплено' | 'отказ' | 'неясно'; paid:
 // с этой покупкой. «not found» сразу может значить «ещё не записалась»,
 // поэтому до трёх вопросов с паузой. Отказом он не становится никогда:
 // отсутствие ответа — не доказательство, что покупки нет.
-async function resolveAmbiguous(key: string, customId: string): Promise<Settled> {
+//
+// buyInfo сейчас не бросает (call в market.ts ловит сбои сам), но запись
+// в журнале не должна застрять на «проверяю…», если это когда-то изменится:
+// исключение здесь — тоже «неясно».
+export async function resolveAmbiguous(key: string, customId: string, ask: typeof buyInfo = buyInfo): Promise<Settled> {
   await sleep(pace.settle)
   for (let i = 0; i < pace.tries; i++) {
     if (i) await sleep(pace.gap)
-    const v = judgeBuyInfo(await buyInfo(key, customId))
+    let res: any
+    try { res = await ask(key, customId) } catch (e: any) {
+      res = { success: false, ambiguous: true, error: String(e?.message ?? e) }
+    }
+    const v = judgeBuyInfo(res)
     if (v.reason !== 'не найдено') return v as Settled
   }
   return { reason: 'неясно', paid: null, detail: 'площадка не нашла покупку по custom_id за ' + pace.tries + ' проверки' }

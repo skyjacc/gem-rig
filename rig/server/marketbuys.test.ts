@@ -139,6 +139,17 @@ test('отмена без custom_id — строка без запроса, в r
   assert.equal(JSON.parse(row.raw_ref).stage, '5')
 })
 
+test('отмена без item_id — «не проверено» с причиной, без записи и без запроса; база пустой item_id не примет', async () => {
+  const db = fresh()
+  const { ask, calls } = asker(() => ({ success: true, data: { causer: 'seller', cancellation_reason: 'seller_cancelled' } }))
+  const r = await reconcileCancellations(db, { accountId: 'main', key: KEY, cancelled: [cancelled(null, { itemId: '' }), cancelled('gt-7-7', { itemId: '' })], ask })
+  assert.equal(calls.length, 0)
+  assert.equal(count(db, 'market_cancellations'), 0)
+  assert.equal(r.unchecked.length, 2)
+  assert.ok(r.unchecked.every(u => /нет item_id/.test(u.error)))
+  assert.throws(() => db.prepare(`insert into market_cancellations (account_id, cancel_key, item_id, happened_at) values ('main', 'x', '', 1)`).run())
+})
+
 test('больше 20 новых — 20 запросов, остальные «не проверено»', async () => {
   const db = fresh()
   const { ask, calls } = asker(() => ({ success: true, data: { causer: 'seller', cancellation_reason: 'seller_cancelled' } }))

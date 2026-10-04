@@ -53,7 +53,7 @@ export const MARKET_DDL = `
     account_id          text not null,
     cancel_key          text not null check (cancel_key <> ''),
     custom_id           text,
-    item_id             text not null,
+    item_id             text not null check (item_id <> ''),
     happened_at         integer not null,
     causer              text,
     cancellation_reason text,
@@ -146,6 +146,9 @@ export async function reconcileCancellations(db: DatabaseSync, o: {
 
   let asked = 0
   for (const [k, c] of uniq) {
+    // Отмена без item_id — неполная строка истории: записывать нечего и не
+    // по чему узнать её потом. Вживую item_id у buy был всегда.
+    if (!c.itemId) { res.unchecked.push({ cancelKey: k, error: 'нет item_id в строке истории — отмена не записана' }); continue }
     if (has.get(o.accountId, k)) { res.known++; continue }
     if (!c.customId) {
       ins.run(o.accountId, k, null, c.itemId, c.time, null, null, null, c.raw)

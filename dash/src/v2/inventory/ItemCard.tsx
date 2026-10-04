@@ -145,7 +145,9 @@ export function ItemCard({ state, goal, sel, onOverview }: {
 
       <Panel title="Поднимается вместе с" aside={<Src>граф</Src>}>
         <Loadable what="связки гема" loading={graph.loading} error={graph.error} ready={!!graph.data} onRetry={graph.reload} lines={2}>
-          {graph.data && !graph.data.nodes.some(x => x.key === g.gem) ? (
+          {/* «Нет в карте» — по самому гему, не по узлу графа: graph.ts пропускает
+              и известный гем без матчей, а у него связок просто нет. */}
+          {unknown ? (
             <p className="v2-text">Гема нет в карте — связки не посчитать.</p>
           ) : w.length ? (
             <ul className="v2-insp-list">

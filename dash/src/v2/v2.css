@@ -80,6 +80,7 @@
   color: var(--ink2); font-size: 12px; white-space: nowrap;
 }
 .v2 .v2-pill b { color: var(--ink); font-weight: 500; }
+.v2 .v2-pill .v2-kpi-none, .v2 .v2-pill .v2-kpi-old { color: var(--mute); font-weight: 400; }
 .v2 .v2-pill.is-warn { color: var(--warn); background: var(--warns); border-color: transparent; }
 .v2 .v2-pill.is-stop { color: var(--stop); background: var(--stops); border-color: transparent; }
 

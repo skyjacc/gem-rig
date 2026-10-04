@@ -15,6 +15,7 @@ import { Overview } from './overview/Overview.tsx'
 import { Inspector } from './overview/Inspector.tsx'
 import { Alerts } from './overview/Alerts.tsx'
 import { currentGem } from './overview/Canvas.tsx'
+import { OverviewKpi } from './overview/kpi.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
@@ -67,7 +68,13 @@ export default function AppV2() {
       <div className="v2">
         <div className="v2-app">
           <Rail screen={screen} onScreen={setScreen} onRules={() => setRules('rules')} />
-          <TopBar state={state} accounts={accounts} status={status} bell={<Bell state={state} live={live} now={now} goal={goal} />} />
+          <TopBar
+            state={state}
+            accounts={accounts}
+            kpi={screen === 'overview' && !empty ? <OverviewKpi state={state} goal={goal} settings={settings} now={now} /> : undefined}
+            status={status}
+            bell={<Bell state={state} live={live} now={now} goal={goal} />}
+          />
           <RailRow screen={screen} onScreen={setScreen} />
           <main className="v2-page" aria-label={title}>
             <div className="v2-page-scroll">

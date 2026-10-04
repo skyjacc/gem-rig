@@ -18,7 +18,9 @@
 // Всё остальное — пропуск с причиной. Валюта — номер Steam как есть
 // («steam:2018»): что 2018 в этом ответе = ECurrency 18 — пока OPEN.
 
-import type { NewOp } from './money.ts'
+import type { DatabaseSync } from 'node:sqlite'
+import { addOp, type NewOp } from './money.ts'
+import { createLimiter } from './ratelimit.ts'
 
 export const KEY_NAME = 'Mann Co. Supply Crate Key'
 const CREATED_BY = 'импорт истории рынка Steam'
@@ -90,4 +92,76 @@ export function parseSteamHistory(page: any, me: string, accountId: string): Ste
     })
   }
   return out
+}
+
+// ── импорт (задача 3) ──
+//
+// Осторожность — наша, не известные пределы Steam (их нет в документации):
+// не чаще 1 запроса в 3 секунды на аккаунт, страница — 100 записей, на 429 —
+// сразу стоп без повторов и пауза аккаунту. Только по запросу человека.
+
+export const STEAM_PAGE = 100
+export const STEAM_COOL_MS = 10 * 60_000
+export const MAX_PAGES = 20
+export const steamLimiter = createLimiter(1 / 3)
+
+export const steamHistoryUrl = (start: number) =>
+  `https://steamcommunity.com/market/myhistory?norender=1&start=${Math.trunc(start)}&count=${STEAM_PAGE}`
+
+type Fetcher = (url: string, init: { headers: Record<string, string>; redirect: 'manual' }) => Promise<Response>
+
+export type SteamSyncResult = {
+  pages: number
+  inserted: number
+  existing: number
+  skipped: Record<string, number>
+  stoppedBy: string
+  error?: string
+}
+
+// Страницы от новых к старым — пока не встретится уже записанная сделка,
+// не кончится история или лимит страниц. Повторный импорт ничего не добавляет
+// (UNIQUE source + external_id). Куки — только в заголовке запроса.
+export async function steamSync(db: DatabaseSync, o: {
+  accountId: string
+  me: string
+  cookie: string
+  pages?: number
+  fetcher?: Fetcher
+}): Promise<SteamSyncResult> {
+  const res: SteamSyncResult = { pages: 0, inserted: 0, existing: 0, skipped: {}, stoppedBy: 'лимит страниц' }
+  if (!o.me) return { ...res, stoppedBy: 'ошибка', error: 'нет своего steamid — продажу от покупки не отличить' }
+  const limit = o.pages == null ? 3 : Math.max(1, Math.min(MAX_PAGES, Math.trunc(Number(o.pages)) || 1))
+  const fetcher: Fetcher = o.fetcher ?? ((url, init) => fetch(url, init))
+  const headers = { Cookie: o.cookie, 'User-Agent': 'gemtrack', Accept: 'application/json' }
+
+  for (let i = 0; i < limit; i++) {
+    const start = i * STEAM_PAGE
+    const r = await steamLimiter.run(o.accountId, () => fetcher(steamHistoryUrl(start), { headers, redirect: 'manual' }))
+    res.pages++
+    if (r.status === 429) {
+      steamLimiter.cool(o.accountId, STEAM_COOL_MS)
+      return { ...res, stoppedBy: '429', error: 'Steam просит реже — импорт остановлен, повторите через ' + Math.round(STEAM_COOL_MS / 60_000) + ' мин' }
+    }
+    if (r.status !== 200) return { ...res, stoppedBy: 'ошибка', error: 'Steam ответил HTTP ' + r.status }
+    let page: any
+    try { page = JSON.parse(await r.text()) } catch {
+      return { ...res, stoppedBy: 'ошибка', error: 'ответ не JSON — возможно, Steam не принял веб-сессию' }
+    }
+    if (!page?.success) return { ...res, stoppedBy: 'ошибка', error: 'Steam ответил без success' }
+
+    const p = parseSteamHistory(page, o.me, o.accountId)
+    for (const [why, n] of Object.entries(p.skipped)) res.skipped[why] = (res.skipped[why] ?? 0) + n
+    let known = 0
+    for (const op of p.ops) {
+      const w = addOp(db, op)
+      if ('error' in w) { res.skipped['не записано: ' + w.error] = (res.skipped['не записано: ' + w.error] ?? 0) + 1; continue }
+      if (w.inserted) res.inserted++
+      else { res.existing++; known++ }
+    }
+    if (known) return { ...res, stoppedBy: 'дошли до записанного' }
+    const events = Array.isArray(page.events) ? page.events.length : 0
+    if (events < STEAM_PAGE || start + STEAM_PAGE >= Number(page.total_count ?? 0)) return { ...res, stoppedBy: 'конец истории' }
+  }
+  return res
 }

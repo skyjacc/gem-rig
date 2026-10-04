@@ -1,6 +1,8 @@
-import { test } from 'node:test'
+import { test, mock, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { KEY_NAME, parseSteamHistory, steamExternalId } from './steammarket.ts'
+import { DatabaseSync } from 'node:sqlite'
+import { MONEY_DDL, listOps } from './money.ts'
+import { KEY_NAME, parseSteamHistory, steamExternalId, steamLimiter, steamSync, STEAM_COOL_MS } from './steammarket.ts'
 
 // Обезличенная форма живого ответа market/myhistory?norender=1 (план 3.3,
 // «Проверено вживую»). Числа и номера выдуманы; поля — как в ответе.
@@ -122,4 +124,107 @@ test('нет steamid покупателя — не разобрано, а не �
   const r = parseSteamHistory(page([deal({ steamid_purchaser: undefined }), deal({ purchaseid: '8', steamid_purchaser: '' })]), ME, 'main')
   assert.equal(r.ops.length, 0)
   assert.equal(r.skipped['не разобрано: нет steamid покупателя'], 2)
+})
+
+// ── импорт (задача 3) ──
+
+const COOKIE = 'steamLoginSecure=СЕКРЕТ; sessionid=S'
+
+function fresh() {
+  const db = new DatabaseSync(':memory:')
+  db.exec(MONEY_DDL)
+  return db
+}
+
+// Страница истории с n продажами начиная с номера from (новые сверху).
+const pageOf = (from: number, n: number, total: number) => {
+  const deals = Array.from({ length: n }, (_, i) => deal({ listingid: String(1000 + from + i), purchaseid: String(2000 + from + i) }))
+  return { ...page(deals, deals.map(d => ({ listingid: d.listingid, purchaseid: d.purchaseid, event_type: 3, time_event: 1, steamid_actor: OTHER }))), total_count: total, start: from }
+}
+
+let calls: { url: string; cookie: string; key: string }[] = []
+let cooled: { key: string; ms: number }[] = []
+beforeEach(() => {
+  mock.restoreAll()
+  calls = []
+  cooled = []
+  mock.method(steamLimiter, 'run', async (key: string, send: () => unknown) => { calls.push({ url: '', cookie: '', key }); return send() })
+  mock.method(steamLimiter, 'cool', (key: string, ms: number) => { cooled.push({ key, ms }) })
+})
+
+function steam(answer: (start: number, n: number) => { status: number; body: any }) {
+  let n = 0
+  return async (url: string, init: any) => {
+    const start = Number(new URL(url).searchParams.get('start'))
+    calls[calls.length - 1].url = url
+    calls[calls.length - 1].cookie = init?.headers?.Cookie ?? ''
+    const a = answer(start, n++)
+    return new Response(typeof a.body === 'string' ? a.body : JSON.stringify(a.body), { status: a.status, headers: { 'content-type': 'application/json' } })
+  }
+}
+
+test('импорт: страницы по 100 через ограничитель аккаунта, куки — заголовком, в ответе их нет', async () => {
+  const db = fresh()
+  const fetcher = steam(start => ({ status: 200, body: pageOf(start, start < 200 ? 100 : 0, 250) }))
+  const r = await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 3, fetcher })
+  assert.equal(calls.length, 3)
+  assert.ok(calls.every(c => c.key === 'main'), 'ограничитель — на аккаунт')
+  assert.ok(calls.every(c => c.cookie === COOKIE))
+  assert.deepEqual(calls.map(c => new URL(c.url).searchParams.get('start')), ['0', '100', '200'])
+  assert.ok(calls.every(c => new URL(c.url).searchParams.get('count') === '100' && new URL(c.url).searchParams.get('norender') === '1'))
+  assert.equal(r.inserted, 200)
+  assert.ok(!JSON.stringify(r).includes('СЕКРЕТ'))
+  assert.ok(!JSON.stringify(listOps(db)).includes('СЕКРЕТ'))
+})
+
+test('страниц по умолчанию 3, не больше 20, не меньше 1', async () => {
+  const db = fresh()
+  const many = steam(start => ({ status: 200, body: pageOf(start, 100, 99999) }))
+  assert.equal((await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, fetcher: many })).pages, 3)
+  calls = []
+  assert.equal((await steamSync(fresh(), { accountId: 'main', me: ME, cookie: COOKIE, pages: 999, fetcher: many })).pages, 20)
+  assert.equal((await steamSync(fresh(), { accountId: 'main', me: ME, cookie: COOKIE, pages: 0, fetcher: many })).pages, 1)
+})
+
+test('конец истории — стоп без лишних запросов', async () => {
+  const r = await steamSync(fresh(), { accountId: 'main', me: ME, cookie: COOKIE, pages: 10, fetcher: steam(start => ({ status: 200, body: pageOf(start, start === 0 ? 100 : 30, 130) })) })
+  assert.equal(calls.length, 2)
+  assert.equal(r.stoppedBy, 'конец истории')
+  assert.equal(r.inserted, 130)
+})
+
+test('дошли до уже записанного — стоп: повторный импорт не листает всю историю', async () => {
+  const db = fresh()
+  const fetcher = steam(start => ({ status: 200, body: pageOf(start, 100, 99999) }))
+  await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 2, fetcher })
+  calls = []
+  const r = await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 5, fetcher })
+  assert.equal(calls.length, 1)
+  assert.equal(r.stoppedBy, 'дошли до записанного')
+  assert.equal(r.inserted, 0)
+  assert.equal(r.existing, 100)
+})
+
+test('429 — сразу стоп без повторов, пауза аккаунту, записанное раньше остаётся', async () => {
+  const db = fresh()
+  const r = await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 5, fetcher: steam(start => (start === 0 ? { status: 200, body: pageOf(0, 100, 99999) } : { status: 429, body: '' })) })
+  assert.equal(calls.length, 2)
+  assert.equal(r.stoppedBy, '429')
+  assert.equal(r.inserted, 100)
+  assert.deepEqual(cooled, [{ key: 'main', ms: STEAM_COOL_MS }])
+})
+
+test('не 200 или не JSON — стоп с понятной причиной', async () => {
+  const a = await steamSync(fresh(), { accountId: 'main', me: ME, cookie: COOKIE, fetcher: steam(() => ({ status: 302, body: '' })) })
+  assert.match(a.stoppedBy, /ошибка/)
+  assert.match(String(a.error), /302/)
+  const b = await steamSync(fresh(), { accountId: 'main', me: ME, cookie: COOKIE, fetcher: steam(() => ({ status: 200, body: '<html>вход</html>' })) })
+  assert.match(String(b.error), /не JSON/)
+  assert.equal(b.inserted, 0)
+})
+
+test('нет своего steamid — импорт не начинается: продажу от покупки не отличить', async () => {
+  const r = await steamSync(fresh(), { accountId: 'main', me: '', cookie: COOKIE, fetcher: steam(() => ({ status: 200, body: pageOf(0, 1, 1) })) })
+  assert.equal(calls.length, 0)
+  assert.match(String(r.error), /steamid/)
 })

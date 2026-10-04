@@ -177,7 +177,7 @@
 
 .v2 .v2-app {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) clamp(360px, 24vw, 392px);
+  grid-template-columns: 64px minmax(0, 1fr) 360px;   /* §4.2: 360–392; берём 360, как в макете — без своей формулы */
   grid-template-rows: 60px minmax(0, 1fr);
   height: 100svh;
 }
@@ -238,6 +238,58 @@
 .v2 .v2-menu-it[aria-selected='true'] { box-shadow: inset 0 0 0 1px var(--ac); }
 .v2 .v2-menu-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ── плавающий пульт (§4.2) ── */
+
+.v2 .v2-pult {
+  position: absolute; z-index: 10; left: 50%; bottom: 16px; translate: -50% 0;
+  max-width: calc(100% - 32px); overflow-x: auto; scrollbar-width: none;
+  display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; white-space: nowrap;
+  background: #1a1a1dee; border: 1px solid var(--line2); box-shadow: 0 20px 50px #000000aa, inset 0 1px 0 #ffffff0d;
+  backdrop-filter: blur(10px);
+}
+.v2 .v2-pult-st { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 10px; }
+.v2 .v2-pult-why { color: var(--mute); font-size: 12px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.v2 .v2-pult-div { width: 1px; height: 24px; background: var(--line2); flex: none; }
+.v2 .v2-pult-kv { display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 10px; }
+.v2 .v2-pult-kv span { color: var(--mute); font-size: 10.5px; }
+.v2 .v2-pult-kv b { font-size: 13px; font-weight: 500; }
+.v2 .v2-pult-kv b.is-ok { color: var(--ac); }
+/* Данные устарели — числа остаются, но серее (§5.7). */
+.v2 .v2-pult.is-stale .v2-pult-kv b, .v2 .v2-pult.is-stale .v2-lamp b { color: var(--mute); }
+.v2 .v2-pult-err { color: var(--stop); font-size: 12px; padding: 0 10px; }
+
+/* ── окно ── */
+
+.v2 .v2-veil {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px;
+  background: #0a0a0bcc; backdrop-filter: blur(2px); animation: v2-in var(--t-in) ease-out;
+}
+.v2 .v2-dialog {
+  width: min(520px, 100%); max-height: calc(100svh - 32px); overflow: auto;
+  background: var(--s1); border: 1px solid var(--line2); border-radius: var(--r1); padding: 20px;
+  box-shadow: 0 30px 80px #000000cc;
+}
+.v2 .v2-dialog-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.v2 .v2-dialog-head h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+.v2 .v2-dialog-head .v2-aside { color: var(--mute); font-size: 12px; }
+.v2 .v2-dialog-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+.v2 .v2-rows { margin: 0; }
+.v2 .v2-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 8px 0; border-top: 1px solid var(--line); }
+.v2 .v2-rows > div:first-child { border-top: 0; }
+.v2 .v2-rows dt { color: var(--mute); font-size: 12px; }
+.v2 .v2-rows dd { margin: 0; text-align: right; }
+.v2 .v2-rows > .is-warn dd { color: var(--warn); }
+
+/* Необратимость — красный блок, полоса слева тенью (§3.1). */
+.v2 .v2-burn {
+  margin: 14px 0 0; padding: 12px 12px 12px 15px; border-radius: var(--r2); font-size: 12.5px; line-height: 1.45;
+  background: var(--stops); box-shadow: inset 3px 0 0 var(--stop); color: var(--ink);
+}
+.v2 .v2-note { margin: 10px 0 0; padding: 10px 12px 10px 15px; border-radius: var(--r2); font-size: 12.5px; line-height: 1.4; background: var(--s2); }
+.v2 .v2-note.is-warn { box-shadow: inset 3px 0 0 var(--warn); }
+.v2 .v2-note.is-stop { box-shadow: inset 3px 0 0 var(--stop); color: var(--stop); }
+
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */
 
@@ -245,9 +297,14 @@
   .v2 .v2-app { grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: 60px auto auto; height: auto; min-height: 100svh; }
   .v2 .v2-rail { grid-row: 1 / 4; position: sticky; top: 0; height: 100svh; }
   .v2 .v2-top { grid-column: 2; }
-  /* Колонка ушла вниз — правый отступ страницы теперь свой, а не зазор до колонки. */
-  .v2 .v2-page { margin: 0 16px 16px 4px; min-height: calc(100svh - 76px); }
-  .v2 .v2-page-scroll { position: static; overflow: visible; }
+  /* Колонка ушла вниз — правый отступ страницы теперь свой, а не зазор до колонки.
+     Страница — колонка: содержимое растягивается на всю её высоту, пульт стоит
+     в самом низу и оттуда липнет к низу экрана, пока страница на экране.
+     overflow: clip, а не hidden — иначе страница стала бы контейнером прокрутки
+     и пульт прилипал бы к ней, а не к экрану. */
+  .v2 .v2-page { margin: 0 16px 16px 4px; min-height: calc(100svh - 76px); overflow: clip; display: flex; flex-direction: column; }
+  .v2 .v2-page-scroll { position: static; overflow: visible; flex: 1; }
+  .v2 .v2-pult { position: sticky; left: auto; translate: none; width: fit-content; margin: -72px auto 16px; }
   .v2 .v2-side { grid-column: 2; grid-row: 3; padding: 0 16px 16px 4px; overflow: visible; }
 }
 

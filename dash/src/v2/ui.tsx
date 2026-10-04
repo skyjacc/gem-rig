@@ -1,7 +1,7 @@
 // Кирпичи новой панели. Только оформление: ни данных, ни правил работы —
 // они живут в lib/ и в экранах. Стили — v2.css, всё под .v2.
 
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 import { Loader2 } from 'lucide-react'
 
 const cx = (...a: (string | false | null | undefined)[]) => a.filter(Boolean).join(' ')
@@ -45,6 +45,7 @@ export function Pill({ children, tone, className, title }: {
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: 'plain' | 'soft' | 'go' | 'stop'
   loading?: boolean
+  ref?: Ref<HTMLButtonElement>   // React 19: ref — обычный пропс
 }
 
 // Кнопка. «go» — главное действие (лайм со свечением); «stop» — остановка.

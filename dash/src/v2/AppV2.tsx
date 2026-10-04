@@ -1,9 +1,11 @@
 import './v2.css'
 import { useEffect, useState } from 'react'
-import { ago, DEMO, useJson, useLive, type Accounts } from '../lib/api.ts'
+import { ago, DEMO, useJson, useLive, type Accounts, type Settings } from '../lib/api.ts'
 import { Tune } from '../parts/Tune.tsx'
 import { Rail, RailRow, SCREENS, type ScreenId } from './Rail.tsx'
 import { TopBar } from './TopBar.tsx'
+import { Pult } from './Pult.tsx'
+import { ConfirmBurn } from './ConfirmBurn.tsx'
 import { Panel, Pill } from './ui.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
@@ -21,6 +23,8 @@ export default function AppV2() {
   const [rules, setRules] = useState<null | 'run' | 'rules'>(null)
   const [now, setNow] = useState(() => Date.now())
   const { data: accounts } = useJson<Accounts>('/api/accounts', state?.ts)
+  const { data: settings } = useJson<Settings>('/api/settings', state?.ts)
+  const [burning, setBurning] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), SECOND)
@@ -37,6 +41,8 @@ export default function AppV2() {
     </>
   )
   const title = SCREENS.find(s => s.id === screen)!.label
+  // Цель — только из настроек (§3.2). Нет её — так и пишем, числа не подставляем.
+  const goal = typeof settings?.goal === 'number' && settings.goal > 0 ? settings.goal : null
 
   return (
     <>
@@ -49,11 +55,13 @@ export default function AppV2() {
             <div className="v2-page-scroll">
               <h1 className="v2-h1">{title}</h1>
             </div>
+            <Pult state={state} live={live} now={now} onTune={() => setRules('run')} onBurn={() => setBurning(true)} />
           </main>
           <aside className="v2-side" aria-label="Правая колонка">
             <Panel title="Инспектор">правая колонка экрана</Panel>
           </aside>
         </div>
+        {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}
       </div>
       <Tune open={rules != null} initial={rules ?? undefined} onClose={() => setRules(null)} state={state} unit={state.autopilot} />
     </>

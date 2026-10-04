@@ -105,10 +105,11 @@ function summary(d: Dump) {
   for (const ev of ['buy', 'refund']) {
     const rs = rows.filter(r => r.event === ev)
     if (!rs.length) { console.log(ev + ': строк нет'); continue }
-    const recv = rs.map(r => r.received)
-    console.log(ev + ': received —', recv.every(v => v == null) ? 'всегда пусто' : recv.every(v => String(v) === '0') ? 'всегда 0' : 'есть значения',
-      '· received = price:', rs.filter(r => r.received != null && String(r.received) === String(r.price)).length + ' из ' + rs.length,
-      '· settlement > 0:', rs.filter(r => Number(r.settlement) > 0).length)
+    const has = (k: string) => rs.filter(r => r[k] != null).length + ' из ' + rs.length
+    console.log(ev + ': есть paid', has('paid'), '· price', has('price'), '· received', has('received'), '· amount', has('amount'),
+      '· settlement > 0:', rs.filter(r => Number(r.settlement) > 0).length,
+      '· самоцветов:', rs.filter(r => /^Spectator/.test(String(r.market_hash_name ?? ''))).length,
+      '· stage:', [...new Set(rs.map(r => r.stage))].join('/'))
   }
   for (const c of d.checks) {
     const h = rows.find(r => r.event === 'buy' && String(r.custom_id) === c.customId)
@@ -118,34 +119,45 @@ function summary(d: Dump) {
     console.log('проверка по custom_id:',
       'item_id совпал:', String(info.item_id) === String(h.item_id) ? 'да' : 'нет',
       '· stage совпал:', String(info.stage) === String(h.stage) ? 'да' : 'нет',
-      '· price = paid × единица:', unit && Math.round(Number(info.paid) * unit) === Number(h.price) ? 'да' : 'нет',
-      '· received = paid × единица:', unit && h.received != null && Math.round(Number(info.paid) * unit) === Number(h.received) ? 'да' : 'нет',
+      '· paid истории = paid проверки × единица:', unit && Math.round(Number(info.paid) * unit) === Number(h.paid) ? 'да' : 'нет',
+      '· paid истории = paid проверки:', String(info.paid) === String(h.paid) ? 'да' : 'нет',
       '· refund в ответе:', info.refund ? 'есть' : 'нет')
   }
 }
 
 // Сравнение двух чтений: те же записи — что поменялось. Без значений.
+//
+// Запись сопоставляется по event + item_id + custom_id — так изменение
+// самого id (кандидата во внешний номер) видно как изменение. У строк без
+// item_id (checkin) так не различить две записи — их сопоставляем по id,
+// и изменение id у них этим способом не увидеть: это пишется в выводе.
 function compare(a: string, b: string) {
   const A: Dump = JSON.parse(fs.readFileSync(a, 'utf8'))
   const B: Dump = JSON.parse(fs.readFileSync(b, 'utf8'))
   console.log('между чтениями:', Math.round((B.readAt - A.readAt) / 60_000), 'мин')
   const rowsA = A.windows.flatMap(w => w.rows)
   const rowsB = B.windows.flatMap(w => w.rows)
-  const id = (r: Row) => [r.event, r.item_id, r.custom_id ?? ''].join('|')
+  const byItem = (r: Row) => r.item_id != null
+  const id = (r: Row) => byItem(r) ? ['item', r.event, r.item_id, r.custom_id ?? ''].join('|') : ['id', r.event, r.id].join('|')
   const mapB = new Map<string, Row[]>()
   for (const r of rowsB) mapB.set(id(r), [...(mapB.get(id(r)) ?? []), r])
   const dupA = rowsA.length - new Set(rowsA.map(id)).size
-  console.log('строк: A', rowsA.length, '· B', rowsB.length, '· повторов (event|item_id|custom_id) в A:', dupA)
-  let found = 0
-  const changed: Record<string, number> = { time: 0, stage: 0, price: 0, received: 0, custom_id: 0, item_id: 0, settlement: 0 }
-  for (const r of rowsA) {
-    const m = mapB.get(id(r))?.[0]
-    if (!m) continue
-    found++
-    for (const k of Object.keys(changed)) if (String(r[k] ?? '') !== String(m[k] ?? '')) changed[k]++
+  console.log('строк: A', rowsA.length, '· B', rowsB.length, '· неразличимых по ключу в A:', dupA)
+  const fields = ['id', 'time', 'stage', 'paid', 'amount', 'price', 'received', 'custom_id', 'item_id', 'assetid', 'settlement', 'for']
+  for (const [label, pick] of [['с item_id (ключ event+item_id+custom_id)', byItem], ['без item_id (ключ — id; смену id не видно)', (r: Row) => !byItem(r)]] as const) {
+    const part = rowsA.filter(pick)
+    if (!part.length) { console.log(label + ': строк нет'); continue }
+    let found = 0
+    const changed: Record<string, number> = Object.fromEntries(fields.map(k => [k, 0]))
+    for (const r of part) {
+      const m = mapB.get(id(r))?.[0]
+      if (!m) continue
+      found++
+      for (const k of fields) if (String(r[k] ?? '') !== String(m[k] ?? '')) changed[k]++
+    }
+    console.log(label + ': найдено в B', found, 'из', part.length)
+    console.log('  изменилось:', fields.map(k => k + ' ' + changed[k]).join(' · '))
   }
-  console.log('из A найдено в B:', found, 'из', rowsA.length)
-  console.log('изменилось у найденных:', Object.entries(changed).map(([k, n]) => k + ' ' + n).join(' · '))
 }
 
 const cmp = process.argv.indexOf('--compare')

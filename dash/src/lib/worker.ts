@@ -25,7 +25,7 @@ export const pace = (ap: State['autopilot']) =>
 
 export type Alert = { level: 'stop' | 'warn'; text: string; todo?: string }
 
-export function attention(s: State, live: Live, now: number, goal: number): Alert[] {
+export function attention(s: State, live: Live, now: number, goal: number | null): Alert[] {
   const a: Alert[] = []
   const ap = s.autopilot
 
@@ -102,7 +102,7 @@ export function attention(s: State, live: Live, now: number, goal: number): Aler
         text: m.gem + ' — непонятно, чьи матчи считать',
         todo: 'этот гем в работу не пойдёт: его нет в карте гемов (tools/gem-map.json)',
       })
-    } else if (m.supply != null && m.supply < goal) {
+    } else if (goal != null && m.supply != null && m.supply < goal) {
       a.push({
         level: 'warn',
         text: m.gem + ' — матчей всего ' + nf(m.supply) + ', до цели ' + nf(goal) + ' не дойдёт',

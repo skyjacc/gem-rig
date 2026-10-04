@@ -2,10 +2,13 @@ import './v2.css'
 import { useEffect, useState } from 'react'
 import { ago, DEMO, useJson, useLive, type Accounts, type Settings } from '../lib/api.ts'
 import { Tune } from '../parts/Tune.tsx'
+import { LinkAccount } from '../parts/LinkAccount.tsx'
 import { Rail, RailRow, SCREENS, type ScreenId } from './Rail.tsx'
 import { TopBar } from './TopBar.tsx'
 import { Pult } from './Pult.tsx'
 import { ConfirmBurn } from './ConfirmBurn.tsx'
+import { Bell } from './Bell.tsx'
+import { Booting, FirstRun, NoServer } from './States.tsx'
 import { Panel, Pill } from './ui.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
@@ -25,14 +28,20 @@ export default function AppV2() {
   const { data: accounts } = useJson<Accounts>('/api/accounts', state?.ts)
   const { data: settings } = useJson<Settings>('/api/settings', state?.ts)
   const [burning, setBurning] = useState(false)
+  // Привязка — нынешнее окно LinkAccount (старый вид, портал вне .v2);
+  // новое — вместе с экраном Аккаунтов (этап 2.4).
+  const [linking, setLinking] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), SECOND)
     return () => clearInterval(t)
   }, [])
 
-  // Служебные состояния — задача 5.
-  if (!state) return <div className="v2" />
+  // Снимка ещё нет: связь есть — соединяемся, нет — сервер не отвечает.
+  // Так же различала и старая панель.
+  if (!state) {
+    return <div className="v2">{live.online ? <Booting /> : <NoServer since={ago(live.at, now)} />}</div>
+  }
 
   const status = (
     <>
@@ -43,17 +52,19 @@ export default function AppV2() {
   const title = SCREENS.find(s => s.id === screen)!.label
   // Цель — только из настроек (§3.2). Нет её — так и пишем, числа не подставляем.
   const goal = typeof settings?.goal === 'number' && settings.goal > 0 ? settings.goal : null
+  // Аккаунтов нет (список пришёл и пуст) — показывать нечего, кроме первого шага.
+  const empty = !!accounts && accounts.list.length === 0
 
   return (
     <>
       <div className="v2">
         <div className="v2-app">
           <Rail screen={screen} onScreen={setScreen} onRules={() => setRules('rules')} />
-          <TopBar state={state} accounts={accounts} status={status} />
+          <TopBar state={state} accounts={accounts} status={status} bell={<Bell state={state} live={live} now={now} goal={goal} />} />
           <RailRow screen={screen} onScreen={setScreen} />
           <main className="v2-page" aria-label={title}>
             <div className="v2-page-scroll">
-              <h1 className="v2-h1">{title}</h1>
+              {empty ? <FirstRun onLink={() => setLinking(true)} /> : <h1 className="v2-h1">{title}</h1>}
             </div>
             <Pult state={state} live={live} now={now} onTune={() => setRules('run')} onBurn={() => setBurning(true)} />
           </main>
@@ -63,6 +74,7 @@ export default function AppV2() {
         </div>
         {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}
       </div>
+      <LinkAccount open={linking} onClose={() => setLinking(false)} accounts={accounts} />
       <Tune open={rules != null} initial={rules ?? undefined} onClose={() => setRules(null)} state={state} unit={state.autopilot} />
     </>
   )

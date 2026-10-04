@@ -21,10 +21,10 @@ export function readJson<T>(p: string, fallback: T): T {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')) as T } catch { return fallback }
 }
 
-function readKey(file: string, env: string) {
+function readKey(file: string, env: string, dir = TOOLS) {
   const fromEnv = process.env[env]
   if (fromEnv?.trim()) return fromEnv.trim()
-  try { return fs.readFileSync(path.join(TOOLS, file), 'utf8').trim() || null } catch { return null }
+  try { return fs.readFileSync(path.join(dir, file), 'utf8').trim() || null } catch { return null }
 }
 
 export const odKey = () => readKey('opendota.key', 'OPENDOTA_KEY')
@@ -33,4 +33,14 @@ export const steamKey = () => readKey('steam.key', 'STEAM_KEY')
 // рядом с остальными ключами и в репозиторий не попадает.
 export const marketKey = () => readKey('market.key', 'MARKET_KEY')
 
-export const STEAMID = process.env.STEAMID || '76561198362481819'
+// steamid основного аккаунта — только снаружи репозитория (он публичный):
+// переменная STEAMID или файл tools/steamid (закрыт .gitignore). Нужен один
+// раз — завести первый аккаунт, когда реестра ещё нет. Не 17 цифр — нет:
+// чужой или выдуманный steamid хуже пустого, первый аккаунт тогда
+// привязывается по QR. Неверная переменная за файлом не уходит.
+export function readSteamid(dir = TOOLS): string {
+  const v = readKey('steamid', 'STEAMID', dir) ?? ''
+  return /^\d{17}$/.test(v) ? v : ''
+}
+
+export const STEAMID = readSteamid()

@@ -136,7 +136,12 @@ export function splitByAccount(target: DatabaseSync, firstAccount: string): bool
   const info = target.prepare(`pragma table_info(burned)`).all() as any[]
   if (!info.length) return false
   if (info.some(c => c.name === 'account')) return false
-  if (!firstAccount) throw new Error('некому приписать старый журнал: аккаунт не указан')
+  // Без аккаунта — только если приписывать нечего (свежая база на установке
+  // без steamid, accounts.ts). Записи есть — отдать их некому, стоп.
+  if (!firstAccount) {
+    const n = (target.prepare('select count(*) c from burned').get() as { c: number }).c
+    if (n > 0) throw new Error('некому приписать старый журнал: аккаунт не указан')
+  }
 
   target.exec(`
     create table burned_split (

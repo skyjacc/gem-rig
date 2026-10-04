@@ -24,3 +24,7 @@ if (!process.env.GC_DIR) {
 // И свой реестр аккаунтов. tools/accounts.json — рабочий: тест, который
 // привяжет или отвяжет аккаунт, поменял бы список живой панели.
 process.env.ACCOUNTS_FILE ??= path.join(process.env.GC_DIR!, 'accounts.json')
+
+// И вымышленный steamid основного аккаунта: настоящий tools/steamid тестам
+// не нужен и читаться не должен.
+process.env.STEAMID ??= '76561190000000001'

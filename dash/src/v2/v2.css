@@ -722,6 +722,96 @@
 .v2 .v2-buy-cfm li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v2 .v2-buy-cfm b { font-weight: 500; }
 
+/* ── Аккаунты (§5.5, план 2.4) ── */
+
+.v2 .v2-acc { display: flex; flex-direction: column; gap: 20px; }
+.v2 .v2-acc .v2-inv-head .v2-hint { max-width: 640px; }
+.v2 .v2-acc .is-stop { color: var(--stop); }
+.v2 .v2-acc-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
+.v2 .v2-acc-card { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r1); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; transition: box-shadow var(--t-color); }
+.v2 .v2-acc-card.is-on { box-shadow: inset 0 0 0 1px var(--ac); }
+.v2 .v2-acc-h { display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
+.v2 .v2-acc-who { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 0 1 auto; text-align: left; border-radius: var(--r2); padding: 2px 6px 2px 2px; transition: background-color var(--t-color); }
+.v2 .v2-acc-who:hover { background: var(--s2); }
+.v2 .v2-acc-who .v2-ava { position: relative; }
+.v2 .v2-acc-lamp { position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border-radius: 999px; background: var(--mute); box-shadow: 0 0 0 2px var(--s1); }
+.v2 .v2-acc-lamp.is-ok { background: var(--ac); }
+.v2 .v2-acc-lamp.is-warn { background: var(--warn); }
+.v2 .v2-acc-lamp.is-stop { background: var(--stop); }
+.v2 .v2-acc-n { display: flex; flex-direction: column; min-width: 0; }
+.v2 .v2-acc-n b { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-acc-n .v2-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-acc-tags { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.v2 .v2-acc-rename { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.v2 .v2-acc-rename input { height: 30px; width: 160px; padding: 0 10px; border-radius: 999px; border: 0; outline: none; background: var(--s2); color: var(--ink); font: inherit; }
+.v2 .v2-acc-rename input:focus { box-shadow: inset 0 0 0 1px var(--line2); }
+.v2 .v2-acc-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.v2 .v2-acc-stats .v2-tile, .v2 .v2-acc-facts .v2-tile { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.v2 .v2-acc-stats span, .v2 .v2-acc-facts span { color: var(--mute); font-size: 11.5px; }
+.v2 .v2-acc-stats b, .v2 .v2-acc-facts b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-acc-facts b.is-stop { color: var(--stop); }
+.v2 .v2-acc-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.v2 .v2-acc-ck { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px 10px; align-items: start; padding: 10px; border-radius: var(--r2); background: var(--s2); }
+.v2 .v2-acc-mark { width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; background: var(--s3); color: var(--ink2); }
+.v2 .v2-acc-ck.is-ok .v2-acc-mark { color: var(--ac); background: var(--acs); }
+.v2 .v2-acc-ck.is-warn .v2-acc-mark { color: var(--warn); background: var(--warns); }
+.v2 .v2-acc-ck.is-stop .v2-acc-mark { color: var(--stop); background: var(--stops); }
+.v2 .v2-acc-ck.is-stop .v2-acc-ck-t b { color: var(--stop); }
+.v2 .v2-acc-ck-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.v2 .v2-acc-ck-t b { font-weight: 500; }
+.v2 .v2-acc-ck-t .v2-hint { line-height: 1.4; overflow-wrap: anywhere; }
+.v2 .v2-acc-ck-a { grid-column: 2; display: flex; gap: 6px; flex-wrap: wrap; }
+.v2 .v2-acc-ck-a .v2-btn, .v2 .v2-acc-trouble .v2-btn { height: 28px; padding: 0 12px; font-size: 11.5px; }
+.v2 .v2-acc-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--line); }
+.v2 .v2-acc-foot > .v2-btn { margin-top: 8px; }
+.v2 .v2-acc-why { flex: 1; min-width: 160px; margin-top: 8px; }
+.v2 .v2-acc-unlink { margin-top: 8px; color: var(--mute); }
+.v2 .v2-acc-unlink:hover:not(:disabled) { color: var(--stop); }
+.v2 .v2-acc-add { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; min-height: 200px; border-radius: var(--r1); border: 1px dashed var(--line2); color: var(--ink2); text-align: left; transition: background-color var(--t-color); }
+.v2 .v2-acc-add:hover { background: var(--s1); }
+.v2 .v2-acc-add b { color: var(--ink); font-size: 15px; font-weight: 600; }
+.v2 .v2-acc-sec { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.v2 .v2-acc-sh-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.v2 .v2-acc-sh { margin: 0; font-size: 15px; font-weight: 600; }
+.v2 .v2-acc-set { display: flex; flex-direction: column; padding: 4px 16px; }
+.v2 .v2-acc-row { display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr); gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.v2 .v2-acc-row:first-child { border-top: 0; }
+.v2 .v2-acc-row .v2-seg { justify-self: start; flex-wrap: wrap; border-radius: 16px; }
+.v2 .v2-acc-k { display: flex; flex-direction: column; gap: 2px; font-weight: 500; }
+.v2 .v2-acc-k small { color: var(--mute); font-size: 11.5px; font-weight: 400; line-height: 1.4; }
+.v2 .v2-acc-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.v2 .v2-acc-field { width: 150px; height: 32px; }
+.v2 .v2-acc-field span { flex: none; }
+.v2 .v2-acc-gems { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.v2 .v2-acc-gem { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 4px; border-radius: 999px; background: var(--s2); color: var(--mute); font-size: 12px; transition: background-color var(--t-color), color var(--t-color); }
+.v2 .v2-acc-gem:hover { background: var(--s3); }
+.v2 .v2-acc-gem[aria-pressed="true"] { color: var(--ink); background: var(--s3); box-shadow: inset 0 0 0 1px var(--line2); }
+.v2 .v2-acc-gem i { width: 22px; height: 22px; border-radius: 999px; background: var(--s3) center / cover no-repeat; flex: none; }
+.v2 .v2-acc-gem[aria-pressed="false"] i { opacity: 0.4; }
+.v2 .v2-acc-gem b { font-weight: 400; color: var(--mute); font-variant-numeric: tabular-nums; }
+.v2 .v2-acc-gem.is-na { background: transparent; outline: 1px dashed var(--line2); outline-offset: -1px; cursor: default; }
+.v2 .v2-acc-gem.is-na:hover { background: transparent; }
+.v2 .v2-acc-rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.v2 .v2-acc-rule { display: flex; flex-direction: column; gap: 10px; justify-content: space-between; }
+.v2 .v2-acc-rule .v2-acc-field { flex: 1; min-width: 100px; }
+.v2 .v2-acc-save.is-go { height: 32px; box-shadow: none; }
+.v2 .v2-acc-dlg { max-width: 520px; }
+.v2 .v2-acc-qrbox { display: flex; gap: 16px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
+.v2 .v2-acc-qr { width: 168px; height: 168px; border-radius: var(--r2); background: var(--s2); display: grid; place-items: center; flex: none; }
+.v2 .v2-acc-qr.is-ok { color: var(--ac); background: var(--acs); font-weight: 600; }
+.v2 .v2-acc-qrbox .v2-buy-rules { margin: 0; flex: 1; min-width: 180px; }
+.v2 .v2-acc-keyf { margin-top: 12px; }
+.v2 .v2-acc-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.v2 .v2-acc-last { margin: 12px 0 0; }
+.v2 .v2-acc-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; scrollbar-width: thin; }
+.v2 .v2-acc-log li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.v2 .v2-acc-log b { font-weight: 500; }
+.v2 .v2-note.v2-acc-trouble { margin: 0 0 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; color: var(--ink); }
+.v2 .v2-note.v2-acc-trouble p { margin: 0; }
+.v2 .v2-note.v2-acc-trouble b { color: var(--stop); font-weight: 500; }
+.v2 .v2-acc-help { margin: 8px 0 0; line-height: 1.5; }
+.v2 .v2-acc-help b { color: var(--ink2); font-weight: 500; }
+
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */
 
@@ -740,6 +830,7 @@
   .v2 .v2-page-scroll { position: static; overflow: visible; flex: 1; }
   .v2 .v2-pult { position: sticky; left: auto; right: auto; margin: -72px auto 16px; max-width: calc(100% - 32px); }
   .v2 .v2-side { grid-column: 2; grid-row: 3; padding: 0 16px 16px 4px; overflow: visible; }
+  .v2 .v2-acc-rules { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 767.98px) {
@@ -761,6 +852,8 @@
   .v2 .v2-buy-tr .v2-buy-who { grid-column: 1 / -1; }
   .v2 .v2-buy-tr .is-r { justify-self: start; text-align: left; }
   .v2 .v2-buy-tm { align-items: flex-start; }
+  .v2 .v2-acc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2 .v2-acc-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }
 
 /* §4.3: без движения для тех, кто его отключил. */

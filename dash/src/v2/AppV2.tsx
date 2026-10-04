@@ -20,6 +20,8 @@ import { Inventory } from './inventory/Inventory.tsx'
 import { ItemCard } from './inventory/ItemCard.tsx'
 import { BuyScreen, useBuy } from './buy/Buy.tsx'
 import { BuySide } from './buy/BuySide.tsx'
+import { AccountsScreen, type Open as AccOpen } from './accounts/Accounts.tsx'
+import { AccountsSide } from './accounts/AccountsSide.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
@@ -31,16 +33,22 @@ export default function AppV2() {
   const live = useLive()
   const { state, stale } = live
   const [screen, setScreen] = useState<ScreenId>('overview')
-  // «Общие правила» и «настроить» пока открывают нынешнее окно Tune — в старом
-  // виде; новое окно — этап 2.4. Оно рисуется вне .v2 (портал в body).
+  // «Общие правила» на рельсе и «настроить» на пульте открывают окно Tune
+  // (старый вид, портал в body, вне .v2). Те же правила и настройки каждого
+  // аккаунта — ещё и на экране Аккаунтов (план 2.4).
   const [rules, setRules] = useState<null | 'run' | 'rules'>(null)
   const [now, setNow] = useState(() => Date.now())
-  const { data: accounts } = useJson<Accounts>('/api/accounts', state?.ts)
+  const accountsJson = useJson<Accounts>('/api/accounts', state?.ts)
+  const accounts = accountsJson.data
   const { data: settings } = useJson<Settings>('/api/settings', state?.ts)
   const [burning, setBurning] = useState(false)
-  // Привязка — нынешнее окно LinkAccount (старый вид, портал вне .v2);
-  // новое — вместе с экраном Аккаунтов (этап 2.4).
-  const [linking, setLinking] = useState(false)
+  // Привязка игрового входа — окно LinkAccount (портал вне .v2), им же
+  // обновляется вход существующего аккаунта (relink). План 2.4, решение 8.
+  const [linking, setLinking] = useState<null | { relink: { id: string; label: string } | null }>(null)
+  // Аккаунты: выбранный аккаунт (его настройки и работник справа) и окно
+  // экрана — веб-вход, ключ, отвязка. Окно веб-входа открывается и справа.
+  const [acc, setAcc] = useState<string | null>(null)
+  const [accOpen, setAccOpen] = useState<AccOpen>(null)
   // Выбранный гем Обзора: его показывают и холст, и инспектор справа.
   const [gem, setGem] = useState<string | null>(null)
   // Выбранная стопка Инвентаря: её покажет карточка справа.
@@ -87,10 +95,17 @@ export default function AppV2() {
           <RailRow screen={screen} onScreen={setScreen} />
           <main className="v2-page" aria-label={title}>
             <div className="v2-page-scroll">
-              {empty ? <FirstRun onLink={() => setLinking(true)} />
+              {empty ? <FirstRun onLink={() => setLinking({ relink: null })} />
                 : screen === 'overview' ? <Overview state={state} accounts={accounts} goal={goal} sel={gem} onSel={setGem} />
                 : screen === 'inventory' ? <Inventory state={state} goal={goal} sel={stack} onSel={setStack} />
                 : screen === 'buy' ? <BuyScreen state={state} buy={buy} />
+                : screen === 'accounts' ? (
+                  <AccountsScreen
+                    state={state} accounts={accounts} accountsJson={accountsJson} settings={settings} now={now}
+                    sel={acc} onSel={setAcc} open={accOpen} setOpen={setAccOpen}
+                    onLink={relink => setLinking({ relink })} onBurn={() => setBurning(true)}
+                  />
+                )
                 : <Screen id={screen} title={title} />}
             </div>
             <Pult state={state} live={live} now={now} onTune={() => setRules('run')} onBurn={() => setBurning(true)} />
@@ -105,12 +120,17 @@ export default function AppV2() {
               <ItemCard state={state} goal={goal} sel={stack} onOverview={g => { setGem(g); setScreen('overview') }} />
             ) : screen === 'buy' ? (
               <BuySide state={state} buy={buy} now={now} onRules={() => setRules('rules')} />
+            ) : screen === 'accounts' ? (
+              <AccountsSide
+                state={state} accounts={accounts} sel={acc} now={now}
+                onRelink={a => setLinking({ relink: a })} onWeb={id => setAccOpen({ kind: 'web', id })}
+              />
             ) : <ScreenSide id={screen} />}
           </aside>
         </div>
         {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}
       </div>
-      <LinkAccount open={linking} onClose={() => setLinking(false)} accounts={accounts} />
+      <LinkAccount open={linking != null} onClose={() => setLinking(null)} accounts={accounts} relink={linking?.relink ?? null} />
       <Tune open={rules != null} initial={rules ?? undefined} onClose={() => setRules(null)} state={state} unit={state.autopilot} />
     </>
   )

@@ -13,7 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { GC, TOOLS, STEAMID, readJson } from './paths.ts'
-import { forgetWeb } from './steamweb.ts'
+import { forgetWeb, webTokenFile } from './steamweb.ts'
 
 export type Account = {
   id: string
@@ -121,6 +121,14 @@ type Link = {
 
 let link: Link | null = null
 
+// Запуск входа — через объект: тест подменяет его и проверяет разбор вывода
+// и уборку временного файла, не входя в Steam.
+export const proc = { spawn }
+
+// Привязка одна за раз — игровая или веб: два QR сразу человек не отличит.
+const alive = (x: { done: boolean; child: ChildProcess | null } | null) =>
+  !!x && !x.done && !!x.child && x.child.exitCode === null
+
 export function linkState() {
   if (!link) return null
   const { id, label, url, steamid, error, done, relink } = link
@@ -132,9 +140,7 @@ export function linkState() {
 // а привязать тот же Steam заново как новый аккаунт нельзя (он уже есть).
 // Поэтому relink: тот же вход по QR, но для существующей строки реестра.
 export function linkStart(label: string, onChange: () => void, relink: string | null = null) {
-  if (link && !link.done && link.child && link.child.exitCode === null) {
-    return { error: 'привязка уже идёт' }
-  }
+  if (alive(link) || alive(webLink)) return { error: 'привязка уже идёт' }
   const target = relink ? byId(relink) : null
   if (relink && !target) return { error: 'нет такого аккаунта' }
   const clean = target ? target.label : (String(label || '').trim() || 'второй')
@@ -145,7 +151,7 @@ export function linkStart(label: string, onChange: () => void, relink: string | 
   const token = target ? 'token-relink-' + target.id + '.json' : 'token-' + id + '.json'
   if (target) { try { fs.unlinkSync(path.join(GC, token)) } catch { } }
 
-  const child = spawn(process.execPath, ['index.js', '--dry', '--save-token', '--token', token], {
+  const child = proc.spawn(process.execPath, ['index.js', '--dry', '--save-token', '--token', token], {
     cwd: GC,
     windowsHide: true,
   })
@@ -225,9 +231,111 @@ export function linkCancel() {
   return { ok: true }
 }
 
+// ── веб-вход по QR (план 2.4, решение 2Б) ──
+//
+// Отдельная сессия WebBrowser только для чтения сайта Steam (план 3.3):
+// tools/gcwatch/weblogin.js. Игровой токен и работник не трогаются — вход
+// веб-платформой клиента в сеть Steam не пускает и игру не выбивает.
+//
+// Токен пишется во временный файл и становится веб-входом аккаунта, только
+// если вошли тем же Steam: QR, отсканированный не тем телефоном, иначе молча
+// подменил бы веб-вход. Временный файл не переживает ни отмены, ни сбоя.
+
+type WebLink = {
+  id: string
+  label: string
+  tmp: string
+  url: string | null
+  steamid: string | null
+  seen: boolean
+  error: string | null
+  done: boolean
+  child: ChildProcess | null
+}
+
+let webLink: WebLink | null = null
+
+export const webTmpFile = (a: Pick<Account, 'id'>) => 'token-web-' + a.id + '.tmp.json'
+
+export function webLinkState() {
+  if (!webLink) return null
+  const { id, label, url, steamid, seen, error, done } = webLink
+  return { id, label, url, steamid, seen, error, done }
+}
+
+// Сверка до замены: итоговый файл не трогается, пока steamid не сошёлся.
+export function acceptWebToken(id: string, steamid: string, tmp: string): { ok: true } | { error: string } {
+  const a = byId(id)
+  const from = path.join(GC, tmp)
+  const drop = () => { try { fs.unlinkSync(from) } catch { } }
+  if (!a) { drop(); return { error: 'аккаунт пропал из реестра' } }
+  if (a.steamid !== steamid) {
+    drop()
+    return { error: 'вошли другим Steam (' + steamid + '), а веб-вход обновлялся для «' + a.label + '» (' + a.steamid + ')' }
+  }
+  if (!fs.existsSync(from)) return { error: 'вход подтверждён, но веб-токен не записан' }
+  fs.renameSync(from, path.join(GC, webTokenFile(a)))
+  forgetWeb(a.id)   // куки и итог проверки относились к прежнему токену
+  return { ok: true }
+}
+
+export function webLinkStart(id: string, onChange: () => void) {
+  if (alive(link) || alive(webLink)) return { error: 'привязка уже идёт' }
+  const a = byId(id)
+  if (!a) return { error: 'нет такого аккаунта' }
+  const tmp = webTmpFile(a)
+  const tmpPath = path.join(GC, tmp)
+  try { fs.unlinkSync(tmpPath) } catch { }   // хвост прошлой попытки
+
+  const child = proc.spawn(process.execPath, ['weblogin.js', '--id', a.id, '--out', tmp], { cwd: GC, windowsHide: true })
+  const w: WebLink = { id: a.id, label: a.label, tmp, url: null, steamid: null, seen: false, error: null, done: false, child }
+  webLink = w
+
+  const finish = (error: string | null) => {
+    if (w.done) return
+    w.done = true
+    w.error = error
+    if (error) { try { fs.unlinkSync(tmpPath) } catch { } }
+    try { w.child?.kill() } catch { }
+    onChange()
+  }
+
+  // Вывод не храним: в нём QR рисунком и имя входа Steam.
+  const read = (b: Buffer) => {
+    for (const raw of String(b).split(/\r?\n/)) {
+      const l = raw.trim()
+      if (l.startsWith('QRURL ')) w.url = l.slice(6).trim()
+      else if (l.startsWith('телефон увидел код')) w.seen = true
+      else if (l.startsWith('ERROR ')) w.error = l.slice(6).trim()
+      else if (l.startsWith('STEAMID ')) {
+        w.steamid = l.slice(8).trim()
+        const r = acceptWebToken(w.id, w.steamid, w.tmp)
+        finish('error' in r ? r.error : null)
+      }
+    }
+    onChange()
+  }
+
+  child.stdout?.on('data', read)
+  child.stderr?.on('data', read)
+  child.on('error', e => finish('вход не запустился: ' + e.message))
+  child.on('exit', () => finish(w.error ?? 'вход не подтверждён'))
+  return { ok: true, id: a.id }
+}
+
+export function webLinkCancel() {
+  const w = webLink
+  if (!w || w.done) return { ok: true }
+  w.done = true
+  w.error = 'отменено'
+  try { w.child?.kill() } catch { }
+  try { fs.unlinkSync(path.join(GC, w.tmp)) } catch { }
+  return { ok: true }
+}
+
 // ── отвязка ──
 //
-// Удаляется только сессия и строка реестра. Журнал расхода остаётся:
+// Удаляются сессии (игровая и веб) и строка реестра. Журнал расхода остаётся:
 // матчи на том аккаунте действительно израсходованы, и если его привяжут
 // заново, очередь должна об этом помнить.
 export function unlink(id: string) {
@@ -236,6 +344,10 @@ export function unlink(id: string) {
   if (reg.list.length === 1) return { error: 'это единственный аккаунт' }
 
   try { fs.unlinkSync(path.join(GC, a.token)) } catch { }
+  // И веб-вход: без хозяина он остался бы на диске, а аккаунт, получивший
+  // потом тот же id, читал бы историю чужого Steam.
+  try { fs.unlinkSync(path.join(GC, webTokenFile(a))) } catch { }
+  forgetWeb(a.id)
   reg.list = reg.list.filter(x => x.id !== id)
   if (reg.active === id) reg.active = reg.list[0].id
   save(reg)

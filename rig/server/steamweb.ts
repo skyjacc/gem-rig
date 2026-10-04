@@ -52,6 +52,10 @@ function run(token: string, args: string[], timeoutMs = 45_000): Promise<string[
   })
 }
 
+// Обмен токена на куки — через объект, чтобы тест мог его подменить и
+// убедиться, что обычный показ аккаунтов в Steam не ходит.
+export const exchange = { run }
+
 // Разбор ответа проверки. Без ввода-вывода — для тестов.
 export function parseSession(lines: string[]): Pick<SessionStatus, 'state' | 'error'> {
   const l = lines.find(x => x.startsWith('SESSION '))
@@ -96,6 +100,14 @@ export function sessionFromToken(text: string | null, now = Date.now()): Session
   return { state: 'unknown', checkedAt: now, error: UNVERIFIABLE, validUntil: until }
 }
 
+// Игровая сессия для списка аккаунтов — из файла при каждом показе, без
+// сети: срок токена виден сразу, без нажатия «проверить».
+export function gameStatus(a: Pick<Account, 'token'>, now = Date.now()): SessionStatus {
+  let text: string | null = null
+  try { text = fs.readFileSync(path.join(GC, a.token), 'utf8') } catch { text = null }
+  return sessionFromToken(text, now)
+}
+
 // Игровая сессия: в Steam не ходим — сеть-метод для SteamClient даёт ложное
 // «отозвана». Только срок из токена.
 export async function checkSession(a: Account): Promise<SessionStatus> {
@@ -108,14 +120,38 @@ export async function checkSession(a: Account): Promise<SessionStatus> {
 
 export const webTokenFile = (a: Pick<Account, 'id'>) => 'token-web-' + a.id + '.json'
 
-// Веб-сессия: единственная проверка — фактическое получение кук.
-export async function checkWeb(a: Account): Promise<{ ok: true; names: string[] } | { ok: false; error: string }> {
-  try {
-    const header = await webCookieHeader(a, true)
-    return { ok: true, names: header.split(';').map(s => s.split('=')[0].trim()).filter(Boolean) }
-  } catch (e: any) {
-    return { ok: false, error: String(e?.message ?? e) }
+// Веб-сессия — своё состояние, отдельно от игровой (план 2.4, решение 1).
+// Без сети известно только: есть ли файл и не истёк ли срок. «Работает» —
+// только по факту полученных кук, итог последней проверки.
+export type WebState = 'missing' | 'expired' | 'unchecked' | 'ok' | 'error'
+export type WebStatus = { state: WebState; validUntil: number | null; checkedAt: number; error: string | null }
+
+const webChecks = new Map<string, { at: number; error: string | null }>()
+
+export function webStatus(a: Pick<Account, 'id'>, now = Date.now()): WebStatus {
+  let text: string
+  try { text = fs.readFileSync(path.join(GC, webTokenFile(a)), 'utf8') } catch {
+    return { state: 'missing', validUntil: null, checkedAt: 0, error: null }
   }
+  let rt = ''
+  try { rt = String(JSON.parse(text)?.refreshToken ?? '') } catch { rt = '' }
+  if (!rt) return { state: 'error', validUntil: null, checkedAt: 0, error: 'файл веб-токена не читается' }
+  const until = validUntil(rt)
+  if (until != null && until <= now) {
+    return { state: 'expired', validUntil: until, checkedAt: 0, error: 'срок веб-токена истёк ' + new Date(until).toISOString().slice(0, 10) }
+  }
+  const c = webChecks.get(a.id)
+  if (!c) return { state: 'unchecked', validUntil: until, checkedAt: 0, error: null }
+  return { state: c.error ? 'error' : 'ok', validUntil: until, checkedAt: c.at, error: c.error }
+}
+
+// Единственная проверка веб-сессии — фактическое получение кук (один обмен
+// токена). В ответ — только состояние: ни имён, ни значений кук.
+export async function checkWeb(a: Account): Promise<WebStatus> {
+  let error: string | null = null
+  try { await webCookieHeader(a, true) } catch (e: any) { error = String(e?.message ?? e) }
+  webChecks.set(a.id, { at: Date.now(), error })
+  return webStatus(a)
 }
 
 // Куки на час: Steam держит веб-сессию дольше, а обмен токена — лишний
@@ -149,7 +185,7 @@ export async function webCookieHeader(a: Pick<Account, 'id'>, force = false, hos
   }
   const file = webTokenFile(a)
   if (!fs.existsSync(path.join(GC, file))) throw new Error('нет веб-сессии у аккаунта — нужен веб-вход по QR (weblogin.js)')
-  const line = (await run(file, ['--platform', 'web'])).find(l => l.startsWith('COOKIES '))
+  const line = (await exchange.run(file, ['--platform', 'web'])).find(l => l.startsWith('COOKIES '))
   if (!line) throw new Error('Steam не выдал веб-сессию')
   const list: string[] = JSON.parse(line.slice(8))
   cookieJar.set(a.id, { at: Date.now(), list })
@@ -161,4 +197,5 @@ export async function webCookieHeader(a: Pick<Account, 'id'>, force = false, hos
 export function forgetWeb(id: string) {
   cookieJar.delete(id)
   sessions.delete(id)
+  webChecks.delete(id)
 }

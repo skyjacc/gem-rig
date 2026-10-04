@@ -2,6 +2,7 @@
 // (план 3.3, задача 0). Игровой токен (token.json) НЕ трогается.
 //
 //   node weblogin.js --id main
+//   node weblogin.js --id main --out token-web-main.tmp.json   (панель)
 //
 // С 2025-04-30 веб-куки из SteamClient-токена вне CM-сессии не выдаются
 // (документация steam-session); для WebBrowser-токена getWebCookies()
@@ -18,7 +19,11 @@ const argv = process.argv.slice(2);
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
 const ID = opt('--id', 'main');
 if (!/^[a-z0-9-]{1,40}$/i.test(ID)) { console.error('ERROR плохой id аккаунта'); process.exit(1); }
-const FILE = path.resolve(__dirname, 'token-web-' + ID + '.json');
+// --out — временный файл: так входит панель (план 2.4) и сама решает,
+// принять ли токен, сверив steamid. Только имя внутри этой папки.
+const OUT = opt('--out', null);
+if (OUT !== null && !/^token-web-[a-z0-9-]{1,40}\.tmp\.json$/i.test(OUT)) { console.error('ERROR плохое имя файла --out'); process.exit(1); }
+const FILE = path.resolve(__dirname, OUT || 'token-web-' + ID + '.json');
 const GAME = path.resolve(__dirname, 'token.json');
 
 async function main() {

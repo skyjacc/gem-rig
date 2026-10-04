@@ -120,22 +120,41 @@ export async function checkWeb(a: Account): Promise<{ ok: true; names: string[] 
 
 // Куки на час: Steam держит веб-сессию дольше, а обмен токена — лишний
 // запрос, по которому Steam считает частоту входов.
-const cookieJar = new Map<string, { at: number; header: string }>()
+const cookieJar = new Map<string, { at: number; list: string[] }>()
+
+// Куки для одного сайта. Steam выдаёт steamLoginSecure и sessionid по разу на
+// каждый свой домен (store, help, checkout, steamcommunity…) с разными
+// значениями — склеить все в один заголовок значит послать сайту чужой вход.
+// Берём только те, чей Domain совпадает с сайтом или его родителем; кука без
+// Domain — не угадываем, не берём.
+export function cookiesFor(list: string[], host: string): string {
+  return list
+    .filter(s => {
+      const d = (String(s).match(/;\s*Domain=([^;]+)/i)?.[1] ?? '').trim().replace(/^\./, '').toLowerCase()
+      return !!d && (host === d || host.endsWith('.' + d))
+    })
+    .map(s => String(s).split(';')[0].trim())
+    .join('; ')
+}
 const COOKIE_TTL = 60 * 60_000
 
 // Куки — только из веб-токена (WebBrowser). Игровой токен для веба не
 // используется: Steam его так не обменяет. Нет веб-токена — ошибка без
 // обращения к Steam.
-export async function webCookieHeader(a: Pick<Account, 'id'>, force = false): Promise<string> {
+export async function webCookieHeader(a: Pick<Account, 'id'>, force = false, host = 'steamcommunity.com'): Promise<string> {
   const c = cookieJar.get(a.id)
-  if (!force && c && Date.now() - c.at < COOKIE_TTL) return c.header
+  if (!force && c && Date.now() - c.at < COOKIE_TTL) {
+    const cached = cookiesFor(c.list, host)
+    if (cached) return cached
+  }
   const file = webTokenFile(a)
   if (!fs.existsSync(path.join(GC, file))) throw new Error('нет веб-сессии у аккаунта — нужен веб-вход по QR (weblogin.js)')
   const line = (await run(file, ['--platform', 'web'])).find(l => l.startsWith('COOKIES '))
   if (!line) throw new Error('Steam не выдал веб-сессию')
   const list: string[] = JSON.parse(line.slice(8))
-  const header = list.map(s => String(s).split(';')[0]).join('; ')
-  cookieJar.set(a.id, { at: Date.now(), header })
+  cookieJar.set(a.id, { at: Date.now(), list })
+  const header = cookiesFor(list, host)
+  if (!header) throw new Error('Steam не выдал куки для ' + host)
   return header
 }
 

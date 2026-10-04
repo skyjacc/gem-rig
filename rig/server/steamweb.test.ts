@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { GC } from './paths.ts'
-import { checkSession, parseSession, sessionFromToken, sessionStatus, validUntil, webCookieHeader, webTokenFile } from './steamweb.ts'
+import { checkSession, cookiesFor, parseSession, sessionFromToken, sessionStatus, validUntil, webCookieHeader, webTokenFile } from './steamweb.ts'
 
 const A = { id: 'main', label: 'основной', steamid: '76561198000000001', token: 'token.json', added: 0 }
 
@@ -75,4 +75,19 @@ test('веб-токен — свой файл, не игровой', () => {
 
 test('нет веб-токена — понятная ошибка, без обращения к Steam', async () => {
   await assert.rejects(webCookieHeader({ ...A, id: 'нет-такого-' + Date.now() }), /нет веб-сессии/)
+})
+
+test('в заголовок — только куки нужного домена: steamLoginSecure приходит по разу на каждый сайт Steam', () => {
+  const list = [
+    'steamLoginSecure=STORE; Path=/; Domain=store.steampowered.com; Secure',
+    'steamLoginSecure=COMM; Path=/; Domain=steamcommunity.com; Secure',
+    'sessionid=S1; Path=/; Domain=store.steampowered.com',
+    'sessionid=S2; Path=/; Domain=steamcommunity.com',
+    'steamCountry=X; Path=/; Domain=.steampowered.com',
+    'steamRefresh_steam=R; Path=/; Domain=login.steampowered.com',
+    'ak_bmsc=A; Path=/',
+  ]
+  assert.equal(cookiesFor(list, 'steamcommunity.com'), 'steamLoginSecure=COMM; sessionid=S2')
+  assert.equal(cookiesFor(list, 'store.steampowered.com'), 'steamLoginSecure=STORE; sessionid=S1; steamCountry=X')
+  assert.equal(cookiesFor(['a=1'], 'steamcommunity.com'), '', 'кука без домена — не наша: не угадываем')
 })

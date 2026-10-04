@@ -486,6 +486,8 @@
 .v2 .v2-inv { display: flex; flex-direction: column; gap: 16px; }
 .v2 .v2-inv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .v2 .v2-inv-head .v2-hint { margin: 4px 0 0; }
+.v2 .v2-inv-who { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.v2 .v2-inv-who .v2-hint { margin: 0; font-size: 11px; text-align: right; }
 .v2 .v2-inv-sum { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 8px; }
 .v2 .v2-inv-sum .v2-tile { display: flex; flex-direction: column; gap: 4px; padding: 12px; }
 .v2 .v2-inv-l { color: var(--mute); font-size: 12px; display: flex; align-items: center; gap: 6px; }
@@ -544,7 +546,7 @@
   display: flex; flex-direction: column; gap: 8px; padding: 10px; text-align: left; border-radius: var(--r2);
   border: 1px dashed var(--line2); background: var(--s1); transition: background-color var(--t-color);
 }
-.v2 .v2-cell:hover { background: #18181b; }
+.v2 .v2-cell:hover { background: var(--s3); }
 .v2 .v2-cell.is-on { box-shadow: inset 0 0 0 1px var(--ac); }
 .v2 .v2-cell-r1 { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .v2 .v2-cell-ico { position: relative; width: 40px; height: 40px; flex: none; border-radius: 10px; border: 1px solid var(--line); background: #0f0f11 center / cover no-repeat; }

@@ -85,9 +85,14 @@ export function Inventory({ state, goal, sel, onSel }: {
             {goal == null ? 'цель не задана — «готово / дойдёт» не считается' : 'товар — вещь со счётчиком от ' + nf(goal)} · у каждой цифры подписано, откуда она
           </p>
         </div>
-        <div className="v2-seg" role="group" aria-label="Чей инвентарь">
-          <button type="button" aria-pressed="true">{ap.label}</button>
-          <button type="button" disabled title="появится на этапе 3.5 (С3): сейчас сервер отдаёт инвентарь только активного аккаунта">все аккаунты</button>
+        {/* Выключенная кнопка вне порядка Tab — её title с клавиатуры не прочесть.
+            Пояснение — видимой подписью рядом, не фокусируемым элементом. */}
+        <div className="v2-inv-who">
+          <div className="v2-seg" role="group" aria-label="Чей инвентарь">
+            <button type="button" aria-pressed="true">{ap.label}</button>
+            <button type="button" disabled title="появится на этапе 3.5 (С3): сейчас сервер отдаёт инвентарь только активного аккаунта">все аккаунты</button>
+          </div>
+          <p className="v2-hint">«все аккаунты» — с этапа 3.5: сейчас виден только активный</p>
         </div>
       </header>
 

@@ -1,9 +1,14 @@
 // Веб-куки Steam по сохранённой сессии — для чтения своей истории рынка.
 //
-//   node webcookies.js --token token.json
-//   node webcookies.js --token token.json --check   жива ли сессия: SESSION ok | revoked | error
+//   node webcookies.js --token token-web-main.json --platform web
+//   node webcookies.js --token token.json --check   (устарело, см. ниже)
 //
-// Входа в сеть Steam здесь нет: steam-session обменивает refresh-токен на
+// С 2025-04-30 Steam отвечает AccessDenied на getWebCookies() и
+// refreshAccessToken() для SteamClient-токена вне CM-сессии (документация
+// steam-session). Поэтому куки — только из отдельного WebBrowser-токена
+// (--platform web, вход — weblogin.js). Игровой токен сюда не годится.
+//
+// Входа в сеть Steam здесь нет: steam-session обменивает веб-токен на
 // куки steamcommunity.com (finalizelogin), не открывая сессии клиента. Игра
 // и отправщик на том же аккаунте не выбиваются.
 //
@@ -18,6 +23,7 @@ const argv = process.argv.slice(2);
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
 const TOKEN_FILE = path.resolve(__dirname, opt('--token', 'token.json'));
 const CHECK = argv.includes('--check');
+const WEB = opt('--platform', 'client') === 'web';
 
 async function main() {
   let refreshToken;
@@ -26,7 +32,7 @@ async function main() {
   if (!refreshToken) throw new Error('в ' + path.basename(TOKEN_FILE) + ' нет refresh-токена');
 
   const { LoginSession, EAuthTokenPlatformType } = require('steam-session');
-  const session = new LoginSession(EAuthTokenPlatformType.SteamClient);
+  const session = new LoginSession(WEB ? EAuthTokenPlatformType.WebBrowser : EAuthTokenPlatformType.SteamClient);
   session.refreshToken = refreshToken;
 
   // Проверка сессии: обмен на access-токен. Отозванный токен Steam

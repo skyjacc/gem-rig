@@ -2,10 +2,14 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import AppV2 from './v2/AppV2.tsx'
 import { Login } from './parts/Login.tsx'
 import { DEMO } from './lib/api.ts'
 
 const root = createRoot(document.getElementById('root')!)
+
+// Новая панель — по /?ui=v2, пока идёт переезд. Вход общий.
+const V2 = new URLSearchParams(location.search).get('ui') === 'v2'
 
 // Сначала спрашиваем, вошли ли мы. Без куки входа сервер отвечает 401 на
 // каждый /api/*, и панель показала бы вместо данных стену ошибок.
@@ -22,7 +26,7 @@ async function boot() {
   }
   root.render(
     <StrictMode>
-      {authed ? <App /> : <Login />}
+      {authed ? (V2 ? <AppV2 /> : <App />) : <Login />}
     </StrictMode>,
   )
 }

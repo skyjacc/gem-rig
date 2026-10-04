@@ -1,0 +1,385 @@
+/* Новая панель (спецификация v2, §4).
+ *
+ * Всё — только внутри .v2. Старая панель живёт рядом в той же сборке со
+ * своим index.css, и ни одно правило отсюда не должно её задеть: ни один
+ * селектор без .v2 впереди, классы — с префиксом v2- (§10: совпадение имён
+ * с чужими стилями уже однажды ломало вид — .card с transform на hover).
+ * Когда старая панель уйдёт (этап 9), этот файл станет index.css.
+ *
+ * Никаких прыжков (§3.1): наведение меняет только фон, выбор — кольцо
+ * акцентом внутрь (inset box-shadow). Ни transform, ни border-width,
+ * ни padding, ни font-weight в :hover и в выбранном состоянии.
+ */
+
+.v2 {
+  /* §4.1 — дословно */
+  --bg: #0c0c0e;
+  --s1: #141416;
+  --s2: #1b1b1e;
+  --s3: #232327;
+  --line: #ffffff0f;
+  --line2: #ffffff17;
+  --ink: #ecebe8;
+  --ink2: #a7a5a0;
+  --mute: #76746f;
+  --ac: #b8f25c;
+  --warn: #f2b44a;
+  --stop: #ff7a7a;
+  --r1: 16px;
+  --r2: 10px;
+
+  /* Производные тех же трёх цветов смысла — прозрачность, а не новые цвета
+     (так в макетах: свечение и подложки чипов). */
+  --acg: #b8f25c55;
+  --acs: #b8f25c1a;
+  --warns: #f2b44a17;
+  --stops: #ff7a7a17;
+  --s3h: #2c2c31;           /* наведение поверх --s3 */
+
+  --t-color: 150ms;         /* смена цвета */
+  --t-in: 220ms;            /* появление */
+
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* §3.5: цифры — Geist с табличными цифрами; Geist Mono — только для id. */
+.v2 .v2-num { font-variant-numeric: tabular-nums; }
+.v2 .v2-id { font-family: 'Geist Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+.v2 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.v2 button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* §4.3: фокус виден всегда, когда пришли с клавиатуры. Кольцо — outline:
+   он не занимает места и ничего не сдвигает. */
+.v2 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.v2 .v2-h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+
+/* ── слои ── */
+
+.v2 .v2-panel { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r1); padding: 16px; }
+.v2 .v2-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 22px; margin-bottom: 12px; font-size: 15px; font-weight: 500; }
+.v2 .v2-panel-head .v2-aside { color: var(--mute); font-size: 12px; font-weight: 400; }
+
+/* Плитка внутри панели — без кромки, отличается фоном. */
+.v2 .v2-tile { background: var(--s2); border-radius: var(--r2); padding: 8px 10px; transition: background-color var(--t-color); }
+.v2 .v2-tile[role='button']:hover, .v2 button.v2-tile:hover { background: var(--s3); }
+.v2 .v2-tile[aria-selected='true'], .v2 .v2-tile.is-on { box-shadow: inset 0 0 0 1px var(--ac); }
+
+/* ── пилюли и кнопки ── */
+
+.v2 .v2-pill {
+  height: 32px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px;
+  border-radius: 999px; background: var(--s1); border: 1px solid var(--line);
+  color: var(--ink2); font-size: 12px; white-space: nowrap;
+}
+.v2 .v2-pill b { color: var(--ink); font-weight: 500; }
+.v2 .v2-pill.is-warn { color: var(--warn); background: var(--warns); border-color: transparent; }
+.v2 .v2-pill.is-stop { color: var(--stop); background: var(--stops); border-color: transparent; }
+
+.v2 .v2-btn {
+  height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 14px; border-radius: 999px; background: var(--s2); color: var(--ink);
+  font-size: 12.5px; white-space: nowrap;
+  transition: background-color var(--t-color), box-shadow var(--t-color), color var(--t-color);
+}
+.v2 .v2-btn:hover:not(:disabled) { background: var(--s3); }
+.v2 .v2-btn.is-soft { background: var(--s3); }
+.v2 .v2-btn.is-soft:hover:not(:disabled) { background: var(--s3h); }
+/* Главное действие: лайм со свечением. Свечение — тень, места не занимает. */
+.v2 .v2-btn.is-go { height: 40px; padding: 0 18px 0 14px; background: var(--ac); color: var(--bg); font-weight: 600; box-shadow: 0 0 24px var(--acg); }
+.v2 .v2-btn.is-go:hover:not(:disabled) { background: var(--ac); box-shadow: 0 0 34px var(--acg); }
+.v2 .v2-btn.is-stop { color: var(--stop); background: var(--stops); }
+.v2 .v2-btn.is-stop:hover:not(:disabled) { background: var(--s3); }
+
+/* Кнопка-иконка: подпись обязательна (aria-label) и видна подсказкой
+   при наведении И при фокусе с клавиатуры (§4.3). */
+.v2 .v2-ibtn {
+  width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center;
+  color: var(--mute); position: relative;
+  transition: background-color var(--t-color), color var(--t-color);
+}
+.v2 .v2-ibtn:hover { background: var(--s2); color: var(--ink); }
+.v2 .v2-ibtn[aria-current='page'] { background: var(--ink); color: var(--bg); }
+.v2 .v2-ibtn.is-boxed { width: 32px; height: 32px; background: var(--s1); border: 1px solid var(--line); color: var(--ink2); }
+.v2 .v2-ibtn.is-boxed:hover { background: var(--s2); color: var(--ink); }
+.v2 .v2-tip {
+  position: absolute; z-index: 20; white-space: nowrap; pointer-events: none;
+  background: var(--s3); color: var(--ink); font-size: 12px; padding: 5px 9px; border-radius: 8px;
+  opacity: 0; transition: opacity 120ms;
+}
+.v2 .v2-tip.at-right { left: calc(100% + 10px); top: 50%; translate: 0 -50%; }
+.v2 .v2-tip.at-bottom { top: calc(100% + 8px); left: 50%; translate: -50% 0; }
+.v2 .v2-tip.at-bottom-end { top: calc(100% + 8px); right: 0; }
+.v2 .v2-tip.at-top { bottom: calc(100% + 8px); left: 50%; translate: -50% 0; }
+.v2 .v2-ibtn:hover .v2-tip, .v2 .v2-ibtn:focus-visible .v2-tip { opacity: 1; }
+.v2 .v2-badge {
+  position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; background: var(--warn); color: #111; font-size: 10px; font-weight: 600;
+  display: grid; place-items: center;
+}
+.v2 .v2-badge.is-stop { background: var(--stop); }
+
+/* ── метки ── */
+
+.v2 .v2-chip {
+  height: 20px; padding: 0 7px; border-radius: 999px; font-size: 10.5px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  color: var(--ink2); background: var(--s3);
+}
+.v2 .v2-chip.has-dot::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: currentColor; }
+.v2 .v2-chip.is-ok { color: var(--ac); background: var(--acs); }
+.v2 .v2-chip.is-warn { color: var(--warn); background: var(--warns); }
+.v2 .v2-chip.is-stop { color: var(--stop); background: var(--stops); }
+
+/* Откуда число (§3.3): маленькая тихая подпись. */
+.v2 .v2-src { font-size: 10.5px; color: var(--mute); border: 1px solid var(--line2); border-radius: 999px; padding: 0 6px; height: 16px; display: inline-flex; align-items: center; white-space: nowrap; }
+
+/* ── четыре состояния значения (§3.3) ── */
+
+.v2 .v2-val { display: inline-flex; align-items: baseline; gap: 6px; }
+.v2 .v2-val.is-stale { color: var(--mute); }
+.v2 .v2-val .v2-when { font-size: 11px; color: var(--mute); }
+.v2 .v2-val.is-none { color: var(--mute); }
+.v2 .v2-val .v2-why { font-size: 12px; }
+
+/* ── лампа ── */
+
+.v2 .v2-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--mute); flex: none; }
+.v2 .v2-dot.is-ok { background: var(--ac); box-shadow: 0 0 8px var(--acg); }
+.v2 .v2-dot.is-warn { background: var(--warn); }
+.v2 .v2-dot.is-stop { background: var(--stop); }
+.v2 .v2-dot.is-pulse { animation: v2-breathe 2.4s ease-in-out infinite; }
+.v2 .v2-lamp { display: inline-flex; align-items: center; gap: 8px; }
+
+@keyframes v2-breathe { 50% { opacity: 0.45; } }
+@keyframes v2-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes v2-turn { to { rotate: 360deg; } }
+.v2 .v2-spin { animation: v2-turn 0.9s linear infinite; }
+
+/* ── скелетон ── */
+
+.v2 .v2-skel { background: var(--s2); border-radius: var(--r2); animation: v2-breathe 1.6s ease-in-out infinite; }
+
+/* ── раскладка (§4.2) ──
+ *
+ * Широко (≥ 1100): рейка 64 · страница · правая колонка 360–392; экран не
+ * прокручивается целиком — прокручиваются страница и колонка, каждая своя.
+ * Уже 1100 (§4.4): правая колонка уходит под страницу, прокрутка — общая.
+ * Уже 768 (§4.4): рейки нет, экраны — строкой под полосой.
+ * Других порогов нет.
+ */
+
+.v2 .v2-app {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 360px;   /* §4.2: 360–392; берём 360, как в макете — без своей формулы */
+  grid-template-rows: 60px minmax(0, 1fr);
+  height: 100svh;
+}
+.v2 .v2-rail { grid-column: 1; grid-row: 1 / 3; }
+.v2 .v2-top { grid-column: 2 / 4; grid-row: 1; }
+.v2 .v2-railrow { display: none; }
+.v2 .v2-page { grid-column: 2; grid-row: 2; margin: 0 0 16px 4px; }
+.v2 .v2-side { grid-column: 3; grid-row: 2; padding: 0 16px 16px 16px; overflow: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+
+.v2 .v2-page {
+  position: relative; min-width: 0; min-height: 0;
+  background: var(--s1); border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+}
+.v2 .v2-page-scroll { position: absolute; inset: 0; overflow: auto; padding: 20px 20px 96px; scrollbar-width: thin; }
+
+/* ── рейка ── */
+
+.v2 .v2-rail { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 0; }
+.v2 .v2-logo { width: 40px; height: 40px; display: grid; place-items: center; margin-bottom: 12px; color: var(--ac); filter: drop-shadow(0 0 8px var(--acg)); }
+.v2 .v2-rail-grp { background: var(--s1); border: 1px solid var(--line); border-radius: 999px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.v2 .v2-rail-sp { flex: 1; }
+
+.v2 .v2-railrow { gap: 6px; padding: 0 16px 12px; overflow-x: auto; scrollbar-width: none; }
+.v2 .v2-railrow-it {
+  height: 32px; flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px;
+  border-radius: 999px; background: var(--s1); border: 1px solid var(--line); color: var(--ink2); font-size: 12px;
+  transition: background-color var(--t-color), color var(--t-color);
+}
+.v2 .v2-railrow-it:hover { background: var(--s2); color: var(--ink); }
+.v2 .v2-railrow-it[aria-current='page'] { background: var(--ink); color: var(--bg); }
+
+/* ── верхняя полоса ── */
+
+.v2 .v2-top { display: flex; align-items: center; gap: 8px; padding: 0 16px 0 4px; min-width: 0; }
+/* KPI режутся, а не толкают соседей: полоса никогда не переносится. */
+.v2 .v2-top-kpi { display: flex; gap: 8px; align-items: center; min-width: 0; overflow: hidden; flex: 1; }
+.v2 .v2-top-right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
+
+.v2 .v2-acc { position: relative; flex: none; min-width: 0; }
+.v2 .v2-acc-btn { padding-left: 4px; cursor: pointer; transition: background-color var(--t-color); }
+.v2 .v2-acc-btn:hover { background: var(--s2); }
+.v2 .v2-acc-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.v2 .v2-ava {
+  width: 24px; height: 24px; border-radius: 999px; flex: none; display: grid; place-items: center;
+  background: linear-gradient(135deg, #3a3a40, #202024); color: var(--ink); font-size: 11px;
+}
+
+.v2 .v2-menu {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 220px; margin: 0; padding: 6px; list-style: none;
+  background: var(--s1); border: 1px solid var(--line2); border-radius: var(--r1); box-shadow: 0 20px 50px #000000aa;
+  animation: v2-in var(--t-in) ease-out;
+}
+.v2 .v2-menu-it {
+  width: 100%; height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: var(--r2);
+  text-align: left; transition: background-color var(--t-color);
+}
+.v2 .v2-menu-it:hover { background: var(--s2); }
+.v2 .v2-menu-it[aria-selected='true'] { box-shadow: inset 0 0 0 1px var(--ac); }
+.v2 .v2-menu-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── плавающий пульт (§4.2) ── */
+
+/* Перенос строк разрешён всегда: две строки появляются ровно тогда, когда
+   содержимое не влезает. Порога по ширине нет — длина слов в пульте меняется
+   (у работающего пульта причина длиннее), и любой порог либо прятал бы
+   «Накрутить» за край, либо переносил бы пульт без нужды. Скругление — половина
+   высоты одной строки: в одну строку это та же пилюля, в две — скруглённый
+   прямоугольник. Ширина — по содержимому, но не шире страницы минус 16 с краёв. */
+.v2 .v2-pult {
+  position: absolute; z-index: 10; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin-inline: auto;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; padding: 6px; border-radius: 27px; white-space: nowrap;
+  background: #1a1a1dee; border: 1px solid var(--line2); box-shadow: 0 20px 50px #000000aa, inset 0 1px 0 #ffffff0d;
+  backdrop-filter: blur(10px);
+}
+.v2 .v2-pult-st { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 10px; }
+.v2 .v2-pult-why { color: var(--mute); font-size: 12px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.v2 .v2-pult-div { width: 1px; height: 24px; background: var(--line2); flex: none; }
+.v2 .v2-pult-kv { display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 10px; }
+.v2 .v2-pult-kv span { color: var(--mute); font-size: 10.5px; }
+.v2 .v2-pult-kv b { font-size: 13px; font-weight: 500; }
+.v2 .v2-pult-kv b.is-ok { color: var(--ac); }
+/* Данные устарели — числа остаются, но серее (§5.7). */
+.v2 .v2-pult.is-stale .v2-pult-kv b, .v2 .v2-pult.is-stale .v2-lamp b { color: var(--mute); }
+.v2 .v2-pult-err { color: var(--stop); font-size: 12px; padding: 0 10px; }
+
+/* ── окно ── */
+
+.v2 .v2-veil {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px;
+  background: #0a0a0bcc; backdrop-filter: blur(2px); animation: v2-in var(--t-in) ease-out;
+}
+.v2 .v2-dialog {
+  width: min(520px, 100%); max-height: calc(100svh - 32px); overflow: auto;
+  background: var(--s1); border: 1px solid var(--line2); border-radius: var(--r1); padding: 20px;
+  box-shadow: 0 30px 80px #000000cc;
+}
+.v2 .v2-dialog-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.v2 .v2-dialog-head h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+.v2 .v2-dialog-head .v2-aside { color: var(--mute); font-size: 12px; }
+.v2 .v2-dialog-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+.v2 .v2-rows { margin: 0; }
+.v2 .v2-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 8px 0; border-top: 1px solid var(--line); }
+.v2 .v2-rows > div:first-child { border-top: 0; }
+.v2 .v2-rows dt { color: var(--mute); font-size: 12px; }
+.v2 .v2-rows dd { margin: 0; text-align: right; }
+.v2 .v2-rows > .is-warn dd { color: var(--warn); }
+
+/* Необратимость — красный блок, полоса слева тенью (§3.1). */
+.v2 .v2-burn {
+  margin: 14px 0 0; padding: 12px 12px 12px 15px; border-radius: var(--r2); font-size: 12.5px; line-height: 1.45;
+  background: var(--stops); box-shadow: inset 3px 0 0 var(--stop); color: var(--ink);
+}
+.v2 .v2-note { margin: 10px 0 0; padding: 10px 12px 10px 15px; border-radius: var(--r2); font-size: 12.5px; line-height: 1.4; background: var(--s2); }
+.v2 .v2-note.is-warn { box-shadow: inset 3px 0 0 var(--warn); }
+.v2 .v2-note.is-stop { box-shadow: inset 3px 0 0 var(--stop); color: var(--stop); }
+
+/* ── колокольчик (§5.7) ── */
+
+.v2 .v2-bell { position: relative; flex: none; }
+.v2 .v2-pop {
+  position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; width: 380px; max-width: calc(100vw - 32px);
+  max-height: min(70svh, 560px); overflow: auto; padding: 12px;
+  background: var(--s1); border: 1px solid var(--line2); border-radius: var(--r1); box-shadow: 0 20px 50px #000000aa;
+  animation: v2-in var(--t-in) ease-out;
+}
+.v2 .v2-pop-head { display: flex; align-items: baseline; justify-content: space-between; margin: 2px 4px 10px; }
+.v2 .v2-pop-head span { color: var(--mute); font-size: 12px; }
+.v2 .v2-pop-empty { margin: 8px 4px 4px; color: var(--ink2); }
+.v2 .v2-alerts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+/* Полоса слева — тенью (§3.1), текст не сдвигается. */
+.v2 .v2-alert { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 12px 12px 15px; border-radius: var(--r2); background: var(--s2); box-shadow: inset 3px 0 0 var(--warn); }
+.v2 .v2-alert.is-stop { box-shadow: inset 3px 0 0 var(--stop); }
+.v2 .v2-alert-t { font-size: 12.5px; line-height: 1.35; }
+.v2 .v2-alert-d { color: var(--mute); font-size: 11.5px; line-height: 1.35; }
+
+/* ── служебные экраны (§5.7) ── */
+
+.v2 .v2-center {
+  min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 24px 16px; text-align: center;
+}
+.v2 .v2-page .v2-center { min-height: 100%; }
+.v2 .v2-center h2 { margin: 6px 0 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.v2 .v2-center p { margin: 0; max-width: 440px; color: var(--ink2); }
+.v2 .v2-gemlogo {
+  width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; color: var(--ac);
+  background: var(--s1); border: 1px solid var(--line2); box-shadow: 0 0 30px #b8f25c1c;
+}
+.v2 .v2-gemlogo.is-breathe { animation: v2-breathe 2.4s ease-in-out infinite; }
+.v2 .v2-ring { width: 52px; height: 52px; border-radius: 999px; display: grid; place-items: center; }
+.v2 .v2-ring.is-stop { color: var(--stop); background: var(--stops); }
+.v2 .v2-cmd { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12.5px; padding: 8px 12px; border-radius: var(--r2); background: var(--s2); color: var(--ink); }
+.v2 .v2-hint { color: var(--mute); font-size: 12px; }
+.v2 .v2-steps { list-style: none; counter-reset: step; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; width: min(440px, 100%); }
+.v2 .v2-steps li { counter-increment: step; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r2); background: var(--s2); color: var(--ink2); }
+.v2 .v2-steps li::before { content: counter(step); width: 22px; height: 22px; flex: none; border-radius: 999px; display: grid; place-items: center; background: var(--s3); color: var(--ink); font-size: 11px; }
+.v2 .v2-steps li:first-child { color: var(--ink); }
+.v2 .v2-steps li:first-child::before { background: var(--acs); color: var(--ac); }
+
+.v2 .v2-loading { display: flex; flex-direction: column; gap: 8px; }
+.v2 .v2-unavail { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--mute); }
+
+/* ── заглушки экранов ── */
+
+.v2 .v2-screen { display: flex; flex-direction: column; gap: 16px; max-width: 720px; }
+.v2 .v2-lead { margin: -8px 0 0; color: var(--ink2); }
+.v2 .v2-text { margin: 0 0 8px; line-height: 1.45; }
+.v2 .v2-link { margin-top: 12px; text-decoration: none; width: fit-content; }
+
+/* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
+   базового с той же специфичностью, иначе базовое его перебьёт (§10). */
+
+@media (max-width: 1099.98px) {
+  .v2 .v2-app { grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: 60px auto auto; height: auto; min-height: 100svh; }
+  .v2 .v2-rail { grid-row: 1 / 4; position: sticky; top: 0; height: 100svh; }
+  .v2 .v2-top { grid-column: 2; }
+  /* Колонка ушла вниз — правый отступ страницы теперь свой, а не зазор до колонки.
+     Страница — колонка: содержимое растягивается на всю её высоту, пульт стоит
+     в самом низу и оттуда липнет к низу экрана, пока страница на экране.
+     overflow: clip, а не hidden — иначе страница стала бы контейнером прокрутки
+     и пульт прилипал бы к ней, а не к экрану. */
+  .v2 .v2-page { margin: 0 16px 16px 4px; min-height: calc(100svh - 76px); overflow: clip; display: flex; flex-direction: column; }
+  .v2 .v2-page-scroll { position: static; overflow: visible; flex: 1; }
+  .v2 .v2-pult { position: sticky; left: auto; right: auto; margin: -72px auto 16px; max-width: calc(100% - 32px); }
+  .v2 .v2-side { grid-column: 2; grid-row: 3; padding: 0 16px 16px 4px; overflow: visible; }
+}
+
+@media (max-width: 767.98px) {
+  .v2 .v2-app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 60px auto auto auto; }
+  .v2 .v2-rail { display: none; }
+  .v2 .v2-top { grid-column: 1; padding: 0 16px; }
+  .v2 .v2-railrow { display: flex; grid-column: 1; grid-row: 2; }
+  .v2 .v2-page { grid-column: 1; grid-row: 3; margin: 0 16px 16px; }
+  .v2 .v2-side { grid-column: 1; grid-row: 4; padding: 0 16px 16px; }
+}
+
+/* §4.3: без движения для тех, кто его отключил. */
+@media (prefers-reduced-motion: reduce) {
+  .v2 *, .v2 *::before, .v2 *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -6,7 +6,9 @@ import { TOOLS, readJson } from './paths.ts'
 import { cachedStatus, keyFor } from './marketkeys.ts'
 import { checkWeb, gameStatus, webStatus } from './steamweb.ts'
 import { db } from './db.ts'
-import { ACCOUNT, active, byId, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink, type Account } from './accounts.ts'
+import {
+  ACCOUNT, active, byId, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink, webLinkCancel, webLinkStart, webLinkState, type Account,
+} from './accounts.ts'
 import { buildGraph, type GraphEntity } from './graph.ts'
 import { hasMap } from './supply.ts'
 import { queueFor } from './queue.ts'
@@ -23,6 +25,7 @@ export function accountList() {
   return {
     active: active()?.id ?? null,
     link: linkState(),
+    webLink: webLinkState(),
     list: list().map(a => ({
       id: a.id,
       label: a.label,
@@ -50,7 +53,7 @@ export async function webCheck(id: string) {
   return checkWeb(a)
 }
 
-export const accountsApi = { linkStart, linkCancel, setActive, unlink, rename }
+export const accountsApi = { linkStart, linkCancel, webLinkStart, webLinkCancel, setActive, unlink, rename }
 
 // ── граф ──
 //

@@ -235,6 +235,20 @@ app.post('/api/accounts/link/cancel', async () => {
   return r
 })
 
+// Веб-вход по QR (план 2.4, решение 2Б). Игровой токен и работник не
+// трогаются; новый веб-токен принимается, только если вошли тем же Steam.
+app.post('/api/accounts/web-link', async (req: any) => {
+  const r = accountsApi.webLinkStart(String(req.body?.id ?? ''), () => push())
+  push()
+  return r
+})
+
+app.post('/api/accounts/web-link/cancel', async () => {
+  const r = accountsApi.webLinkCancel()
+  push()
+  return r
+})
+
 app.post('/api/accounts/rename', async (req: any) => {
   const r = accountsApi.rename(String(req.body?.id ?? ''), String(req.body?.label ?? ''))
   push()

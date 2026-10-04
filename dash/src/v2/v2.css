@@ -583,6 +583,102 @@
 .v2 .v2-note > p { margin: 4px 0 0; color: var(--ink2); font-size: 12px; line-height: 1.45; }
 .v2 .v2-link-btn { text-decoration: none; flex: 1; }
 
+/* ── Скупка (§5.3) ── */
+
+.v2 .v2-buy { display: flex; flex-direction: column; gap: 16px; }
+.v2 .v2-buy-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.v2 .v2-buy-scanned { margin: -8px 0 0; }
+.v2 .v2-buy-scanned .is-stop { color: var(--stop); }
+
+/* Конвейер: слева узлы и прогресс, справа лента. */
+/* Лента — до 300 px, но не больше трети: на узких ширинах место нужнее узлам. */
+.v2 .v2-buy-pipe { background: var(--s2); border-radius: var(--r1); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) min(300px, 34%); gap: 16px; }
+.v2 .v2-buy-pipe-l { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.v2 .v2-buy-pipe-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.v2 .v2-buy-pipe-h h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.v2 .v2-buy-stages { display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr); align-items: stretch; }
+.v2 .v2-buy-stage {
+  min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px; border: 1px solid var(--line2);
+  background: linear-gradient(180deg, #202024, #1a1a1d); box-shadow: 0 10px 26px #00000066, inset 0 1px 0 #ffffff0a;
+  transition: box-shadow var(--t-color);
+}
+/* Подсветка работы — только тенью внутрь, без смены размеров (§3.1). */
+.v2 .v2-buy-stage.is-live { box-shadow: 0 10px 26px #00000066, inset 0 0 0 1px #b8f25c66, 0 0 24px #b8f25c1a; }
+.v2 .v2-buy-stage-h { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; color: var(--ink2); font-size: 12px; }
+.v2 .v2-buy-stage-h i { width: 24px; height: 24px; border-radius: 7px; background: var(--s3); display: grid; place-items: center; color: var(--ink); font-style: normal; flex: none; }
+.v2 .v2-buy-stage.is-live .v2-buy-stage-h i { background: var(--acs); color: var(--ac); }
+.v2 .v2-buy-big b { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; line-height: 1; }
+.v2 .v2-buy-big small { font-size: 13px; color: var(--mute); }
+.v2 .v2-buy-d { margin: 0; color: var(--mute); font-size: 11.5px; line-height: 1.4; }
+.v2 .v2-buy-verd { display: flex; gap: 4px; flex-wrap: wrap; }
+.v2 .v2-buy-wire { position: relative; align-self: center; height: 2px; background: #ffffff1f; overflow: hidden; }
+.v2 .v2-buy-wire.is-on { background: #b8f25c55; }
+.v2 .v2-buy-wire i { position: absolute; top: -2px; left: 0; width: 6px; height: 6px; border-radius: 999px; background: var(--ac); box-shadow: 0 0 6px var(--ac); animation: v2-run 1.4s linear infinite; }
+@keyframes v2-run { from { left: -6px; } to { left: 100%; } }
+
+.v2 .v2-buy-prog { display: flex; flex-direction: column; gap: 8px; }
+.v2 .v2-buy-prog-t { display: flex; align-items: center; gap: 8px 20px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); }
+.v2 .v2-buy-prog-t b { color: var(--ink); font-weight: 500; }
+.v2 .v2-buy-prog-t .v2-btn { margin-left: auto; }
+.v2 .v2-buy-now { margin: 0; }
+
+.v2 .v2-buy-feed { min-width: 0; background: var(--s1); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; }
+.v2 .v2-buy-feed-h { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink2); margin-bottom: 6px; }
+.v2 .v2-buy-feed-l { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; }
+.v2 .v2-buy-feed-l li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 6px 4px; border-radius: 8px; font-size: 12px; }
+.v2 .v2-buy-mark { width: 18px; height: 18px; border-radius: 999px; display: grid; place-items: center; font-size: 10px; background: var(--s3); color: var(--ink2); }
+.v2 .v2-buy-feed-l li.is-ok .v2-buy-mark { background: var(--acs); color: var(--ac); }
+.v2 .v2-buy-feed-l li.is-skip .v2-buy-mark, .v2 .v2-buy-feed-l li.is-retry .v2-buy-mark { background: var(--warns); color: var(--warn); }
+.v2 .v2-buy-feed-l li.is-stop .v2-buy-mark { background: var(--stops); color: var(--stop); }
+.v2 .v2-buy-feed-m { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.v2 .v2-buy-feed-m b { font-weight: 500; }
+.v2 .v2-buy-feed-t { color: var(--ink2); font-size: 11.5px; line-height: 1.35; }
+.v2 .v2-buy-feed-p { display: flex; flex-direction: column; align-items: flex-end; }
+.v2 .v2-buy-feed-p small { color: var(--mute); font-size: 10.5px; }
+.v2 .v2-buy-empty { flex: 1; margin: 0; display: grid; place-items: center; text-align: center; color: var(--mute); font-size: 12px; padding: 18px 8px; border: 1px dashed #ffffff1c; border-radius: 12px; line-height: 1.5; }
+
+/* План: строки-таблица. Выбора строки нет — действие только у степпера. */
+.v2 .v2-buy-plan { display: flex; flex-direction: column; gap: 10px; }
+.v2 .v2-buy-th, .v2 .v2-buy-tr {
+  display: grid; align-items: center; gap: 12px; padding: 0 10px;
+  grid-template-columns: minmax(140px, 1.6fr) 60px 64px minmax(84px, 1fr) minmax(84px, 1fr) 44px 96px 100px;
+}
+.v2 .v2-buy-th { height: 28px; color: var(--mute); font-size: 11px; }
+.v2 .v2-buy-th .is-r, .v2 .v2-buy-tr .is-r { text-align: right; justify-self: end; }
+.v2 .v2-buy-tr { min-height: 54px; border-radius: 12px; transition: background-color var(--t-color); }
+.v2 .v2-buy-tr + .v2-buy-tr { margin-top: 2px; }
+.v2 .v2-buy-tr:hover { background: var(--s2); }
+.v2 .v2-buy-tr.is-free { background: linear-gradient(90deg, #b8f25c0c, transparent 50%); }
+.v2 .v2-buy-tr.is-free:hover { background: linear-gradient(90deg, #b8f25c14, var(--s2) 50%); }
+.v2 .v2-buy-tr.is-no { color: var(--ink2); }
+.v2 .v2-buy-tr.is-buying { box-shadow: inset 0 0 0 1px #b8f25c55; }
+.v2 .v2-buy-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.v2 .v2-buy-who .v2-item-ico { width: 34px; height: 34px; border-radius: 9px; }
+.v2 .v2-buy-nm { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.v2 .v2-buy-nm b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-buy-nm .v2-hint { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-buy-cap { min-width: 0; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; }
+.v2 .v2-buy-capbar { position: relative; height: 4px; border-radius: 999px; background: var(--s3); }
+.v2 .v2-buy-capbar i { display: block; height: 100%; border-radius: 999px; background: var(--ac); opacity: 0.8; }
+/* Отметка цели на шкале потолка. */
+.v2 .v2-buy-capbar em { position: absolute; top: -3px; bottom: -3px; width: 2px; translate: -1px 0; background: var(--ink); border-radius: 2px; }
+.v2 .v2-buy-with { min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.v2 .v2-buy-avs { display: flex; }
+.v2 .v2-buy-avs i { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--s1); background: #0f0f11 center / cover no-repeat; }
+.v2 .v2-buy-avs i + i { margin-left: -6px; }
+.v2 .v2-buy-tr:hover .v2-buy-avs i { border-color: var(--s2); }
+.v2 .v2-buy-tm { display: flex; flex-direction: column; align-items: flex-end; cursor: help; font-size: 12.5px; }
+.v2 .v2-buy-tm b { font-weight: 500; }
+.v2 .v2-buy-tm small { color: var(--mute); font-size: 10.5px; }
+.v2 .v2-buy-tm.is-free b { color: var(--ac); }
+.v2 .v2-step { display: inline-flex; align-items: center; height: 30px; border-radius: 999px; background: var(--s2); padding: 2px; transition: background-color var(--t-color); }
+.v2 .v2-buy-tr:hover .v2-step { background: var(--s3); }
+.v2 .v2-step.has { background: var(--acs); color: var(--ac); }
+.v2 .v2-step button { width: 26px; height: 26px; border-radius: 999px; color: var(--ink2); display: grid; place-items: center; transition: background-color var(--t-color), color var(--t-color); }
+.v2 .v2-step button:hover:not(:disabled) { background: #ffffff14; color: var(--ink); }
+.v2 .v2-step button:disabled { opacity: 0.35; cursor: default; }
+.v2 .v2-step > span { min-width: 28px; text-align: center; font-weight: 500; }
+
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */
 
@@ -612,6 +708,16 @@
   .v2 .v2-railrow { display: flex; grid-column: 1; grid-row: 2; }
   .v2 .v2-page { grid-column: 1; grid-row: 3; margin: 0 16px 16px; }
   .v2 .v2-side { grid-column: 1; grid-row: 4; padding: 0 16px 16px; }
+  .v2 .v2-buy-pipe { grid-template-columns: minmax(0, 1fr); }
+  .v2 .v2-buy-stages { grid-template-columns: minmax(0, 1fr); }
+  .v2 .v2-buy-wire { width: 2px; height: 14px; justify-self: center; }
+  .v2 .v2-buy-wire i { display: none; }
+  /* План — карточками: гем на всю строку, цифры под ним. */
+  .v2 .v2-buy-th { display: none; }
+  .v2 .v2-buy-tr { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 10px; gap: 8px 12px; }
+  .v2 .v2-buy-tr .v2-buy-who { grid-column: 1 / -1; }
+  .v2 .v2-buy-tr .is-r { justify-self: start; text-align: left; }
+  .v2 .v2-buy-tm { align-items: flex-start; }
 }
 
 /* §4.3: без движения для тех, кто его отключил. */

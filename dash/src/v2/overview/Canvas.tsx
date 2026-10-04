@@ -47,8 +47,8 @@ export function currentGem(state: State, goal: number | null, sel: string | null
 }
 
 // Уважает ли человек «уменьшить движение»: SVG-импульсы CSS не гасит,
-// поэтому их просто не рисуем.
-function useCalm() {
+// поэтому их просто не рисуем. Им же пользуется конвейер Скупки.
+export function useCalm() {
   const q = '(prefers-reduced-motion: reduce)'
   const [calm, setCalm] = useState(() => typeof matchMedia === 'function' && matchMedia(q).matches)
   useEffect(() => {

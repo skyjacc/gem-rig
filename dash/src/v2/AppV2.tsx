@@ -18,6 +18,7 @@ import { currentGem } from './overview/Canvas.tsx'
 import { OverviewKpi } from './overview/kpi.tsx'
 import { Inventory } from './inventory/Inventory.tsx'
 import { ItemCard } from './inventory/ItemCard.tsx'
+import { BuyScreen, useBuy } from './buy/Buy.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
@@ -43,6 +44,9 @@ export default function AppV2() {
   const [gem, setGem] = useState<string | null>(null)
   // Выбранная стопка Инвентаря: её покажет карточка справа.
   const [stack, setStack] = useState<string | null>(null)
+  // Скупка: план и корзина общие для экрана и правой колонки. Запросы
+  // площадки идут, только пока открыта Скупка.
+  const buy = useBuy(state, screen === 'buy', settings, accounts)
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), SECOND)
@@ -75,7 +79,7 @@ export default function AppV2() {
           <TopBar
             state={state}
             accounts={accounts}
-            kpi={(screen === 'overview' || screen === 'inventory') && !empty ? <OverviewKpi state={state} goal={goal} settings={settings} now={now} /> : undefined}
+            kpi={(screen === 'overview' || screen === 'inventory' || screen === 'buy') && !empty ? <OverviewKpi state={state} goal={goal} settings={settings} now={now} /> : undefined}
             status={status}
             bell={<Bell state={state} live={live} now={now} goal={goal} />}
           />
@@ -85,6 +89,7 @@ export default function AppV2() {
               {empty ? <FirstRun onLink={() => setLinking(true)} />
                 : screen === 'overview' ? <Overview state={state} accounts={accounts} goal={goal} sel={gem} onSel={setGem} />
                 : screen === 'inventory' ? <Inventory state={state} goal={goal} sel={stack} onSel={setStack} />
+                : screen === 'buy' ? <BuyScreen state={state} buy={buy} />
                 : <Screen id={screen} title={title} />}
             </div>
             <Pult state={state} live={live} now={now} onTune={() => setRules('run')} onBurn={() => setBurning(true)} />

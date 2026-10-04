@@ -896,6 +896,67 @@
 .v2 .v2-jr-read dt { margin-bottom: 4px; }
 .v2 .v2-jr-read dd { margin: 0; color: var(--ink2); font-size: 12px; line-height: 1.45; }
 
+/* ── Продажи (§5.4, план 2.6) ── */
+
+.v2 .v2-sl { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.v2 .v2-sl .is-r { justify-self: end; text-align: right; }
+.v2 .v2-sl .is-stop { color: var(--stop); }
+.v2 .v2-sl-raw { color: var(--warn); }
+.v2 .v2-sl-sums { display: inline-flex; flex-direction: column; gap: 2px; }
+.v2 .v2-sl-path { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.v2 .v2-sl-node { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: var(--r2); background: var(--s1); border: 1px solid var(--line); min-width: 0; }
+.v2 .v2-sl-node.is-last { box-shadow: inset 0 0 0 1px var(--acs); }
+.v2 .v2-sl-node-t { color: var(--mute); font-size: 11.5px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.v2 .v2-sl-node > b { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.v2 .v2-sl-node.is-last > b { color: var(--ac); }
+.v2 .v2-sl-node-b { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ink2); overflow-wrap: anywhere; }
+.v2 .v2-sl-arrow { align-self: center; color: var(--mute); }
+.v2 .v2-sl-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.v2 .v2-sl-total { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; min-width: 0; }
+.v2 .v2-sl-total > span:first-child { color: var(--mute); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+.v2 .v2-sl-total-v { display: flex; flex-direction: column; gap: 2px; }
+.v2 .v2-sl-total-v b { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; display: inline-flex; gap: 8px; align-items: center; }
+.v2 .v2-sl-total small, .v2 .v2-sl-none small { display: block; color: var(--mute); font-size: 11.5px; font-weight: 400; line-height: 1.4; letter-spacing: 0; }
+.v2 .v2-sl-none { font-size: 22px; font-weight: 600; color: var(--mute); }
+.v2 .v2-sl-cur { margin-bottom: 12px; flex-wrap: wrap; border-radius: 16px; }
+.v2 .v2-sl-chart { display: flex; align-items: stretch; gap: 2px; height: 180px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+.v2 .v2-sl-col { flex: 1 0 6px; max-width: 28px; display: flex; flex-direction: column; border-radius: 4px; transition: background-color var(--t-color); }
+.v2 .v2-sl-col:hover, .v2 .v2-sl-col[aria-pressed="true"] { background: var(--s2); }
+.v2 .v2-sl-col[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--line2); }
+.v2 .v2-sl-up, .v2 .v2-sl-down { flex: 1; display: flex; padding: 0 1px; }
+.v2 .v2-sl-up { align-items: flex-end; border-bottom: 1px solid var(--line2); }
+.v2 .v2-sl-down { align-items: flex-start; }
+.v2 .v2-sl-up i, .v2 .v2-sl-down i { display: block; width: 100%; min-height: 0; border-radius: 2px; }
+.v2 .v2-sl-up i { background: var(--ac); }
+.v2 .v2-sl-down i { background: var(--mute); }
+.v2 .v2-sl-ax { display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px; }
+.v2 .v2-sl-legend { margin: 8px 0 0; }
+.v2 .v2-sl-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; vertical-align: middle; }
+.v2 .v2-sl-legend i.is-up { background: var(--ac); }
+.v2 .v2-sl-legend i.is-down { background: var(--mute); }
+.v2 .v2-sl-day { margin: 8px 0 0; font-size: 12.5px; }
+.v2 .v2-sl-table { display: flex; flex-direction: column; }
+.v2 .v2-sl-tr { display: grid; grid-template-columns: minmax(110px, 1fr) 60px repeat(4, minmax(90px, 1fr)); gap: 12px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+.v2 .v2-sl-tr.is-head { color: var(--mute); font-size: 11.5px; border-top: 0; }
+.v2 .v2-sl-table.is-buys .v2-sl-tr { grid-template-columns: minmax(110px, 1fr) 60px repeat(2, minmax(110px, 1fr)); }
+.v2 .v2-sl-table.is-batches .v2-sl-tr { grid-template-columns: minmax(110px, 1fr) 50px minmax(80px, 1fr) minmax(90px, 1fr) minmax(200px, 2fr); }
+.v2 .v2-sl-tr small { font-size: 11px; }
+.v2 .v2-sl-foot { margin: 8px 0 0; }
+.v2 .v2-sl-keyhead { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.v2 .v2-sl-keytiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; flex: 1; min-width: 0; }
+.v2 .v2-sl-keytiles .v2-tile { display: flex; flex-direction: column; gap: 2px; }
+.v2 .v2-sl-keytiles .v2-tile span { color: var(--mute); font-size: 11.5px; }
+.v2 .v2-sl-keytiles .v2-tile b { font-size: 20px; font-weight: 600; }
+.v2 .v2-sl-keytiles .v2-tile.is-ok b { color: var(--ac); }
+.v2 .v2-sl-keytiles .v2-tile.is-warn b { color: var(--warn); }
+.v2 .v2-sl-keytiles .v2-tile small { color: var(--mute); font-size: 11px; }
+.v2 .v2-sl-keysync { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.v2 .v2-sl-h3 { margin: 16px 0 8px; font-size: 13px; font-weight: 500; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.v2 .v2-sl-rel { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.v2 .v2-sl-rel li { display: grid; grid-template-columns: 60px minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 6px 10px; border-radius: var(--r2); background: var(--s2); font-size: 12.5px; }
+.v2 .v2-sl-todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.v2 .v2-sl-todo li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 12px; color: var(--ink2); }
+
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */
 
@@ -917,6 +978,10 @@
   .v2 .v2-acc-rules { grid-template-columns: minmax(0, 1fr); }
   .v2 .v2-jr-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .v2 .v2-jr-verdicts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Путь денег — столбиком: узлы друг под другом, стрелки вниз. */
+  .v2 .v2-sl-path { grid-template-columns: minmax(0, 1fr); }
+  .v2 .v2-sl-arrow { justify-self: center; rotate: 90deg; }
+  .v2 .v2-sl-totals { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 767.98px) {
@@ -951,6 +1016,12 @@
   .v2 .v2-jr-arr li { grid-template-columns: minmax(0, 1fr) auto; }
   .v2 ol.v2-jr-log li { grid-template-columns: minmax(0, 1fr) auto; }
   .v2 ol.v2-jr-log li > span:last-child { grid-column: 1 / -1; }
+  /* Таблицы Продаж — карточками: день во всю строку, числа по два в ряд. */
+  .v2 .v2-sl-tr.is-head { display: none; }
+  .v2 .v2-sl-tr, .v2 .v2-sl-table.is-buys .v2-sl-tr, .v2 .v2-sl-table.is-batches .v2-sl-tr { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+  .v2 .v2-sl-tr > span:first-child { grid-column: 1 / -1; font-weight: 500; }
+  .v2 .v2-sl-tr .is-r { justify-self: start; text-align: left; }
+  .v2 .v2-sl-keysync { align-items: flex-start; }
 }
 
 /* §4.3: без движения для тех, кто его отключил. */

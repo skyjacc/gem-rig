@@ -54,7 +54,9 @@ export function externalId(row: Record<string, unknown>): string | null {
   return 'buy:item:' + item + ':' + str(row.time)
 }
 
-export type Cancelled = { customId: string | null; itemId: string; time: number }
+// raw — строка истории как JSON: у отмены без custom_id площадку не спросить,
+// и основанием записи становится сама строка истории.
+export type Cancelled = { customId: string | null; itemId: string; time: number; raw: string }
 
 export type Parsed = {
   ops: NewOp[]
@@ -83,7 +85,7 @@ export function parseHistory(rows: unknown[], accountId: string): Parsed {
 
     const stage = str(r.stage)
     if (stage === '5') {
-      out.cancelled.push({ customId: str(r.custom_id) || null, itemId: str(r.item_id), time })
+      out.cancelled.push({ customId: str(r.custom_id) || null, itemId: str(r.item_id), time, raw: JSON.stringify(r) })
       skip('сделка отменена (stage 5): возврат денег по API не подтверждён')
       continue
     }

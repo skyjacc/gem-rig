@@ -125,7 +125,10 @@ test('всё, что не завершённая покупка самоцвет
 
 test('отменённые покупки возвращаются отдельным списком — для сверки', () => {
   const r = parseHistory([buy({ stage: '5', custom_id: 'gt-1-1' }), buy()], 'main')
-  assert.deepEqual(r.cancelled, [{ customId: 'gt-1-1', itemId: '5900000001', time: 1_787_350_000_000 }])
+  assert.equal(r.cancelled.length, 1)
+  const c = r.cancelled[0]
+  assert.deepEqual({ customId: c.customId, itemId: c.itemId, time: c.time }, { customId: 'gt-1-1', itemId: '5900000001', time: 1_787_350_000_000 })
+  assert.equal(JSON.parse(c.raw).stage, '5', 'строка истории — основание записи об отмене')
 })
 
 // ── импорт ──

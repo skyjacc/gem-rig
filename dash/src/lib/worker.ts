@@ -23,7 +23,21 @@ export const pace = (ap: State['autopilot']) =>
     : ap.auto ? nf(ap.delay) + ' мс сама'
       : nf(ap.delay) + ' мс'
 
-export type Alert = { level: 'stop' | 'warn'; text: string; todo?: string }
+// kind — метка для порядка в новой панели (§5.7: красные → «не дойдёт» →
+// справочные). Старая панель её не читает.
+export type Alert = { level: 'stop' | 'warn'; text: string; todo?: string; kind?: 'reach' }
+
+// Статус гема для холста новой панели. Условия — те же, что ниже в
+// attention(), слово в слово: две разные классификации одного гема недопустимы.
+//   map    непонятно, чьи матчи считать — гема нет в карте
+//   reach  матчей у команды меньше цели — до цели не дойдёт
+//   ok     иначе
+export type GemStatus = 'ok' | 'reach' | 'map'
+export function gemStatus(m: State['mine'][number], goal: number | null): GemStatus {
+  if (!m.entityId || !m.kind || m.kind === 'unknown') return 'map'
+  if (goal != null && m.supply != null && m.supply < goal) return 'reach'
+  return 'ok'
+}
 
 export function attention(s: State, live: Live, now: number, goal: number | null): Alert[] {
   const a: Alert[] = []
@@ -107,6 +121,7 @@ export function attention(s: State, live: Live, now: number, goal: number | null
         level: 'warn',
         text: m.gem + ' — матчей всего ' + nf(m.supply) + ', до цели ' + nf(goal) + ' не дойдёт',
         todo: 'его вещи остановятся на ' + nf(m.supply) + '; либо снизьте цель, либо не считайте их товаром',
+        kind: 'reach',
       })
     } else if (capped.has(m.gem)) {
       a.push({

@@ -26,8 +26,10 @@ export function Bell({ state, live, now, goal }: {
     ...(goal == null ? [{ level: 'warn' as const, text: 'цель счётчика не задана в настройках', todo: '«дойдёт / не дойдёт» не считается, пока её нет — задайте в «Общих правилах»' }] : []),
     ...attention(state, live, now, goal),
   ]
-  // Стабильная сортировка: красные вперёд, внутри — порядок attention().
-  const sorted = [...list].sort((a, b) => Number(b.level === 'stop') - Number(a.level === 'stop'))
+  // Порядок §5.7: то, из-за чего работа стоит (stop), → «не дойдёт» (reach) →
+  // справочные. Сортировка стабильная: внутри группы — порядок attention().
+  const rank = (a: Alert) => (a.level === 'stop' ? 0 : a.kind === 'reach' ? 1 : 2)
+  const sorted = [...list].sort((a, b) => rank(a) - rank(b))
   const bad = sorted.filter(a => a.level === 'stop').length
 
   useEffect(() => {

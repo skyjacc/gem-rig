@@ -1,0 +1,70 @@
+{
+  "_note": "Составлено руками для показа экрана «Аккаунты» (план 2.4, решение 6). Не запись с сервера: steamid вымышленные, сроки и время — для вида. Два аккаунта вместе дают разные состояния четырёх проверок; второй работник — чтобы было что показать в «если что-то сломалось».",
+  "accounts": {
+    "active": "main",
+    "link": null,
+    "webLink": null,
+    "list": [
+      {
+        "id": "main",
+        "label": "основной",
+        "steamid": "7656119800000000",
+        "token": "token.json",
+        "added": 1787162422453,
+        "session": true,
+        "burned": 66,
+        "sessionState": { "state": "unknown", "checkedAt": 1791100000000, "error": "проверка этим методом для SteamClient-токена недоступна (Steam, 2025-04-30); жив ли вход — видно только самому клиенту", "validUntil": 1806000000000 },
+        "web": { "state": "ok", "validUntil": 1806500000000, "checkedAt": 1791100000000, "error": null },
+        "market": { "state": "ok", "marketSteamid": "7656119800000000", "checkedAt": 1791100000000, "error": null }
+      },
+      {
+        "id": "vtoroy",
+        "label": "второй",
+        "steamid": "7656119800000001",
+        "token": "token-vtoroy.json",
+        "added": 1790500000000,
+        "session": true,
+        "burned": 12,
+        "sessionState": { "state": "revoked", "checkedAt": 1791100000000, "error": "срок токена истёк 2026-09-28", "validUntil": 1790553600000 },
+        "web": { "state": "missing", "validUntil": null, "checkedAt": 0, "error": null },
+        "market": { "state": "mismatch", "marketSteamid": "7656119800000000", "checkedAt": 1791000000000, "error": null }
+      }
+    ]
+  },
+  "units": [
+    {
+      "id": "vtoroy",
+      "label": "второй",
+      "steamid": "7656119800000001",
+      "enabled": false,
+      "delay": 2000,
+      "auto": false,
+      "target": null,
+      "done": 0,
+      "queueLength": 11542,
+      "action": "halt",
+      "why": "отправщик не смог войти",
+      "lastTick": 1791100000000,
+      "rebuiltAt": 1791100000000,
+      "failures": 3,
+      "displaced": 2,
+      "fatal": "отправщик не смог войти",
+      "running": false,
+      "pid": null,
+      "exit": "код 1",
+      "lines": [],
+      "burned": 12,
+      "etaMinutes": 0,
+      "inv": { "error": null, "private": true, "truncated": false, "age": null, "items": 0 },
+      "log": [
+        { "ts": 1791099000000, "action": "halt", "why": "отправщик не смог войти" },
+        { "ts": 1791098000000, "action": "restart", "why": "выбило сессией — второй раз подряд" },
+        { "ts": 1791097000000, "action": "start", "why": "включён вручную" }
+      ],
+      "waves": 2,
+      "only": ["BZZ"],
+      "available": [{ "gem": "BZZ", "objects": 3 }, { "gem": "DD", "objects": 1 }],
+      "picked": ["BZZ"]
+    }
+  ]
+}

@@ -196,9 +196,21 @@ export type AccountRow = {
   session: boolean
   burned: number
   // Жива ли сессия Steam: файл токена лежит и у отозванной.
-  sessionState?: { state: 'unknown' | 'ok' | 'revoked' | 'error' | 'missing'; checkedAt: number; error: string | null }
+  // С плана 2.4 — игровая (SteamClient): из файла, со сроком токена validUntil.
+  sessionState?: { state: 'unknown' | 'ok' | 'revoked' | 'error' | 'missing'; checkedAt: number; error: string | null; validUntil?: number | null }
+  // Веб-сессия (WebBrowser, план 2.4) — отдельно от игровой.
+  web?: WebStatus
   // Статус ключа площадки этого аккаунта. Самого ключа сервер не отдаёт.
   market: MarketKeyStatus
+}
+
+// Веб-сессия: без сети — есть ли файл и не истёк ли; «ok» — только по факту
+// полученных кук (POST /api/accounts/web-check).
+export type WebStatus = {
+  state: 'missing' | 'expired' | 'unchecked' | 'ok' | 'error'
+  validUntil: number | null
+  checkedAt: number
+  error: string | null
 }
 
 export type MarketKeyStatus = {
@@ -228,6 +240,8 @@ export type Settings = {
 export type Accounts = {
   active: string | null
   link: { id: string; label: string; url: string | null; steamid: string | null; error: string | null; done: boolean; relink?: string | null; lines: string[] } | null
+  // Веб-вход по QR (план 2.4): идёт или закончился; вывода процесса нет.
+  webLink?: { id: string; label: string; url: string | null; steamid: string | null; seen: boolean; error: string | null; done: boolean } | null
   list: AccountRow[]
 }
 

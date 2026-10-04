@@ -204,6 +204,13 @@ async function call(method: string, key: string, params: Record<string, string |
 
 export const balance = (key: string) => call('get-money', key, {})
 
+// История операций аккаунта за период (unix-секунды). Только чтение.
+// Что значат поля строк (какое — сумма, как ведут себя time/stage) — не
+// описано в docs-v2; разбирает markethistory.ts после живой проверки
+// (план 3.1, задача 2).
+export const operationHistory = (key: string, from: number, to: number) =>
+  call('operation-history', key, { date: Math.trunc(from), date_end: Math.trunc(to) })
+
 // Чей это ключ. Площадка отдаёт steamid64 аккаунта, на который уходят
 // купленные лоты, — по нему видно, совпадает ли ключ с аккаунтом панели.
 export const steamIdOf = (key: string) => call('get-my-steam-id', key, {})

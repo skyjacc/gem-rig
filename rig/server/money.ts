@@ -44,7 +44,7 @@ export const MONEY_DDL = `
     happened_at   integer not null,
     recorded_at   integer not null,
     currency      text not null,
-    gross         integer not null ${whole('gross')},
+    gross         integer not null ${whole('gross')} check (gross >= 0),
     fee_steam     integer ${whole('fee_steam')},
     fee_game      integer ${whole('fee_game')},
     net           integer not null ${whole('net')},
@@ -136,6 +136,7 @@ function check(op: NewOp): string | null {
     if (!isWhole(v)) return k + ' — не целое: суммы хранятся в мелких единицах'
   }
   if (op.gross == null || op.net == null) return 'нет суммы'
+  if (op.gross < 0) return 'gross — сумма по модулю, не бывает меньше нуля (§16)'
   return null
 }
 

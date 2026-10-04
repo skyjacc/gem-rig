@@ -192,3 +192,12 @@ test('список — новые сверху, с отбором по акка�
   assert.deepEqual(listOps(db, { accountId: 'main' }).map(x => x.external_id), ['c', 'a'])
   assert.deepEqual(listOps(db, { limit: 1 }).map(x => x.external_id), ['b'])
 })
+
+test('gross — сумма по модулю: отрицательный не принимают ни код, ни база', () => {
+  const db = fresh()
+  assert.ok('error' in addOp(db, buy({ gross: -30 })))
+  assert.throws(() => db.prepare(`
+    insert into money_ops (user_id, type, source, external_id, happened_at, recorded_at, currency, gross, net, created_by)
+    values ('owner', 'покупка гема', 'market.dota2.net', 'x', 1, 1, 'USD', -1, -1, 'тест')`).run())
+  assert.equal(count(db), 0)
+})

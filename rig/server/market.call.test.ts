@@ -1,6 +1,6 @@
 import { test, mock, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { balance, buyOne, buyInfo, marketLimiter } from './market.ts'
+import { balance, buyOne, buyInfo, marketLimiter, operationHistory } from './market.ts'
 
 // Настоящая площадка не трогается: fetch подменён, ограничитель не ждёт.
 const KEY = 'SECRET-KEY-123'
@@ -89,4 +89,20 @@ test('ключ не попадает в текст ошибки, даже есл
   const r: any = await balance(KEY)
   assert.equal(r.success, false)
   assert.ok(!String(r.error).includes(KEY), 'ключ в ошибке: ' + r.error)
+})
+
+test('история операций: ключ заголовком, период — unix-секунды в адресе, через ограничитель', async () => {
+  answer(200, '{"success":true,"data":[]}')
+  await operationHistory(KEY, 1_790_000_000.7, 1_790_604_800)
+  assert.equal(seen.length, 1)
+  const u = new URL(seen[0].url)
+  assert.equal(u.pathname, '/api/v2/operation-history')
+  assert.equal(u.searchParams.get('date'), '1790000000')
+  assert.equal(u.searchParams.get('date_end'), '1790604800')
+  assert.equal(u.searchParams.get('key'), null)
+  assert.ok(!seen[0].url.includes(KEY))
+  assert.equal(seen[0].headers['X-API-KEY'], KEY)
+  const run = marketLimiter.run as unknown as { mock: { calls: { arguments: unknown[] }[] } }
+  assert.equal(run.mock.calls.length, 1)
+  assert.equal(run.mock.calls[0].arguments[0], KEY)
 })

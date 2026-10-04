@@ -559,6 +559,30 @@
 .v2 .v2-pips span { margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v2 .v2-cell-chips { display: flex; gap: 4px; flex-wrap: wrap; }
 
+/* ── Инвентарь: карточка (§5.2) ── */
+
+.v2 .v2-card-hero { display: flex; gap: 12px; align-items: center; }
+.v2 .v2-card-pic { position: relative; width: 72px; height: 72px; flex: none; border-radius: 14px; border: 1px solid var(--line2); background: #0f0f11 center / cover no-repeat; box-shadow: 0 0 30px #b8f25c1c; }
+.v2 .v2-card-title { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.v2 .v2-card-title h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; }
+.v2 .v2-card-title .v2-hint { margin: 0; }
+.v2 .v2-meter { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+.v2 .v2-meter-t { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--mute); }
+.v2 .v2-meter-t b { color: var(--ink); font-weight: 500; }
+.v2 .v2-meter-bar { position: relative; height: 6px; border-radius: 999px; background: var(--s3); }
+.v2 .v2-meter-bar i { display: block; height: 100%; border-radius: 999px; background: var(--ac); }
+/* Отметка потолка команды — тонкая черта поверх шкалы (§5.2). */
+.v2 .v2-capmark { position: absolute; top: -4px; bottom: -4px; width: 2px; translate: -1px 0; background: var(--warn); border-radius: 2px; }
+.v2 .v2-meter-legend { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--mute); }
+.v2 .v2-meter-legend .is-warn { color: var(--warn); }
+.v2 .v2-card-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
+.v2 .v2-card-facts .v2-tile { display: flex; flex-direction: column; gap: 2px; }
+.v2 .v2-card-facts .v2-tile > span { color: var(--mute); font-size: 11px; display: flex; align-items: center; gap: 4px; }
+.v2 .v2-card-facts .v2-tile > b { font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.v2 .v2-note > b { font-weight: 500; }
+.v2 .v2-note > p { margin: 4px 0 0; color: var(--ink2); font-size: 12px; line-height: 1.45; }
+.v2 .v2-link-btn { text-decoration: none; flex: 1; }
+
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */
 

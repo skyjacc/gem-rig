@@ -17,6 +17,7 @@ import { Alerts } from './overview/Alerts.tsx'
 import { currentGem } from './overview/Canvas.tsx'
 import { OverviewKpi } from './overview/kpi.tsx'
 import { Inventory } from './inventory/Inventory.tsx'
+import { ItemCard } from './inventory/ItemCard.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
@@ -94,6 +95,8 @@ export default function AppV2() {
                 <Inspector state={state} gem={currentGem(state, goal, gem)} goal={goal} onInventory={() => setScreen('inventory')} />
                 <Alerts state={state} live={live} now={now} goal={goal} />
               </>
+            ) : screen === 'inventory' ? (
+              <ItemCard state={state} goal={goal} sel={stack} onOverview={g => { setGem(g); setScreen('overview') }} />
             ) : <ScreenSide id={screen} />}
           </aside>
         </div>

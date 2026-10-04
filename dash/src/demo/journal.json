@@ -1,0 +1,27 @@
+{
+  "_note": "Составлено руками для показа экрана «Журнал» (план 2.5, решение 6). Не запись с сервера: матчи, лиги, числа и время — для вида. В снимке нет ни журнала расхода, ни прихода, ни отправок без ответа и с числом изменённых вещей — они здесь.",
+  "events": [
+    { "ts": 1787257412000, "n": 4, "total": 4, "match_id": "7437143999", "league_id": "15909", "result": "silent", "bytes": 0, "account": "7656119800000000", "items": null },
+    { "ts": 1787257402000, "n": 3, "total": 4, "match_id": "7437143998", "league_id": "15909", "result": "update", "bytes": 907, "account": "7656119800000000", "items": 13 },
+    { "ts": 1787257392000, "n": 2, "total": 4, "match_id": "7437143997", "league_id": "15909", "result": "update", "bytes": 97, "account": "7656119800000000", "items": 1 },
+    { "ts": 1787257382000, "n": 1, "total": 4, "match_id": "7437143996", "league_id": "15909", "result": "silent", "bytes": 0, "account": "7656119800000000", "items": null }
+  ],
+  "dups": { "waiting": 3, "exhausted": 1, "resolved": 2 },
+  "burned": {
+    "total": 66,
+    "byState": { "confirmed": 52, "dup": 9, "ledger": 4, "reconstructed": 1 },
+    "rows": [
+      { "match": "7437143475", "league": "15909", "leagueName": "Показ: Европейская лига", "ts": 1787257352919, "state": "confirmed", "gems": ["NaVi"] },
+      { "match": "7437143300", "league": "15909", "leagueName": "Показ: Европейская лига", "ts": 1787256000000, "state": "dup", "gems": ["BZZ"] },
+      { "match": "7437143100", "league": "2339", "leagueName": "Показ: Азиатский чемпионат", "ts": null, "state": "ledger", "gems": ["NaVi", "BZZ"] }
+    ]
+  },
+  "arrivals": {
+    "summary": { "open": 1, "wins": 1, "fresh": 2 },
+    "rows": [
+      { "account": "7656119800000000", "assetid": "demo-1", "gem": "NaVi", "item": "Показ: вещь с NaVi", "carrier": "item", "value": 214, "expected": 12, "unexplained": 202, "verdict": "выигрыш", "aside": false, "ts": 1787257000000, "now": 214, "gone": false },
+      { "account": "7656119800000000", "assetid": "demo-2", "gem": "BZZ", "item": "Показ: вещь с BZZ", "carrier": "gem", "value": 7, "expected": 7, "unexplained": 0, "verdict": "наш", "aside": false, "ts": 1787256500000, "now": 9, "gone": false },
+      { "account": "7656119800000001", "assetid": "demo-3", "gem": "DD", "item": "Показ: вещь с DD", "carrier": "item", "value": 0, "expected": 0, "unexplained": 0, "verdict": "чисто", "aside": true, "ts": 1787256000000, "now": null, "gone": true }
+    ]
+  }
+}

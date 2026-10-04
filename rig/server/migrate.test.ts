@@ -140,3 +140,30 @@ test('миграция ленты идемпотентна', () => {
   migrate(db)
   assert.equal(migrate(db).length, 0)
 })
+
+// Сколько вещей изменил ответ GC (план 2.5, решение 1): новая колонка
+// events.items. У записей до неё — NULL («не записывалось»), не 0.
+
+test('самая старая лента: колонка items переживает пересборку, строки на месте, items у них NULL', () => {
+  const db = oldEvents()
+  db.prepare(`insert into events (ts, match_id, result, bytes) values (?,?,?,?)`).run(1_700_000_000_000, 'm1', 'update', 907)
+  migrate(db)
+  assert.ok(cols(db, 'events').includes('items'), 'пересборка ключа не должна терять новую колонку')
+  const rows = db.prepare(`select match_id, bytes, items from events`).all() as any[]
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].bytes, 907)
+  assert.equal(rows[0].items, null)
+})
+
+test('нынешняя лента без items: колонка добавляется, строка на месте, items NULL; повтор — без изменений', () => {
+  const db = new DatabaseSync(':memory:')
+  db.exec(`create table events (
+    ts integer not null, n integer, total integer, match_id text, league_id text,
+    result text, bytes integer, account text, primary key (ts, account, match_id))`)
+  db.prepare(`insert into events (ts, match_id, result, bytes, account) values (?,?,?,?,?)`).run(1_700_000_000_000, 'm1', 'update', 97, 'acc1')
+  migrate(db)
+  assert.ok(cols(db, 'events').includes('items'))
+  assert.equal((db.prepare(`select items from events`).get() as any).items, null)
+  assert.deepEqual(migrate(db), [], 'второй раз делать нечего')
+  assert.equal((db.prepare(`select count(*) c from events`).get() as any).c, 1)
+})

@@ -22,6 +22,9 @@ import { BuyScreen, useBuy } from './buy/Buy.tsx'
 import { BuySide } from './buy/BuySide.tsx'
 import { AccountsScreen, type Open as AccOpen } from './accounts/Accounts.tsx'
 import { AccountsSide } from './accounts/AccountsSide.tsx'
+import { JournalScreen, type Tab as JournalTab } from './journal/Journal.tsx'
+import { JournalSide } from './journal/JournalSide.tsx'
+import { useJournal } from './journal/data.ts'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
@@ -56,6 +59,11 @@ export default function AppV2() {
   // Скупка: план и корзина общие для экрана и правой колонки. Запросы
   // площадки идут, только пока открыта Скупка.
   const buy = useBuy(state, screen === 'buy', settings, accounts)
+  // Журнал: вкладка и выбранная отправка — общие для экрана и колонки справа.
+  // Запросы журнала идут, только пока он открыт.
+  const journal = useJournal(state, screen === 'journal', settings)
+  const [jrTab, setJrTab] = useState<JournalTab>('feed')
+  const [jrSel, setJrSel] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), SECOND)
@@ -99,6 +107,9 @@ export default function AppV2() {
                 : screen === 'overview' ? <Overview state={state} accounts={accounts} goal={goal} sel={gem} onSel={setGem} />
                 : screen === 'inventory' ? <Inventory state={state} goal={goal} sel={stack} onSel={setStack} />
                 : screen === 'buy' ? <BuyScreen state={state} buy={buy} />
+                : screen === 'journal' ? (
+                  <JournalScreen state={state} data={journal} tab={jrTab} onTab={setJrTab} sel={jrSel} onSel={setJrSel} top={settings?.treeTop ?? 12} />
+                )
                 : screen === 'accounts' ? (
                   <AccountsScreen
                     state={state} accounts={accounts} accountsJson={accountsJson} settings={settings} now={now}
@@ -120,6 +131,8 @@ export default function AppV2() {
               <ItemCard state={state} goal={goal} sel={stack} onOverview={g => { setGem(g); setScreen('overview') }} />
             ) : screen === 'buy' ? (
               <BuySide state={state} buy={buy} now={now} onRules={() => setRules('rules')} />
+            ) : screen === 'journal' ? (
+              <JournalSide state={state} data={journal} sel={jrSel} now={now} />
             ) : screen === 'accounts' ? (
               <AccountsSide
                 state={state} accounts={accounts} sel={acc} now={now}

@@ -83,7 +83,15 @@ export function buildGraph(target: DatabaseSync, entities: GraphEntity[], accoun
   const sets = new Map<string, string[]>()
   const nodes: Node[] = []
 
-  for (const e of entities) {
+  // Один узел на ключ. В карте гемов одна команда бывает дважды —
+  // «Spectator: Evil Geniuses» и «Genuine Spectator: Evil Geniuses», —
+  // а ключ у них после нормализации один. Двойной узел ломал полотно:
+  // React ругался на повтор key, раскладка схлопывала их по ключу.
+  // Берём последнюю запись: рёбра по sets.set и раньше строились по ней.
+  const byKey = new Map<string, GraphEntity>()
+  for (const e of entities) byKey.set(e.key, e)
+
+  for (const e of byKey.values()) {
     const ids = entityMatchIds(target, e)
     if (!ids.length) continue
     sets.set(e.key, ids)

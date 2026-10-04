@@ -141,7 +141,7 @@ function Budget({ scan, buy, onRules }: { scan: Scan | null; buy: Buy; onRules: 
       </ol>
 
       <div className="v2-buy-bal">
-        <span>потолок закупки · из правил</span>
+        <span>потолок закупки · из настроек</span>
         {cap != null && cap > 0 ? <b className="v2-num">{money(cap, c)}</b> : <b className="v2-kpi-none">— не задан</b>}
       </div>
       <p className="v2-hint">
@@ -193,7 +193,7 @@ function Cart({ state, buy, onLaunch }: { state: State; buy: Buy; onLaunch: () =
           {cart.sends ? <small className="v2-num">{nf(cart.sends)} {plural(cart.sends, 'отправка', 'отправки', 'отправок')}</small> : cart.units ? <small>всё уже крутится</small> : null}
         </div>
         <div className="v2-tile">
-          <span>допуск цены · из правил</span>
+          <span>допуск цены · из настроек</span>
           <b className="v2-num">{tol == null ? '—' : Math.round(tol * 100) + ' %'}</b>
           <small>{tol == null ? 'нет в настройках' : 'дороже плана не берёт'}</small>
         </div>

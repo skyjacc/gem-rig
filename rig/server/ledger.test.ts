@@ -136,6 +136,17 @@ test('повторная развязка ничего не ломает', () =>
   assert.equal((db.prepare('select count(*) c from burned').get() as any).c, 2)
 })
 
+// Свежая установка без steamid (план «steamid вне репозитория»): старая
+// таблица создаётся пустой, приписывать нечего — пересобирается и без
+// аккаунта. Записи есть, а аккаунта нет — по-прежнему ошибка.
+test('пустой старый журнал без аккаунта — пересобирается; непустой — ошибка', () => {
+  const empty = new DatabaseSync(':memory:')
+  empty.exec(`create table burned (match_id text primary key, league_id text, ts integer, source text, state text default 'confirmed')`)
+  assert.equal(splitByAccount(empty, ''), true)
+  assert.ok((empty.prepare('pragma table_info(burned)').all() as any[]).some(c => c.name === 'account'))
+  assert.throws(() => splitByAccount(shared(), ''), /некому приписать/)
+})
+
 test('без аккаунта запись не принимается — иначе журнал снова общий', () => {
   const db = shared()
   splitByAccount(db, '765')

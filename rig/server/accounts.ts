@@ -46,6 +46,9 @@ function save(r: Registry) {
 function load(): Registry {
   const r = readJson<Registry | null>(FILE, null)
   if (r?.list?.length) return r
+  // steamid снаружи нет (paths.ts, readSteamid) — аккаунт не выдумываем:
+  // реестр пуст, панель зовёт привязать первый по QR. Файл не пишем.
+  if (!STEAMID) return { active: '', list: [] }
 
   const first: Account = {
     id: 'main',
@@ -72,6 +75,15 @@ export const ACCOUNT = () => active()?.steamid || STEAMID
 
 export function byId(id: string) {
   return reg.list.find(a => a.id === id) ?? null
+}
+
+// Новый аккаунт в реестр. Первый (или если активного нет) становится
+// активным: пустой реестр бывает на свежей установке без steamid.
+export function addAccount(a: Account) {
+  reg.list.push(a)
+  if (!byId(reg.active)) reg.active = a.id
+  save(reg)
+  return { ok: true as const }
 }
 
 export function setActive(id: string) {
@@ -184,8 +196,7 @@ export function linkStart(label: string, onChange: () => void, relink: string | 
       onChange()
       return
     }
-    reg.list.push({ id: link.id, label: link.label, steamid: link.steamid, token: link.token, added: Date.now() })
-    save(reg)
+    addAccount({ id: link.id, label: link.label, steamid: link.steamid, token: link.token, added: Date.now() })
     link.done = true
     try { link.child?.kill() } catch { }
     onChange()

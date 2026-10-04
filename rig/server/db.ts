@@ -100,7 +100,8 @@ if (splitByAccount(db, ACCOUNT())) console.log('миграция: журнал �
 
 // Лента до появления колонки account — тоже первого аккаунта. Без этого
 // она пропала бы из панели, когда лента стала показываться по аккаунту.
-{
+// Аккаунта ещё нет (свежая установка без steamid) — приписывать некому, ждём.
+if (ACCOUNT()) {
   const orphan = db.prepare(`update events set account = ? where account is null`).run(String(ACCOUNT()))
   if (Number(orphan.changes) > 0) console.log('миграция: ленте без аккаунта приписан первый, строк ' + orphan.changes)
 }
@@ -113,7 +114,9 @@ export function importLegacy() {
 
   const insBurn = db.prepare(`insert or ignore into burned (account, match_id, league_id, ts, source) values (?,?,?,?,?)`)
   let burned = 0
-  if (fs.existsSync(GC)) {
+  // Без аккаунта старый расход приписать некому — не переносим, а не пишем
+  // с пустым steamid (тот же журнал перенесётся, когда аккаунт появится).
+  if (ACCOUNT() && fs.existsSync(GC)) {
     for (const f of fs.readdirSync(GC)) {
       const m = f.match(/^sent-(.+)\.json$/)
       if (!m) continue

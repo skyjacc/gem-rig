@@ -15,6 +15,8 @@ tools/gcwatch/token-*.json
 # Реестр аккаунтов: steamid и имена — личное, репозиторий публичный.
 # Сервер создаёт его сам при первом запуске (accounts.ts, load()).
 tools/accounts.json
+# steamid основного аккаунта для первого запуска (paths.ts, readSteamid).
+tools/steamid
 
 # рабочие данные
 tools/gcwatch/sent-*.json

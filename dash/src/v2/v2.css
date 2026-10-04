@@ -481,10 +481,90 @@
 .v2 .v2-net-card .v2-hint { margin: 8px 0 0; }
 .v2 .v2-net-tip { position: absolute; z-index: 2; left: 50%; bottom: 14px; translate: -50% 0; margin: 0; white-space: nowrap; }
 
+/* ── Инвентарь (§5.2) ── */
+
+.v2 .v2-inv { display: flex; flex-direction: column; gap: 16px; }
+.v2 .v2-inv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.v2 .v2-inv-head .v2-hint { margin: 4px 0 0; }
+.v2 .v2-inv-sum { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 8px; }
+.v2 .v2-inv-sum .v2-tile { display: flex; flex-direction: column; gap: 4px; padding: 12px; }
+.v2 .v2-inv-l { color: var(--mute); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.v2 .v2-inv-v { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; }
+.v2 .v2-inv-v small { font-size: 14px; color: var(--mute); font-weight: 400; }
+.v2 .v2-inv-v.is-ok { color: var(--ac); }
+.v2 .v2-inv-v.is-warn { color: var(--warn); }
+.v2 .v2-inv-n { color: var(--mute); font-size: 11px; line-height: 1.35; }
+.v2 .v2-inv-stack { display: flex; gap: 2px; height: 6px; border-radius: 999px; overflow: hidden; background: var(--s3); }
+.v2 .v2-inv-stack i { display: block; height: 100%; }
+.v2 .v2-inv-mid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; }
+.v2 .v2-inv-why { margin: -6px 0 10px; }
+.v2 .v2-mute { color: var(--mute); }
+.v2 .v2-linkbtn { color: var(--ink2); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+.v2 .v2-linkbtn:hover { color: var(--ink); }
+
+.v2 .v2-bonds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.v2 .v2-bond { width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: var(--r2); background: var(--s2); text-align: left; transition: background-color var(--t-color); }
+.v2 .v2-bond:hover { background: var(--s3); }
+.v2 .v2-bond.is-on { box-shadow: inset 0 0 0 1px var(--ac); }
+.v2 .v2-bond-pair { display: flex; }
+.v2 .v2-bond-pair i { width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line2); background: #0f0f11 center / cover no-repeat; }
+.v2 .v2-bond-pair i + i { margin-left: -8px; }
+.v2 .v2-bond-nm { min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
+.v2 .v2-bond-nm > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-bond-v { display: flex; flex-direction: column; align-items: flex-end; }
+.v2 .v2-bond-v span { color: var(--mute); font-size: 10.5px; }
+
+.v2 .v2-inv-items { display: flex; flex-direction: column; gap: 12px; }
+.v2 .v2-inv-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.v2 .v2-inv-h2 { margin: 0; font-size: 15px; font-weight: 500; display: flex; align-items: baseline; gap: 8px; }
+.v2 .v2-inv-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.v2 .v2-fchip {
+  height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px;
+  background: var(--s2); color: var(--ink2); font-size: 12px; transition: background-color var(--t-color), color var(--t-color);
+}
+.v2 .v2-fchip:hover:not(:disabled) { background: var(--s3); color: var(--ink); }
+.v2 .v2-fchip[aria-pressed="true"] { background: var(--acs); color: var(--ac); }
+.v2 .v2-fchip span { color: var(--mute); }
+.v2 .v2-inv-find { margin-left: auto; }
+.v2 .v2-inv-empty { margin: 0; padding: 32px; text-align: center; color: var(--mute); background: var(--s2); border-radius: var(--r2); }
+
+.v2 .v2-bay { background: var(--s2); border-radius: var(--r2); overflow: hidden; }
+.v2 .v2-bay-h { width: 100%; display: grid; grid-template-columns: auto auto 1fr minmax(160px, 240px); gap: 12px; align-items: center; padding: 12px; text-align: left; transition: background-color var(--t-color); }
+.v2 .v2-bay-h:hover { background: var(--s3); }
+.v2 .v2-bay-chev { color: var(--mute); transition: rotate var(--t-color); }
+.v2 .v2-bay-chev.is-closed { rotate: -90deg; }
+.v2 .v2-bay-meta { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.v2 .v2-bay-nm { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.v2 .v2-bay-with { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 10.5px; }
+.v2 .v2-bay-prog { display: flex; flex-direction: column; gap: 4px; }
+.v2 .v2-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; padding: 0 12px 12px; }
+/* Ячейка с пунктирной кромкой (§5.2). Кромка не меняется ни при наведении,
+   ни при выборе: выбор — кольцо внутрь (§3.1). */
+.v2 .v2-cell {
+  display: flex; flex-direction: column; gap: 8px; padding: 10px; text-align: left; border-radius: var(--r2);
+  border: 1px dashed var(--line2); background: var(--s1); transition: background-color var(--t-color);
+}
+.v2 .v2-cell:hover { background: #18181b; }
+.v2 .v2-cell.is-on { box-shadow: inset 0 0 0 1px var(--ac); }
+.v2 .v2-cell-r1 { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.v2 .v2-cell-ico { position: relative; width: 40px; height: 40px; flex: none; border-radius: 10px; border: 1px solid var(--line); background: #0f0f11 center / cover no-repeat; }
+.v2 .v2-cell-cnt { position: absolute; right: -6px; bottom: -6px; padding: 0 5px; height: 16px; border-radius: 999px; background: var(--ink); color: var(--bg); font-size: 10px; font-weight: 600; display: grid; place-items: center; }
+.v2 .v2-cell-nm { flex: 1; min-width: 0; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-cell-val { flex: none; display: flex; flex-direction: column; align-items: flex-end; font-size: 11px; color: var(--mute); }
+.v2 .v2-cell-val b { color: var(--ink); font-size: 14px; font-weight: 500; }
+.v2 .v2-pips { display: flex; align-items: center; gap: 3px; font-size: 10.5px; color: var(--mute); min-width: 0; }
+.v2 .v2-pips i { width: 8px; height: 8px; border-radius: 2px; background: var(--s3); flex: none; }
+.v2 .v2-pips i.is-on { background: var(--ac); }
+.v2 .v2-pips i.is-eq { box-shadow: 0 0 0 1px var(--ink2); }
+.v2 .v2-pips span { margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-cell-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */
 
 @media (max-width: 1099.98px) {
+  .v2 .v2-inv-sum { grid-template-columns: repeat(2, 1fr); }
+  .v2 .v2-inv-mid { grid-template-columns: 1fr; }
   .v2 .v2-app { grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: 60px auto auto; height: auto; min-height: 100svh; }
   .v2 .v2-rail { grid-row: 1 / 4; position: sticky; top: 0; height: 100svh; }
   .v2 .v2-top { grid-column: 2; }
@@ -500,6 +580,8 @@
 }
 
 @media (max-width: 767.98px) {
+  .v2 .v2-bay-h { grid-template-columns: auto auto 1fr; }
+  .v2 .v2-bay-prog { grid-column: 1 / -1; }
   .v2 .v2-app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 60px auto auto auto; }
   .v2 .v2-rail { display: none; }
   .v2 .v2-top { grid-column: 1; padding: 0 16px; }

@@ -18,7 +18,8 @@
 // и переходим к следующей позиции, а в журнале видно обе цены.
 
 import { settings } from './settings.ts'
-import { balance, bestOffer, buyInfo, buyOne, type Currency } from './market.ts'
+import { balance, bestOffer, buyInfo, buyOne, units, type Currency } from './market.ts'
+import type { Bought } from './marketbuys.ts'
 
 // Паузы закупки. Вынесены, чтобы тесты шли без ожидания.
 //   settle   сколько дать площадке записать покупку, прежде чем спрашивать
@@ -80,21 +81,24 @@ export function after(reason: string, failsInARow: number): 'стоп' | 'поз
 // «not found» отказом не считается: видна ли покупка по custom_id сразу,
 // не доказано, а ложный отказ исказил бы журнал. Это промежуточное
 // «не найдено» — по нему проверку повторяют, а в журнал оно не попадает.
-export function judgeBuyInfo(res: any): { reason: 'куплено' | 'отказ' | 'неясно' | 'не найдено'; paid: number | null; detail: string } {
+export function judgeBuyInfo(res: any): { reason: 'куплено' | 'отказ' | 'неясно' | 'не найдено'; paid: number | null; detail: string; itemId: string | null } {
   if (res?.success === false && res?.error === 'not found') {
-    return { reason: 'не найдено', paid: null, detail: 'площадка не знает эту покупку' }
+    return { reason: 'не найдено', paid: null, detail: 'площадка не знает эту покупку', itemId: null }
   }
   if (!res?.success || !res?.data) {
-    return { reason: 'неясно', paid: null, detail: 'проверка не удалась: ' + String(res?.error ?? 'нет ответа').slice(0, 60) }
+    return { reason: 'неясно', paid: null, detail: 'проверка не удалась: ' + String(res?.error ?? 'нет ответа').slice(0, 60), itemId: null }
   }
   const stage = String(res.data.stage ?? '')
   const paid = Number(res.data.paid)
-  if (stage === '1' || stage === '2') return { reason: 'куплено', paid: paid > 0 ? paid : null, detail: 'подтверждено по custom_id' }
-  if (stage === '5') return { reason: 'отказ', paid: null, detail: 'трейд отменён площадкой, деньги возвращаются' }
-  return { reason: 'неясно', paid: null, detail: 'площадка вернула stage ' + (stage || '—') }
+  // item_id — для журнала закупки (план 3.1): по нему подтверждённая покупка
+  // видна в истории площадки. paid здесь в основных единицах — не для денег.
+  const itemId = res.data.item_id != null && String(res.data.item_id) ? String(res.data.item_id) : null
+  if (stage === '1' || stage === '2') return { reason: 'куплено', paid: paid > 0 ? paid : null, detail: 'подтверждено по custom_id', itemId }
+  if (stage === '5') return { reason: 'отказ', paid: null, detail: 'трейд отменён площадкой, деньги возвращаются', itemId }
+  return { reason: 'неясно', paid: null, detail: 'площадка вернула stage ' + (stage || '—'), itemId: null }
 }
 
-type Settled = { reason: 'куплено' | 'отказ' | 'неясно'; paid: number | null; detail: string }
+type Settled = { reason: 'куплено' | 'отказ' | 'неясно'; paid: number | null; detail: string; itemId: string | null }
 
 // Ответ на покупку потерялся. Заново не покупаем — спрашиваем, что стало
 // с этой покупкой. «not found» сразу может значить «ещё не записалась»,
@@ -115,7 +119,7 @@ export async function resolveAmbiguous(key: string, customId: string, ask: typeo
     const v = judgeBuyInfo(res)
     if (v.reason !== 'не найдено') return v as Settled
   }
-  return { reason: 'неясно', paid: null, detail: 'площадка не нашла покупку по custom_id за ' + pace.tries + ' проверки' }
+  return { reason: 'неясно', paid: null, detail: 'площадка не нашла покупку по custom_id за ' + pace.tries + ' проверки', itemId: null }
 }
 
 // Сверка заказа с тем, что сервер сам видел на площадке.
@@ -241,7 +245,17 @@ let starting = false
 // Здесь закупка только тратит тем ключом, который ей дали.
 export type Target = { key: string; id: string; label: string }
 
-export async function startPurchase(lines: Line[], currency: Currency, push: () => void, target: Target) {
+// Факт «куплено» уходит наружу колбэком (план 3.1): закупка базу не знает,
+// журнал закупки ведёт marketbuys.ts. Ошибка колбэка закупку не останавливает.
+export type Hooks = { onBought?: (b: Bought) => void }
+
+function report(hooks: Hooks, b: Bought) {
+  try { hooks.onBought?.(b) } catch (e: any) {
+    console.error('журнал закупки: покупка ' + b.customId + ' не записана — ' + String(e?.message ?? e))
+  }
+}
+
+export async function startPurchase(lines: Line[], currency: Currency, push: () => void, target: Target, hooks: Hooks = {}) {
   if (job.active || starting) return { error: 'закупка уже идёт' }
   starting = true
   try {
@@ -275,7 +289,7 @@ export async function startPurchase(lines: Line[], currency: Currency, push: () 
 
     // Работа идёт своим чередом, ответ уходит сразу: панель дальше смотрит
     // на состояние, а не ждёт конца.
-    void run(lines, key, accCur, settings().priceTolerance, push)
+    void run(lines, key, accCur, settings().priceTolerance, push, target.id, hooks)
     return { started: true, planned, total, currency: accCur, account: target.label }
   } finally {
     // Снимаем замок только после того, как job.active поднят: дальше
@@ -288,7 +302,7 @@ export async function startPurchase(lines: Line[], currency: Currency, push: () 
 // в середине проверок и ещё не отражена в job.
 export const purchaseBusy = () => job.active || starting
 
-async function run(lines: Line[], key: string, currency: Currency, tolerance: number, push: () => void) {
+async function run(lines: Line[], key: string, currency: Currency, tolerance: number, push: () => void, accountId: string, hooks: Hooks) {
   // Список работ: у каждой позиции своё «сколько ещё надо».
   const work = lines
     .map(l => ({
@@ -372,6 +386,10 @@ async function run(lines: Line[], key: string, currency: Currency, tolerance: nu
               e.reason = v.reason
               e.detail = v.detail + (v.reason === 'неясно' ? ' — сверьте историю покупок' : '') + '; закупка остановлена'
               if (v.reason === 'куплено') {
+                report(hooks, {
+                  accountId, customId, hashName: w.name, askPrice: units(call.price, currency), currency,
+                  buyId: null, itemId: v.itemId, how: 'custom_id', at: Date.now(),
+                })
                 e.ok = true
                 if (v.paid) e.price = v.paid
                 job.ok++
@@ -385,6 +403,14 @@ async function run(lines: Line[], key: string, currency: Currency, tolerance: nu
 
             ok = !!r?.success
             reason = ok ? 'куплено' : classify(r?.error ?? '')
+            if (ok) {
+              // Цена — та, что ушла в buy потолком (units), не списанная:
+              // площадка берёт лот не дороже. Списанное — в истории площадки.
+              report(hooks, {
+                accountId, customId, hashName: w.name, askPrice: units(call.price, currency), currency,
+                buyId: r?.id != null ? String(r.id) : null, itemId: null, how: 'buy', at: Date.now(),
+              })
+            }
             detail = ok ? undefined : String(r?.error ?? '').slice(0, 80)
           }
 

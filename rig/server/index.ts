@@ -17,12 +17,19 @@ import { allowedHosts, bearer, cookieValue, gate, loadToken, loginCookie, logout
 import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph, itemPool, marketScan, queuePreview, tree } from './api.ts'
 import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase.ts'
 import { ACCOUNT, active as activeAccount, activeId as activeAccountId, byId as accountById, list as accountList2 } from './accounts.ts'
-import { buyKey, checkKey, removeKey, setKey } from './marketkeys.ts'
+import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
+import { listOps, MONEY_DDL } from './money.ts'
+import { ensureJournal, moneySync, recordBuy, reconcile } from './marketbuys.ts'
 import { checkSession } from './steamweb.ts'
 import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
 import { reset as resetSettings, settings, update as updateSettings } from './settings.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
+
+// Деньги и журнал закупки (план 3.1): таблицы — при запуске, только
+// добавление (create if not exists). Начало журнала пишется один раз.
+db.exec(MONEY_DDL)
+ensureJournal(db)
 // Фронт живёт в отдельной папке: оформление переделано с нуля,
 // и держать его внутри движка больше незачем.
 const DIST = path.resolve(here, '..', '..', 'dash', 'dist')
@@ -290,7 +297,11 @@ app.post('/api/market/buy', async (req: any) => {
   // Ключ этого аккаунта и проверка, что площадка шлёт лоты именно ему.
   const k = await buyKey(who)
   if ('error' in k) return k
-  const r = await startPurchase(vet.lines, currency, () => push(), { key: k.key, id: who.id, label: who.label })
+  // Журнал закупки — колбэком: закупка базу не знает. Не записалось —
+  // закупка идёт дальше, а сверка покажет покупку «отсутствует в журнале».
+  const r = await startPurchase(vet.lines, currency, () => push(), { key: k.key, id: who.id, label: who.label }, {
+    onBought: b => { const w = recordBuy(db, b); if ('error' in w) throw new Error(w.error) },
+  })
   push()
   return r
 })
@@ -337,6 +348,28 @@ app.post('/api/market/stop', async () => {
 })
 
 app.get('/api/market/run', async () => purchaseState())
+
+// Журнал денег (план 3.1). Импорт истории площадки — только по запросу,
+// через общий ограничитель; ключ берётся на сервере и в ответ не попадает.
+app.post('/api/money/sync', async (req: any) => {
+  const a = accountById(String(req.body?.id ?? ''))
+  if (!a) return { error: 'нет такого аккаунта' }
+  const key = keyFor(a)
+  if (!key) return { error: 'у аккаунта «' + a.label + '» нет ключа площадки' }
+  return moneySync(db, { accountId: a.id, key, days: Number(req.body?.days) || undefined })
+})
+
+app.get('/api/money', async (req: any) => listOps(db, {
+  accountId: req.query?.id ? String(req.query.id) : undefined,
+  limit: Number(req.query?.limit) || undefined,
+}))
+
+// Отчёт сверки — без обращения к площадке.
+app.get('/api/money/reconcile', async (req: any) => {
+  const a = accountById(String(req.query?.id ?? ''))
+  if (!a) return { error: 'нет такого аккаунта' }
+  return reconcile(db, a.id)
+})
 app.get('/api/market', async (req: any) => marketScan(req.query?.force === '1', (req.query?.cur ?? 'USD')))
 app.get('/api/pool', async () => itemPool())
 app.get('/api/burned', async (req: any) => burnedList(Number(req.query?.limit) || 500))

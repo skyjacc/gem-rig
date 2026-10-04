@@ -72,6 +72,9 @@ export type SendEvent = {
   result: 'update' | 'dup' | 'silent'
   bytes: number
   account?: string | null
+  // Сколько вещей изменил ответ GC (msg 26) — точное число отправщика
+  // (план 2.5). null — до этапа 2.5 не записывалось или ответ не разобран.
+  items?: number | null
 }
 
 // Инвентарь одного аккаунта: возраст снимка и его беда, если она есть.

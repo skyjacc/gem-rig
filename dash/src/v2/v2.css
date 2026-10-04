@@ -812,6 +812,90 @@
 .v2 .v2-acc-help { margin: 8px 0 0; line-height: 1.5; }
 .v2 .v2-acc-help b { color: var(--ink2); font-weight: 500; }
 
+/* ── Журнал (§5.6, план 2.5) ── */
+
+.v2 .v2-jr { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.v2 .v2-jr .is-r { justify-self: end; text-align: right; }
+.v2 .v2-jr-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.v2 .v2-jr-tile { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; min-width: 0; }
+.v2 .v2-jr-tile > span { color: var(--mute); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+.v2 .v2-jr-tile > b { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.v2 .v2-jr-tile.is-ok > b { color: var(--ac); }
+.v2 .v2-jr-tile.is-warn > b { color: var(--warn); }
+.v2 .v2-jr-tile > small { color: var(--mute); font-size: 11.5px; line-height: 1.4; }
+.v2 .v2-jr-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.v2 .v2-jr-tabs button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; color: var(--ink2); border-radius: var(--r2) var(--r2) 0 0; transition: background-color var(--t-color), color var(--t-color); }
+.v2 .v2-jr-tabs button:hover { color: var(--ink); background: var(--s1); }
+.v2 .v2-jr-tabs button[aria-selected="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--ac); }
+.v2 .v2-jr-tabs button span, .v2 .v2-jr-filters button span { color: var(--mute); font-size: 11.5px; }
+.v2 .v2-jr-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.v2 .v2-jr-filters button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; background: var(--s2); color: var(--ink2); font-size: 12px; transition: background-color var(--t-color), color var(--t-color); }
+.v2 .v2-jr-filters button:hover { background: var(--s3); }
+.v2 .v2-jr-filters button[aria-pressed="true"] { background: var(--s3); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); }
+.v2 .v2-jr-pulse { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; margin-bottom: 12px; }
+.v2 .v2-jr-pulse-h { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.v2 .v2-jr-pulse-h b { font-weight: 500; }
+.v2 .v2-jr-ticks { display: flex; align-items: flex-end; gap: 1px; height: 40px; overflow-x: auto; scrollbar-width: thin; }
+.v2 .v2-jr-tick { flex: 1 0 2px; max-width: 8px; height: 100%; border-radius: 1px; background: var(--s3); opacity: 0.9; transition: opacity var(--t-color); }
+.v2 .v2-jr-tick:hover { opacity: 1; box-shadow: inset 0 0 0 1px var(--ink); }
+.v2 .v2-jr-tick.is-update { background: var(--ac); }
+.v2 .v2-jr-tick.is-dup { background: var(--warn); height: 70%; }
+.v2 .v2-jr-tick.is-silent { background: transparent; height: 40%; box-shadow: inset 0 0 0 1px var(--mute); }
+.v2 .v2-jr-tick.is-on { outline: 2px solid var(--ink); outline-offset: 1px; }
+.v2 .v2-jr-ax { display: flex; justify-content: space-between; font-size: 11px; }
+.v2 .v2-jr-list { margin: 0; padding: 0; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r1); overflow: hidden; }
+.v2 .v2-jr-list ul, .v2 ol.v2-jr-list { list-style: none; margin: 0; padding: 0; }
+.v2 .v2-jr-list ul { max-height: max(240px, calc(100svh - 420px)); overflow-y: auto; scrollbar-width: thin; }
+.v2 .v2-jr-lh, .v2 .v2-jr-list li { display: grid; gap: 12px; align-items: center; padding: 7px 14px; min-width: 0; }
+.v2 .v2-jr-lh { color: var(--mute); font-size: 11.5px; border-bottom: 1px solid var(--line); }
+.v2 .v2-jr-list li { border-top: 1px solid var(--line); font-size: 12.5px; transition: background-color var(--t-color); }
+.v2 .v2-jr-list li:first-child { border-top: 0; }
+.v2 .v2-jr-list li:hover { background: var(--s2); }
+.v2 .v2-jr-list li.is-on { box-shadow: inset 2px 0 0 var(--ac); background: var(--s2); }
+.v2 .v2-jr-feed .v2-jr-lh, .v2 .v2-jr-feed li { grid-template-columns: 64px 140px minmax(0, 1fr) minmax(150px, auto) 110px; }
+.v2 .v2-jr-queue .v2-jr-lh, .v2 .v2-jr-queue li { grid-template-columns: 140px 80px minmax(0, 1fr) 70px; }
+.v2 .v2-jr-arr .v2-jr-lh, .v2 .v2-jr-arr li { grid-template-columns: minmax(0, 1fr) minmax(150px, auto) 120px 130px; }
+.v2 ol.v2-jr-log li { grid-template-columns: 130px auto minmax(0, 1fr); }
+.v2 .v2-jr-when { justify-self: start; padding: 2px 6px; margin-left: -6px; border-radius: 6px; color: var(--ink2); transition: background-color var(--t-color); }
+.v2 .v2-jr-when:hover { background: var(--s3); color: var(--ink); }
+.v2 .v2-jr-when[aria-pressed="true"] { color: var(--ink); background: var(--s3); }
+.v2 .v2-jr-link { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); text-decoration: none; }
+.v2 .v2-jr-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.v2 .v2-jr-link svg { color: var(--mute); }
+.v2 .v2-jr-lg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-jr-gems { display: flex; gap: 4px; flex-wrap: wrap; min-width: 0; }
+.v2 .v2-jr-gem { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px 0 2px; border-radius: 999px; background: var(--s2); font-size: 11.5px; }
+.v2 .v2-jr-gem i { width: 18px; height: 18px; border-radius: 999px; background: var(--s3) center / cover no-repeat; }
+.v2 .v2-jr-used { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 12px; }
+.v2 .v2-jr-ug { display: flex; flex-direction: column; gap: 10px; padding: 14px; min-width: 0; }
+.v2 .v2-jr-ug header { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.v2 .v2-jr-ug header i { width: 32px; height: 32px; border-radius: 999px; background: var(--s3) center / cover no-repeat; }
+.v2 .v2-jr-ug header > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.v2 .v2-jr-ug-v { display: flex; flex-direction: column; align-items: flex-end; }
+.v2 .v2-jr-ug-v b { font-size: 18px; font-weight: 600; color: var(--warn); }
+.v2 .v2-jr-ug ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.v2 .v2-jr-ug li { display: grid; grid-template-columns: minmax(0, 1fr) 90px auto; gap: 8px; align-items: center; font-size: 12px; }
+.v2 .v2-jr-ug-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink2); }
+.v2 .v2-jr-bar { position: relative; height: 6px; border-radius: 999px; background: var(--s2); overflow: hidden; }
+.v2 .v2-jr-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--line2); }
+.v2 .v2-jr-bar i.is-burned { background: var(--warn); }
+.v2 .v2-jr-item { display: flex; flex-direction: column; min-width: 0; }
+.v2 .v2-jr-item b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-jr-list li.is-gone .v2-jr-item b { color: var(--mute); }
+.v2 .v2-jr-aside.v2-btn { height: 26px; padding: 0 10px; font-size: 11.5px; }
+.v2 .v2-jr-legend { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.v2 .v2-jr-legend p { margin: 0; }
+.v2 .v2-jr-verdicts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
+.v2 .v2-jr-verdicts div { background: var(--s2); border-radius: var(--r2); padding: 8px 10px; }
+.v2 .v2-jr-verdicts dt { font-weight: 500; color: var(--ink2); }
+.v2 .v2-jr-verdicts dt.is-ok { color: var(--ac); }
+.v2 .v2-jr-verdicts dd { margin: 2px 0 0; color: var(--mute); font-size: 11.5px; line-height: 1.4; }
+.v2 .v2-jr-kv dd { overflow-wrap: anywhere; }
+.v2 .v2-jr-why { margin: 10px 0 0; line-height: 1.45; }
+.v2 .v2-jr-read { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.v2 .v2-jr-read dt { margin-bottom: 4px; }
+.v2 .v2-jr-read dd { margin: 0; color: var(--ink2); font-size: 12px; line-height: 1.45; }
+
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */
 
@@ -831,6 +915,8 @@
   .v2 .v2-pult { position: sticky; left: auto; right: auto; margin: -72px auto 16px; max-width: calc(100% - 32px); }
   .v2 .v2-side { grid-column: 2; grid-row: 3; padding: 0 16px 16px 4px; overflow: visible; }
   .v2 .v2-acc-rules { grid-template-columns: minmax(0, 1fr); }
+  .v2 .v2-jr-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2 .v2-jr-verdicts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 767.98px) {
@@ -854,6 +940,17 @@
   .v2 .v2-buy-tm { align-items: flex-start; }
   .v2 .v2-acc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .v2 .v2-acc-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  /* Списки журнала — карточками: колонки складываются в две строки. */
+  .v2 .v2-jr-lh { display: none; }
+  .v2 .v2-jr-feed li { grid-template-columns: 56px minmax(0, 1fr) auto; }
+  .v2 .v2-jr-feed li .v2-jr-lg { grid-column: 2; grid-row: 2; }
+  .v2 .v2-jr-feed li .v2-jr-items { grid-column: 3; grid-row: 2; }
+  .v2 .v2-jr-feed li .v2-jr-items::before { content: 'вещей '; color: var(--mute); font-size: 11.5px; }
+  .v2 .v2-jr-queue li { grid-template-columns: minmax(0, 1fr) auto; }
+  .v2 .v2-jr-queue li .v2-jr-gems { grid-column: 1 / -1; }
+  .v2 .v2-jr-arr li { grid-template-columns: minmax(0, 1fr) auto; }
+  .v2 ol.v2-jr-log li { grid-template-columns: minmax(0, 1fr) auto; }
+  .v2 ol.v2-jr-log li > span:last-child { grid-column: 1 / -1; }
 }
 
 /* §4.3: без движения для тех, кто его отключил. */

@@ -158,7 +158,10 @@ export type PurchaseRun = {
   pass: number
   positions: { gem: string; asked: number; got: number; done: boolean; why: string }[]
   error: string | null
-  log: { ts: number; gem: string; ok: boolean; price: number; planned?: number; reason: string; detail?: string }[]
+  log: { ts: number; gem: string; ok: boolean; price: number; planned?: number; reason: string; detail?: string; customId?: string }[]
+  // На чей аккаунт идёт закупка (purchase.ts, Job.account). Сервер отдаёт
+  // давно; в типе не было — старая панель его не читала.
+  account?: { id: string; label: string } | null
 }
 
 // Ровно то, что собирает buildState на сервере, и ничего сверх.

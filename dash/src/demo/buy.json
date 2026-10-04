@@ -1,0 +1,521 @@
+{
+ "_note": "Составлено руками для показа экрана «Скупка» (план 2.3, решение 1). Не запись с сервера: цены и потолки — из графа снимка; «в работе» — свои гемы из карты, как picks() на сервере; «общих» — между максимумом и суммой пар графа с ними (настоящее объединение считает сервер); лоты, баланс, ход закупки и приход выдуманы. Форма — как у ответов /api/market, /api/arrivals и state.purchase.",
+ "market": {
+  "goal": 2000,
+  "sell": 0.3,
+  "currency": "USD",
+  "converted": false,
+  "rate": 1,
+  "perGem": 25,
+  "updated": 1787325692212,
+  "error": null,
+  "scanned": 1312,
+  "offers": [
+   {
+    "gem": "BZZ",
+    "name": "Spectator: BZZ",
+    "price": 0.03,
+    "volume": 41,
+    "pool": 2155,
+    "owned": 29,
+    "overlap": 0,
+    "reaches": true,
+    "per1000": 0.015,
+    "burning": true,
+    "sends": 0,
+    "revenue": 0.3,
+    "profit": 0.27
+   },
+   {
+    "gem": "Virtus.pro",
+    "name": "Spectator: Virtus.pro",
+    "price": 0.03,
+    "volume": 27,
+    "pool": 2573,
+    "owned": 0,
+    "overlap": 529,
+    "reaches": true,
+    "per1000": 0.015,
+    "burning": false,
+    "sends": 1471,
+    "revenue": 0.3,
+    "profit": 0.27
+   },
+   {
+    "gem": "Team Empire",
+    "name": "Spectator: Team Empire",
+    "price": 0.03,
+    "volume": 23,
+    "pool": 2594,
+    "owned": 5,
+    "overlap": 0,
+    "reaches": true,
+    "per1000": 0.015,
+    "burning": true,
+    "sends": 0,
+    "revenue": 0.3,
+    "profit": 0.27
+   },
+   {
+    "gem": "Alliance",
+    "name": "Spectator: Alliance",
+    "price": 0.04,
+    "volume": 12,
+    "pool": 2483,
+    "owned": 4,
+    "overlap": 0,
+    "reaches": true,
+    "per1000": 0.02,
+    "burning": true,
+    "sends": 0,
+    "revenue": 0.3,
+    "profit": 0.26
+   },
+   {
+    "gem": "Fnatic",
+    "name": "Spectator: Fnatic",
+    "price": 0.06,
+    "volume": 9,
+    "pool": 2544,
+    "owned": 0,
+    "overlap": 725,
+    "reaches": true,
+    "per1000": 0.03,
+    "burning": false,
+    "sends": 1275,
+    "revenue": 0.3,
+    "profit": 0.24
+   },
+   {
+    "gem": "NaVi",
+    "name": "Spectator: NaVi",
+    "price": 0.06,
+    "volume": 6,
+    "pool": 2844,
+    "owned": 1,
+    "overlap": 0,
+    "reaches": true,
+    "per1000": 0.03,
+    "burning": true,
+    "sends": 0,
+    "revenue": 0.3,
+    "profit": 0.24
+   },
+   {
+    "gem": "Evil Geniuses",
+    "name": "Spectator: Evil Geniuses",
+    "price": 0.09,
+    "volume": 18,
+    "pool": 2812,
+    "owned": 0,
+    "overlap": 178,
+    "reaches": true,
+    "per1000": 0.045,
+    "burning": false,
+    "sends": 1822,
+    "revenue": 0.3,
+    "profit": 0.21
+   },
+   {
+    "gem": "iG",
+    "name": "Spectator: iG",
+    "price": 0.16,
+    "volume": 7,
+    "pool": 2795,
+    "owned": 0,
+    "overlap": 111,
+    "reaches": true,
+    "per1000": 0.08,
+    "burning": false,
+    "sends": 1889,
+    "revenue": 0.3,
+    "profit": 0.13999999999999999
+   },
+   {
+    "gem": "Arteezy",
+    "name": "Spectator: Arteezy",
+    "price": 0.2,
+    "volume": 5,
+    "pool": 2714,
+    "owned": 0,
+    "overlap": 135,
+    "reaches": true,
+    "per1000": 0.1,
+    "burning": false,
+    "sends": 1865,
+    "revenue": 0.3,
+    "profit": 0.09999999999999998
+   },
+   {
+    "gem": "Liquid",
+    "name": "Spectator: Liquid",
+    "price": 0.35,
+    "volume": 41,
+    "pool": 3275,
+    "owned": 0,
+    "overlap": 245,
+    "reaches": true,
+    "per1000": 0.175,
+    "burning": false,
+    "sends": 1755,
+    "revenue": 0.3,
+    "profit": -0.04999999999999999
+   },
+   {
+    "gem": "Kuroky",
+    "name": "Spectator: Kuroky",
+    "price": 0.47,
+    "volume": 3,
+    "pool": 2595,
+    "owned": 0,
+    "overlap": 754,
+    "reaches": true,
+    "per1000": 0.235,
+    "burning": false,
+    "sends": 1246,
+    "revenue": 0.3,
+    "profit": -0.16999999999999998
+   },
+   {
+    "gem": "Ohaiyo",
+    "name": "Spectator: Ohaiyo",
+    "price": 0.03,
+    "volume": 15,
+    "pool": 1849,
+    "owned": 7,
+    "overlap": 0,
+    "reaches": false,
+    "per1000": 0.016224986479177934,
+    "burning": true,
+    "sends": 0,
+    "revenue": 0,
+    "profit": -0.03
+   },
+   {
+    "gem": "Cloud9",
+    "name": "Spectator: Cloud9",
+    "price": 0.04,
+    "volume": 11,
+    "pool": 610,
+    "owned": 0,
+    "overlap": 100,
+    "reaches": false,
+    "per1000": 0.06557377049180328,
+    "burning": false,
+    "sends": 510,
+    "revenue": 0,
+    "profit": -0.04
+   },
+   {
+    "gem": "DD",
+    "name": "Spectator: DD",
+    "price": 0.04,
+    "volume": 8,
+    "pool": 568,
+    "owned": 4,
+    "overlap": 0,
+    "reaches": false,
+    "per1000": 0.07042253521126761,
+    "burning": true,
+    "sends": 0,
+    "revenue": 0,
+    "profit": -0.04
+   }
+  ],
+  "account": {
+   "id": "main",
+   "label": "основной"
+  },
+  "key": {
+   "state": "ok",
+   "marketSteamid": null,
+   "checkedAt": 1787325547212,
+   "error": null
+  },
+  "balance": 12.4,
+  "balanceCurrency": "USD",
+  "balanceError": null
+ },
+ "purchase": {
+  "active": true,
+  "cancel": false,
+  "startedAt": 1787325487212,
+  "finishedAt": 0,
+  "currency": "USD",
+  "planned": 25,
+  "done": 15,
+  "ok": 9,
+  "spent": 0.948,
+  "current": "Fnatic",
+  "positions": [
+   {
+    "gem": "BZZ",
+    "asked": 3,
+    "got": 3,
+    "done": false,
+    "why": ""
+   },
+   {
+    "gem": "Team Empire",
+    "asked": 3,
+    "got": 2,
+    "done": false,
+    "why": ""
+   },
+   {
+    "gem": "Alliance",
+    "asked": 3,
+    "got": 1,
+    "done": true,
+    "why": "цена выросла"
+   },
+   {
+    "gem": "Liquid",
+    "asked": 4,
+    "got": 2,
+    "done": false,
+    "why": ""
+   },
+   {
+    "gem": "Evil Geniuses",
+    "asked": 6,
+    "got": 0,
+    "done": false,
+    "why": ""
+   },
+   {
+    "gem": "Fnatic",
+    "asked": 6,
+    "got": 1,
+    "done": false,
+    "why": ""
+   }
+  ],
+  "error": null,
+  "log": [
+   {
+    "ts": 1787325520212,
+    "gem": "Fnatic",
+    "ok": true,
+    "price": 0.06,
+    "planned": 0.06,
+    "reason": "куплено"
+   },
+   {
+    "ts": 1787325518212,
+    "gem": "Evil Geniuses",
+    "ok": false,
+    "price": 0.09,
+    "planned": 0.09,
+    "reason": "отказ",
+    "detail": "площадка: 502"
+   },
+   {
+    "ts": 1787325516212,
+    "gem": "Evil Geniuses",
+    "ok": false,
+    "price": 0.09,
+    "planned": 0.09,
+    "reason": "отказ",
+    "detail": "площадка: 502"
+   },
+   {
+    "ts": 1787325514212,
+    "gem": "Evil Geniuses",
+    "ok": false,
+    "price": 0.09,
+    "planned": 0.09,
+    "reason": "отказ",
+    "detail": "площадка: 502"
+   },
+   {
+    "ts": 1787325512212,
+    "gem": "Liquid",
+    "ok": true,
+    "price": 0.35,
+    "planned": 0.35,
+    "reason": "куплено"
+   },
+   {
+    "ts": 1787325511212,
+    "gem": "Liquid",
+    "ok": true,
+    "price": 0.35,
+    "planned": 0.35,
+    "reason": "куплено"
+   },
+   {
+    "ts": 1787325508212,
+    "gem": "Alliance",
+    "ok": false,
+    "price": 0.05,
+    "planned": 0.04,
+    "reason": "цена выросла"
+   },
+   {
+    "ts": 1787325507212,
+    "gem": "Alliance",
+    "ok": true,
+    "price": 0.04,
+    "planned": 0.04,
+    "reason": "куплено"
+   },
+   {
+    "ts": 1787325504212,
+    "gem": "Team Empire",
+    "ok": true,
+    "price": 0.03,
+    "planned": 0.03,
+    "reason": "куплено"
+   },
+   {
+    "ts": 1787325502212,
+    "gem": "Team Empire",
+    "ok": false,
+    "price": 0.03,
+    "planned": 0.03,
+    "reason": "отказ",
+    "detail": "площадка: timeout"
+   },
+   {
+    "ts": 1787325500212,
+    "gem": "Team Empire",
+    "ok": false,
+    "price": 0.03,
+    "planned": 0.03,
+    "reason": "отказ",
+    "detail": "площадка: timeout"
+   },
+   {
+    "ts": 1787325499212,
+    "gem": "Team Empire",
+    "ok": true,
+    "price": 0.03,
+    "planned": 0.03,
+    "reason": "куплено"
+   },
+   {
+    "ts": 1787325497212,
+    "gem": "BZZ",
+    "ok": true,
+    "price": 0.028,
+    "planned": 0.03,
+    "reason": "куплено"
+   },
+   {
+    "ts": 1787325496212,
+    "gem": "BZZ",
+    "ok": true,
+    "price": 0.03,
+    "planned": 0.03,
+    "reason": "куплено"
+   },
+   {
+    "ts": 1787325495212,
+    "gem": "BZZ",
+    "ok": true,
+    "price": 0.03,
+    "planned": 0.03,
+    "reason": "куплено"
+   }
+  ],
+  "account": {
+   "id": "main",
+   "label": "основной"
+  },
+  "pass": 1
+ },
+ "arrivals": {
+  "summary": {
+   "open": 1,
+   "wins": 1,
+   "fresh": 5
+  },
+  "rows": [
+   {
+    "assetid": "demo-a0",
+    "account": "7656119800000000",
+    "gem": "BZZ",
+    "item": "Spectator: BZZ",
+    "carrier": "gem",
+    "value": 0,
+    "expected": 0,
+    "verdict": "чисто",
+    "aside": 0,
+    "ts": 1787325527212,
+    "now": 0,
+    "gone": false
+   },
+   {
+    "assetid": "demo-a1",
+    "account": "7656119800000000",
+    "gem": "BZZ",
+    "item": "Spectator: BZZ",
+    "carrier": "gem",
+    "value": 0,
+    "expected": 0,
+    "verdict": "чисто",
+    "aside": 0,
+    "ts": 1787325528212,
+    "now": 0,
+    "gone": false
+   },
+   {
+    "assetid": "demo-a2",
+    "account": "7656119800000000",
+    "gem": "Team Empire",
+    "item": "Spectator: Team Empire",
+    "carrier": "gem",
+    "value": 0,
+    "expected": 0,
+    "verdict": "чисто",
+    "aside": 0,
+    "ts": 1787325529212,
+    "now": 0,
+    "gone": false
+   },
+   {
+    "assetid": "demo-a3",
+    "account": "7656119800000000",
+    "gem": "Liquid",
+    "item": "Spectator: Liquid",
+    "carrier": "gem",
+    "value": 3,
+    "expected": 0,
+    "verdict": "наш",
+    "aside": 0,
+    "ts": 1787325547212,
+    "now": 3,
+    "gone": false
+   },
+   {
+    "assetid": "demo-a4",
+    "account": "7656119800000000",
+    "gem": "Alliance",
+    "item": "Spectator: Alliance",
+    "carrier": "gem",
+    "value": 57,
+    "expected": 0,
+    "verdict": "выигрыш",
+    "aside": 0,
+    "ts": 1787325548212,
+    "now": 57,
+    "gone": false
+   },
+   {
+    "assetid": "demo-old",
+    "account": "7656119800000000",
+    "gem": "Ohaiyo",
+    "item": "Spectator: Ohaiyo",
+    "carrier": "gem",
+    "value": 0,
+    "expected": 0,
+    "verdict": "чисто",
+    "aside": 0,
+    "ts": 1787239087212,
+    "now": 0,
+    "gone": false
+   }
+  ]
+ }
+}

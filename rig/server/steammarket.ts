@@ -23,7 +23,13 @@ import type { NewOp } from './money.ts'
 export const KEY_NAME = 'Mann Co. Supply Crate Key'
 const CREATED_BY = 'импорт истории рынка Steam'
 
-export const steamExternalId = (p: { listingid: unknown; purchaseid: unknown }) => String(p.listingid) + '_' + String(p.purchaseid)
+// Номер сделки — «listingid_purchaseid». Нет любой части — номера нет:
+// строка «undefined_undefined» внешним номером операции не является.
+const part = (v: unknown) => (v == null ? '' : String(v).trim())
+export function steamExternalId(p: { listingid?: unknown; purchaseid?: unknown }): string | null {
+  const l = part(p.listingid), q = part(p.purchaseid)
+  return l && q ? l + '_' + q : null
+}
 
 export type SteamParsed = { ops: NewOp[]; skipped: Record<string, number> }
 
@@ -41,6 +47,11 @@ export function parseSteamHistory(page: any, me: string, accountId: string): Ste
   const nameOf = (a: any) => page.assets?.[a?.appid]?.[a?.contextid]?.[a?.id]?.market_hash_name as string | undefined
 
   for (const p of Object.values(page.purchases ?? {}) as any[]) {
+    const ext = steamExternalId(p ?? {})
+    if (!ext) { skip('не разобрано: нет listingid/purchaseid'); continue }
+    // Кто покупатель — решает, продажа это или покупка. Нет поля — не знаем:
+    // непонятное не становится «продажей».
+    if (!part(p.steamid_purchaser)) { skip('не разобрано: нет steamid покупателя'); continue }
     if (p?.failed || p?.needs_rollback) { skip('сделка не прошла (failed / needs_rollback)'); continue }
     if (p?.funds_returned) { skip('деньги возвращены (funds_returned)'); continue }
     if (![p?.paid_amount, p?.paid_fee, p?.steam_fee, p?.publisher_fee, p?.received_amount].every(isInt)) { skip('не разобрано: суммы не целые'); continue }
@@ -58,7 +69,7 @@ export function parseSteamHistory(page: any, me: string, accountId: string): Ste
       publisher_fee_app: p.publisher_fee_app ?? null, currencyid: String(p.currencyid),
       received_amount: p.received_amount, received_currencyid: String(p.received_currencyid),
     })
-    const base = { accountId, source: 'рынок Steam' as const, externalId: steamExternalId(p), happenedAt: p.time_sold * 1000, createdBy: CREATED_BY, rawRef }
+    const base = { accountId, source: 'рынок Steam' as const, externalId: ext, happenedAt: p.time_sold * 1000, createdBy: CREATED_BY, rawRef }
     const paid = p.paid_amount + p.paid_fee
 
     if (mine) {

@@ -111,3 +111,15 @@ test('пустая или чужая страница — ничего', () => {
   assert.deepEqual(parseSteamHistory({ success: false }, ME, 'main'), { ops: [], skipped: { 'не разобрано: страница без success': 1 } })
   assert.equal(parseSteamHistory(page([]), ME, 'main').ops.length, 0)
 })
+
+test('нет listingid или purchaseid — не разобрано, номер «undefined_undefined» не строится', () => {
+  const r = parseSteamHistory(page([deal({ purchaseid: undefined }), deal({ listingid: '', purchaseid: '7' })]), ME, 'main')
+  assert.equal(r.ops.length, 0)
+  assert.equal(r.skipped['не разобрано: нет listingid/purchaseid'], 2)
+})
+
+test('нет steamid покупателя — не разобрано, а не «продажа»', () => {
+  const r = parseSteamHistory(page([deal({ steamid_purchaser: undefined }), deal({ purchaseid: '8', steamid_purchaser: '' })]), ME, 'main')
+  assert.equal(r.ops.length, 0)
+  assert.equal(r.skipped['не разобрано: нет steamid покупателя'], 2)
+})

@@ -258,9 +258,15 @@ export function burnedList(limit = 500) {
   }
 
   const total = (db.prepare(`select count(*) c from burned where account = ?`).get(acc) as any).c
+  // Счёт по состояниям — за всё время, а не по отданным строкам (их до limit).
+  const byState = { confirmed: 0, dup: 0, ledger: 0, reconstructed: 0 }
+  for (const r of db.prepare(`select state, count(*) c from burned where account = ? group by state`).all(acc) as any[]) {
+    if (r.state in byState) byState[r.state as keyof typeof byState] = r.c
+  }
 
   return {
     total,
+    byState,
     rows: rows.map(r => {
       const id = String(r.match_id)
       const gems: string[] = []

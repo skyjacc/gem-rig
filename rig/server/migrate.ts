@@ -29,6 +29,9 @@ const ADD: [string, string, string][] = [
   // Сколько раз матч отправлялся этим аккаунтом. Нужна очереди: dup, не
   // засчитанный и после повтора, больше не гоняется по кругу.
   ['burned', 'tries', `alter table burned add column tries integer default 1`],
+  // Сколько вещей изменил ответ GC — точное число отправщика (so.econModified,
+  // план 2.5). У записей до этой колонки — NULL: не записывалось, а не ноль.
+  ['events', 'items', `alter table events add column items integer`],
 ]
 
 // Развязка ленты отправок по метке + аккаунту + матчу.
@@ -57,14 +60,17 @@ export function splitEvents(target: DatabaseSync): boolean {
       result    text,
       bytes     integer,
       account   text,
+      items     integer,
       primary key (ts, account, match_id)
     );
   `)
   const has = new Set(info.map(c => c.name))
   const account = has.has('account') ? 'account' : 'null'
+  // items добавляется раньше пересборки (ADD) — её нельзя потерять здесь.
+  const items = has.has('items') ? 'items' : 'null'
   target.exec(
-    `insert or ignore into events_split (ts, n, total, match_id, league_id, result, bytes, account)
-     select ts, n, total, match_id, league_id, result, bytes, ${account} from events`,
+    `insert or ignore into events_split (ts, n, total, match_id, league_id, result, bytes, account, items)
+     select ts, n, total, match_id, league_id, result, bytes, ${account}, ${items} from events`,
   )
   target.exec(`drop table events; alter table events_split rename to events;`)
   target.exec(`create index if not exists idx_events_ts on events (ts desc)`)

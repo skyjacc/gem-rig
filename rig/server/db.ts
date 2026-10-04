@@ -76,6 +76,8 @@ db.exec(`
     result    text,
     bytes     integer,
     account   text,
+    -- сколько вещей изменил ответ GC (so.econModified); NULL — неизвестно
+    items     integer,
     primary key (ts, account, match_id)
   );
 
@@ -182,9 +184,14 @@ export function saveSnapshot(rows: { gem: string; assetid: string; name: string;
 
 // Одно событие отправщика в ленту. Повтор безвреден: при перезапуске панели
 // отчёт разбирается заново с начала, и ignore делает это бесплатным.
+// items — точное число изменённых вещей из ответа GC: отправщик разбирает
+// msg 26 сам (tools/gcwatch/lib.js, soSummary → econModified). Нет разбора
+// или не целое неотрицательное — NULL: «неизвестно» не равно нулю.
 export function pushEvent(e: any, account = ACCOUNT()) {
-  db.prepare(`insert or ignore into events (ts, n, total, match_id, league_id, result, bytes, account) values (?,?,?,?,?,?,?,?)`)
-    .run(Math.trunc(Number(e.ts) || 0), e.n ?? null, e.total ?? null, String(e.match), String(e.league ?? ''), e.result, e.bytes ?? 0, String(account))
+  const m = e?.so?.econModified
+  const items = Number.isInteger(m) && m >= 0 ? m : null
+  db.prepare(`insert or ignore into events (ts, n, total, match_id, league_id, result, bytes, account, items) values (?,?,?,?,?,?,?,?,?)`)
+    .run(Math.trunc(Number(e.ts) || 0), e.n ?? null, e.total ?? null, String(e.match), String(e.league ?? ''), e.result, e.bytes ?? 0, String(account), items)
 }
 
 // Лента, последнее подтверждение и темп — по аккаунту. Общими они

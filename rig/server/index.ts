@@ -18,7 +18,7 @@ import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph,
 import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase.ts'
 import { ACCOUNT, active as activeAccount, activeId as activeAccountId, byId as accountById, list as accountList2 } from './accounts.ts'
 import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
-import { listOps, MONEY_DDL } from './money.ts'
+import { listOps, migrateMoney, MONEY_DDL } from './money.ts'
 import { ensureJournal, moneySync, recordBuy, reconcile } from './marketbuys.ts'
 import { checkSession } from './steamweb.ts'
 import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
@@ -28,6 +28,9 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 
 // Деньги и журнал закупки (план 3.1): таблицы — при запуске, только
 // добавление (create if not exists). Начало журнала пишется один раз.
+// Таблицу этапа 3.1 (gross NOT NULL) переделываем один раз — до создания.
+const moneyMigrated = migrateMoney(db)
+if (moneyMigrated.migrated) console.log('миграция: money_ops — gross может быть пустым')
 db.exec(MONEY_DDL)
 ensureJournal(db)
 // Фронт живёт в отдельной папке: оформление переделано с нуля,

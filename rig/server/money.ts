@@ -15,6 +15,11 @@
 // USD/EUR — тысячные) вместе с валютой. Никаких долей: дробь в деньгах —
 // это потерянная копейка при сложении.
 //
+// gross может быть пустым (план 3.3, решение В): у продажи на рынке Steam в
+// чужой валюте «пришло» известно точно, а цены покупателя в валюте журнала
+// в источнике нет. NULL — «этого числа нет в источнике», не 0 и не вычисленное.
+// net пустым не бывает.
+//
 // Что значат поля конкретного источника (какое поле — сумма, что такое
 // status) решает разбор этого источника (markethistory.ts), не этот модуль.
 
@@ -33,8 +38,8 @@ const whole = (c: string) => `check (${c} is null or typeof(${c}) = 'integer')`
 
 // Схема живёт здесь, а не в db.ts, — тесты создают ту же таблицу одним
 // источником правды (как ARRIVALS_DDL).
-export const MONEY_DDL = `
-  create table if not exists money_ops (
+const TABLE = (name: string) => `
+  create table if not exists ${name} (
     id            integer primary key autoincrement,
     user_id       text not null,
     account_id    text,
@@ -44,7 +49,7 @@ export const MONEY_DDL = `
     happened_at   integer not null,
     recorded_at   integer not null,
     currency      text not null,
-    gross         integer not null ${whole('gross')} check (gross >= 0),
+    gross         integer ${whole('gross')} check (gross is null or gross >= 0),
     fee_steam     integer ${whole('fee_steam')},
     fee_game      integer ${whole('fee_game')},
     net           integer not null ${whole('net')},
@@ -54,7 +59,9 @@ export const MONEY_DDL = `
     reconciled_at integer,
     unique (source, external_id)
   );
+`
 
+const TRIGGERS = `
   create trigger if not exists money_ops_no_delete
   before delete on money_ops
   begin
@@ -86,6 +93,33 @@ export const MONEY_DDL = `
   end;
 `
 
+export const MONEY_DDL = TABLE('money_ops') + TRIGGERS
+
+const COLS = 'id, user_id, account_id, type, source, external_id, happened_at, recorded_at, currency, gross, fee_steam, fee_game, net, status, raw_ref, created_by, reconciled_at'
+
+// Таблица этапа 3.1 создана с gross NOT NULL, а снять NOT NULL в SQLite можно
+// только пересозданием таблицы. Одной транзакцией: убрать защиту, переложить
+// строки как есть (с теми же id и отметками сверки), вернуть защиту. Ничего
+// не делает, если таблицы нет или gross уже допускает пусто.
+export function migrateMoney(db: DatabaseSync): { migrated: boolean } {
+  const g = (db.prepare(`select "notnull" as nn from pragma_table_info('money_ops') where name = 'gross'`).get() as any)
+  if (!g || !g.nn) return { migrated: false }
+  db.exec('begin immediate')
+  try {
+    db.exec('drop trigger if exists money_ops_no_delete; drop trigger if exists money_ops_only_reconcile;')
+    db.exec('alter table money_ops rename to money_ops_old')
+    db.exec(TABLE('money_ops'))
+    db.exec(`insert into money_ops (${COLS}) select ${COLS} from money_ops_old`)
+    db.exec('drop table money_ops_old')
+    db.exec(TRIGGERS)
+    db.exec('commit')
+  } catch (e) {
+    db.exec('rollback')
+    throw e
+  }
+  return { migrated: true }
+}
+
 export type NewOp = {
   userId?: string
   accountId: string | null
@@ -94,7 +128,7 @@ export type NewOp = {
   externalId: string
   happenedAt: number
   currency: string
-  gross: number
+  gross: number | null
   feeSteam?: number | null
   feeGame?: number | null
   net: number
@@ -113,7 +147,7 @@ export type Op = {
   happened_at: number
   recorded_at: number
   currency: string
-  gross: number
+  gross: number | null
   fee_steam: number | null
   fee_game: number | null
   net: number
@@ -135,8 +169,8 @@ function check(op: NewOp): string | null {
   for (const [k, v] of [['gross', op.gross], ['net', op.net], ['fee_steam', op.feeSteam], ['fee_game', op.feeGame]] as const) {
     if (!isWhole(v)) return k + ' — не целое: суммы хранятся в мелких единицах'
   }
-  if (op.gross == null || op.net == null) return 'нет суммы'
-  if (op.gross < 0) return 'gross — сумма по модулю, не бывает меньше нуля (§16)'
+  if (op.net == null) return 'нет суммы (net)'
+  if (op.gross != null && op.gross < 0) return 'gross — сумма по модулю, не бывает меньше нуля (§16)'
   return null
 }
 
@@ -150,7 +184,7 @@ const insertSql = `
 function insert(db: DatabaseSync, op: NewOp, now: number) {
   return db.prepare(insertSql).run(
     op.userId ?? OWNER, op.accountId, op.type, op.source, op.externalId, op.happenedAt, now,
-    op.currency, op.gross, op.feeSteam ?? null, op.feeGame ?? null, op.net,
+    op.currency, op.gross ?? null, op.feeSteam ?? null, op.feeGame ?? null, op.net,
     op.status ?? null, op.rawRef ?? null, op.createdBy,
   )
 }

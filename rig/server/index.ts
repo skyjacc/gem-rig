@@ -373,9 +373,14 @@ app.get('/api/money', async (req: any) => listOps(db, {
 app.post('/api/money/steam-sync', async (req: any) => {
   const a = accountById(String(req.body?.id ?? ''))
   if (!a) return { error: 'нет такого аккаунта' }
-  let cookie: string
-  try { cookie = await webCookieHeader(a) } catch (e: any) { return { error: String(e?.message ?? e) } }
-  return steamSync(db, { accountId: a.id, me: a.steamid, cookie, pages: req.body?.pages == null ? undefined : Number(req.body.pages) })
+  const b = req.body ?? {}
+  // Куки берёт сам steamSync — после проверки параметров.
+  return steamSync(db, {
+    accountId: a.id, me: a.steamid, getCookie: () => webCookieHeader(a),
+    pages: b.pages == null ? undefined : Number(b.pages),
+    mode: b.mode == null ? undefined : b.mode,
+    from: b.from == null ? undefined : Number(b.from),
+  })
 })
 
 // Отчёт сверки — без обращения к площадке.

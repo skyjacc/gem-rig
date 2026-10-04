@@ -342,6 +342,13 @@
 .v2 .v2-loading { display: flex; flex-direction: column; gap: 8px; }
 .v2 .v2-unavail { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--mute); }
 
+/* ── заглушки экранов ── */
+
+.v2 .v2-screen { display: flex; flex-direction: column; gap: 16px; max-width: 720px; }
+.v2 .v2-lead { margin: -8px 0 0; color: var(--ink2); }
+.v2 .v2-text { margin: 0 0 8px; line-height: 1.45; }
+.v2 .v2-link { margin-top: 12px; text-decoration: none; width: fit-content; }
+
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */
 

@@ -9,7 +9,8 @@ import { Pult } from './Pult.tsx'
 import { ConfirmBurn } from './ConfirmBurn.tsx'
 import { Bell } from './Bell.tsx'
 import { Booting, FirstRun, NoServer } from './States.tsx'
-import { Panel, Pill } from './ui.tsx'
+import { Pill } from './ui.tsx'
+import { Screen, ScreenSide } from './screens.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
@@ -64,12 +65,12 @@ export default function AppV2() {
           <RailRow screen={screen} onScreen={setScreen} />
           <main className="v2-page" aria-label={title}>
             <div className="v2-page-scroll">
-              {empty ? <FirstRun onLink={() => setLinking(true)} /> : <h1 className="v2-h1">{title}</h1>}
+              {empty ? <FirstRun onLink={() => setLinking(true)} /> : <Screen id={screen} title={title} />}
             </div>
             <Pult state={state} live={live} now={now} onTune={() => setRules('run')} onBurn={() => setBurning(true)} />
           </main>
           <aside className="v2-side" aria-label="Правая колонка">
-            <Panel title="Инспектор">правая колонка экрана</Panel>
+            {empty ? null : <ScreenSide id={screen} />}
           </aside>
         </div>
         {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}

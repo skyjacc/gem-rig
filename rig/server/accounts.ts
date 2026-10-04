@@ -13,7 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { GC, TOOLS, STEAMID, readJson } from './paths.ts'
-import { forgetWeb } from './steamweb.ts'
+import { forgetWeb, webTokenFile } from './steamweb.ts'
 
 export type Account = {
   id: string
@@ -25,7 +25,8 @@ export type Account = {
 
 type Registry = { active: string; list: Account[] }
 
-const FILE = path.join(TOOLS, 'accounts.json')
+// ACCOUNTS_FILE — только для тестов (testenv.ts): свой реестр, рабочий не трогается.
+const FILE = process.env.ACCOUNTS_FILE || path.join(TOOLS, 'accounts.json')
 
 // Метка → безопасное имя файла. Кириллица и пробелы в путях к сессии
 // ничего хорошего не дают.
@@ -215,7 +216,7 @@ export function linkCancel() {
 
 // ── отвязка ──
 //
-// Удаляется только сессия и строка реестра. Журнал расхода остаётся:
+// Удаляются сессии (игровая и веб) и строка реестра. Журнал расхода остаётся:
 // матчи на том аккаунте действительно израсходованы, и если его привяжут
 // заново, очередь должна об этом помнить.
 export function unlink(id: string) {
@@ -224,6 +225,10 @@ export function unlink(id: string) {
   if (reg.list.length === 1) return { error: 'это единственный аккаунт' }
 
   try { fs.unlinkSync(path.join(GC, a.token)) } catch { }
+  // И веб-вход: без хозяина он остался бы на диске, а аккаунт, получивший
+  // потом тот же id, читал бы историю чужого Steam.
+  try { fs.unlinkSync(path.join(GC, webTokenFile(a))) } catch { }
+  forgetWeb(a.id)
   reg.list = reg.list.filter(x => x.id !== id)
   if (reg.active === id) reg.active = reg.list[0].id
   save(reg)

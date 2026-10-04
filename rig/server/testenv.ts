@@ -20,3 +20,7 @@ if (!process.env.GC_DIR) {
   process.env.GC_DIR = dir
   process.on('exit', () => { try { fs.rmSync(dir, { recursive: true, force: true }) } catch { } })
 }
+
+// И свой реестр аккаунтов. tools/accounts.json — рабочий: тест, который
+// привяжет или отвяжет аккаунт, поменял бы список живой панели.
+process.env.ACCOUNTS_FILE ??= path.join(process.env.GC_DIR!, 'accounts.json')

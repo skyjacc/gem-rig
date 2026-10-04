@@ -14,7 +14,7 @@ import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
 import { senderState, statusFile, stop } from './sender.ts'
 import { allowedHosts, bearer, cookieValue, gate, loadToken, loginCookie, logoutCookie, sameToken } from './auth.ts'
-import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph, itemPool, marketScan, queuePreview, tree } from './api.ts'
+import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph, itemPool, marketScan, queuePreview, tree, webCheck } from './api.ts'
 import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase.ts'
 import { ACCOUNT, active as activeAccount, activeId as activeAccountId, byId as accountById, list as accountList2 } from './accounts.ts'
 import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
@@ -336,6 +336,14 @@ app.post('/api/accounts/session-check', async (req: any) => {
   const a = accountById(String(req.body?.id ?? ''))
   if (!a) return { error: 'нет такого аккаунта' }
   const r = await checkSession(a)
+  push()
+  return r
+})
+
+// Веб-сессия аккаунта (план 2.4) — один обмен токена на куки, по кнопке.
+// В ответ — только состояние; куки остаются на сервере.
+app.post('/api/accounts/web-check', async (req: any) => {
+  const r = await webCheck(String(req.body?.id ?? ''))
   push()
   return r
 })

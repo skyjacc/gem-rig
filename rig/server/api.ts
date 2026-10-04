@@ -4,9 +4,9 @@
 import path from 'node:path'
 import { TOOLS, readJson } from './paths.ts'
 import { cachedStatus, keyFor } from './marketkeys.ts'
-import { sessionStatus } from './steamweb.ts'
+import { checkWeb, gameStatus, webStatus } from './steamweb.ts'
 import { db } from './db.ts'
-import { ACCOUNT, active, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink, type Account } from './accounts.ts'
+import { ACCOUNT, active, byId, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink, type Account } from './accounts.ts'
 import { buildGraph, type GraphEntity } from './graph.ts'
 import { hasMap } from './supply.ts'
 import { queueFor } from './queue.ts'
@@ -30,13 +30,24 @@ export function accountList() {
       token: a.token,
       added: a.added,
       session: hasSession(a),
-      // Жива ли сессия на самом деле: файл токена есть и у отозванной.
-      sessionState: sessionStatus(a, hasSession(a)),
+      // Две сессии Steam — раздельно (план 2.4). Игровая — из файла при
+      // каждом показе: срок токена, а жив ли вход, видно только клиенту.
+      // Веб — без сети: есть ли, не истёк ли, итог последней проверки.
+      sessionState: gameStatus(a),
+      web: webStatus(a),
       burned: (db.prepare(`select count(*) c from burned where account = ?`).get(a.steamid) as any).c,
       // Статус ключа площадки. Самого ключа здесь нет и быть не должно.
       market: cachedStatus(a),
     })),
   }
+}
+
+// Проверка веб-сессии — по кнопке, один обмен токена на куки. В ответ —
+// только состояние.
+export async function webCheck(id: string) {
+  const a = byId(id)
+  if (!a) return { error: 'нет такого аккаунта' }
+  return checkWeb(a)
 }
 
 export const accountsApi = { linkStart, linkCancel, setActive, unlink, rename }

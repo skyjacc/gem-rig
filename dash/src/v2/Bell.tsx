@@ -45,6 +45,7 @@ export function Bell({ state, live, now, goal }: {
       <IconBtn
         label={sorted.length ? 'Тревоги: ' + sorted.length : 'Тревог нет'}
         boxed
+        tip="bottom-end"
         badge={sorted.length || undefined}
         badgeTone={bad ? 'stop' : 'warn'}
         aria-expanded={open}

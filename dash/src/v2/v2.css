@@ -116,6 +116,7 @@
 }
 .v2 .v2-tip.at-right { left: calc(100% + 10px); top: 50%; translate: 0 -50%; }
 .v2 .v2-tip.at-bottom { top: calc(100% + 8px); left: 50%; translate: -50% 0; }
+.v2 .v2-tip.at-bottom-end { top: calc(100% + 8px); right: 0; }
 .v2 .v2-tip.at-top { bottom: calc(100% + 8px); left: 50%; translate: -50% 0; }
 .v2 .v2-ibtn:hover .v2-tip, .v2 .v2-ibtn:focus-visible .v2-tip { opacity: 1; }
 .v2 .v2-badge {

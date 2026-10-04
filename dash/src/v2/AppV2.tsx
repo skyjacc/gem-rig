@@ -19,6 +19,7 @@ import { OverviewKpi } from './overview/kpi.tsx'
 import { Inventory } from './inventory/Inventory.tsx'
 import { ItemCard } from './inventory/ItemCard.tsx'
 import { BuyScreen, useBuy } from './buy/Buy.tsx'
+import { BuySide } from './buy/BuySide.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
@@ -102,6 +103,8 @@ export default function AppV2() {
               </>
             ) : screen === 'inventory' ? (
               <ItemCard state={state} goal={goal} sel={stack} onOverview={g => { setGem(g); setScreen('overview') }} />
+            ) : screen === 'buy' ? (
+              <BuySide state={state} buy={buy} now={now} onRules={() => setRules('rules')} />
             ) : <ScreenSide id={screen} />}
           </aside>
         </div>

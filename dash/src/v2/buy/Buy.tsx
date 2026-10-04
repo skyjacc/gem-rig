@@ -137,7 +137,7 @@ export function BuyScreen({ state, buy }: { state: State; buy: Buy }) {
 
       <Robot buy={buy} />
 
-      <Panel title="План" aside={<>цены — <Src>площадка</Src> · доп. время — <Chip tone="warn">оценка</Chip></>}>
+      <Panel title="План" aside={<>цены — <Src>площадка</Src> · аватарки общих — <Src>граф</Src> · доп. время — <Chip tone="warn">оценка</Chip></>}>
         {DEMO && !scan ? (
           <p className="v2-text">В показе разбор площадки есть только в {FIX.market.currency} — переключите валюту.</p>
         ) : (
@@ -357,7 +357,9 @@ function Plan({ buy, scan, only, setOnly, q, setQ, pics, mine }: {
           {/* Единица цены (per1000 сервера — за тысячу просмотров), не цель. */}
           <span role="columnheader" className="is-r">за 1 000</span>
           <span role="columnheader">потолок · цель {nf(goal)}</span>
-          <span role="columnheader">общих с моими</span>
+          {/* Число общих сервер считает по карте матчей (api.ts marketScan, entityIds) —
+              метка «карта»; аватарки — пары /api/graph, метка «граф» в шапке панели. */}
+          <span role="columnheader">общих с моими <Src>карта</Src></span>
           <span role="columnheader" className="is-r">лотов</span>
           <span role="columnheader" className="is-r" title={'отправок сверх уже идущего; при ' + SPEED + ' в минуту'}>доп. время</span>
           <span role="columnheader" className="is-r">взять</span>

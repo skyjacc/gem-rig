@@ -24,8 +24,9 @@ export const pace = (ap: State['autopilot']) =>
       : nf(ap.delay) + ' мс'
 
 // kind — метка для порядка в новой панели (§5.7: красные → «не дойдёт» →
-// справочные). Старая панель её не читает.
-export type Alert = { level: 'stop' | 'warn'; text: string; todo?: string; kind?: 'reach' }
+// справочные); gem — чей это вопрос, для кнопки действия. Старая панель
+// их не читает.
+export type Alert = { level: 'stop' | 'warn'; text: string; todo?: string; kind?: 'reach'; gem?: string }
 
 // Статус гема для холста новой панели. Условия — те же, что ниже в
 // attention(), слово в слово: две разные классификации одного гема недопустимы.
@@ -122,6 +123,7 @@ export function attention(s: State, live: Live, now: number, goal: number | null
         text: m.gem + ' — матчей всего ' + nf(m.supply) + ', до цели ' + nf(goal) + ' не дойдёт',
         todo: 'его вещи остановятся на ' + nf(m.supply) + '; либо снизьте цель, либо не считайте их товаром',
         kind: 'reach',
+        gem: m.gem,
       })
     } else if (capped.has(m.gem)) {
       a.push({

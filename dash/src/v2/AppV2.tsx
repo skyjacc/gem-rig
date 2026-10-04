@@ -12,6 +12,9 @@ import { Booting, FirstRun, NoServer } from './States.tsx'
 import { Pill } from './ui.tsx'
 import { Screen, ScreenSide } from './screens.tsx'
 import { Overview } from './overview/Overview.tsx'
+import { Inspector } from './overview/Inspector.tsx'
+import { Alerts } from './overview/Alerts.tsx'
+import { currentGem } from './overview/Canvas.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
@@ -75,7 +78,12 @@ export default function AppV2() {
             <Pult state={state} live={live} now={now} onTune={() => setRules('run')} onBurn={() => setBurning(true)} />
           </main>
           <aside className="v2-side" aria-label="Правая колонка">
-            {empty ? null : <ScreenSide id={screen} />}
+            {empty ? null : screen === 'overview' ? (
+              <>
+                <Inspector state={state} gem={currentGem(state, goal, gem)} goal={goal} onInventory={() => setScreen('inventory')} />
+                <Alerts state={state} live={live} now={now} goal={goal} />
+              </>
+            ) : <ScreenSide id={screen} />}
           </aside>
         </div>
         {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}

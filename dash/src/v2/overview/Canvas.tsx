@@ -39,6 +39,13 @@ export function orderGems(mine: Gem[], goal: number | null, picked: Set<string>)
   return mine.filter(m => m.gem !== '—').sort((a, b) => rank(a) - rank(b) || b.max - a.max || a.gem.localeCompare(b.gem))
 }
 
+// Какой гем показан: выбранный, а если не выбран или пропал — первый в столбце.
+// Одна функция и для холста, и для инспектора — чтобы они не разошлись.
+export function currentGem(state: State, goal: number | null, sel: string | null) {
+  const gems = orderGems(state.mine, goal, new Set(state.autopilot.picked ?? []))
+  return gems.find(g => g.gem === sel) ?? gems[0] ?? null
+}
+
 // Уважает ли человек «уменьшить движение»: SVG-импульсы CSS не гасит,
 // поэтому их просто не рисуем.
 function useCalm() {
@@ -94,7 +101,7 @@ export function Canvas({ state, accounts, goal, sel, onSel }: {
     return () => ro.disconnect()
   }, [H])
 
-  const current = gems.find(g => g.gem === sel) ?? gems[0]
+  const current = currentGem(state, goal, sel)
   const si = current ? gems.indexOf(current) : -1
   const acc = accounts?.list.find(a => a.id === accounts.active)
   const session = SESSION[acc?.sessionState?.state ?? ''] ?? { word: 'сессия не проверена', tone: 'warn' as const }

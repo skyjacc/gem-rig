@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { coEdges } from './graph.ts'
+import { DatabaseSync } from 'node:sqlite'
+import { buildGraph, coEdges, type GraphEntity } from './graph.ts'
 
 const sets = new Map<string, string[]>([
   ['A', ['1', '2', '3']],
@@ -76,4 +77,47 @@ test('пары не слипаются, даже если склейка имё�
     e.map(x => x.a + ' + ' + x.b).sort(),
     ['A + B C', 'A B + C'],
   )
+})
+
+// ── узлы ──
+
+function mapDb() {
+  const db = new DatabaseSync(':memory:')
+  db.exec(`
+    create table vmatch (match_id text primary key, league_id text,
+      radiant integer, dire integer, start_time integer, lobby_type integer);
+    create table vplayer (match_id text, account_id integer, primary key (match_id, account_id));
+    create table burned (account text, match_id text, league_id text, ts integer,
+      source text, state text default 'confirmed');`)
+  const m = db.prepare('insert into vmatch values (?,?,?,?,?,?)')
+  m.run('1', '100', 39, 2, 0, 2)
+  m.run('2', '100', 39, 2, 0, 2)
+  m.run('3', '100', 2, 99, 0, 2)
+  return db
+}
+
+const ent = (key: string, id: number, extra: Partial<GraphEntity> = {}): GraphEntity =>
+  ({ key, kind: 'team', id, owned: 0, price: null, counter: 0, icon: '', ...extra })
+
+// В карте гемов одна команда бывает дважды: «Spectator: Evil Geniuses»
+// и «Genuine Spectator: Evil Geniuses». norm() сводит обе к одному имени,
+// и узлов с одинаковым ключом становилось два — React ругался на повтор
+// key, а раскладка схлопывала их по ключу. Рёбра при этом уже брали
+// последнюю запись (sets.set), узел обязан брать её же.
+test('узлы графа уникальны по ключу — повтор оставляет последнюю запись', () => {
+  const g = buildGraph(mapDb(), [
+    ent('Evil Geniuses', 39, { owned: 1, counter: 5, icon: 'first' }),
+    ent('Team Liquid', 2),
+    ent('Evil Geniuses', 39, { owned: 4, counter: 99, icon: 'last' }),
+  ], 'acc')
+  const keys = g.nodes.map(x => x.key)
+  assert.equal(new Set(keys).size, keys.length)
+  assert.deepEqual(keys, ['Evil Geniuses', 'Team Liquid'])
+  const eg = g.nodes.find(x => x.key === 'Evil Geniuses')!
+  assert.equal(eg.owned, 4)
+  assert.equal(eg.counter, 99)
+  assert.equal(eg.icon, 'last')
+  assert.equal(eg.pool, 2)
+  assert.equal(g.edges.length, 1)
+  assert.equal(g.edges[0].shared, 2)
 })

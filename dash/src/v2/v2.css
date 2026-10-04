@@ -240,10 +240,15 @@
 
 /* ── плавающий пульт (§4.2) ── */
 
+/* Перенос строк разрешён всегда: две строки появляются ровно тогда, когда
+   содержимое не влезает. Порога по ширине нет — длина слов в пульте меняется
+   (у работающего пульта причина длиннее), и любой порог либо прятал бы
+   «Накрутить» за край, либо переносил бы пульт без нужды. Скругление — половина
+   высоты одной строки: в одну строку это та же пилюля, в две — скруглённый
+   прямоугольник. Ширина — по содержимому, но не шире страницы минус 16 с краёв. */
 .v2 .v2-pult {
-  position: absolute; z-index: 10; left: 50%; bottom: 16px; translate: -50% 0;
-  max-width: calc(100% - 32px); overflow-x: auto; scrollbar-width: none;
-  display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; white-space: nowrap;
+  position: absolute; z-index: 10; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin-inline: auto;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; padding: 6px; border-radius: 27px; white-space: nowrap;
   background: #1a1a1dee; border: 1px solid var(--line2); box-shadow: 0 20px 50px #000000aa, inset 0 1px 0 #ffffff0d;
   backdrop-filter: blur(10px);
 }
@@ -304,7 +309,7 @@
      и пульт прилипал бы к ней, а не к экрану. */
   .v2 .v2-page { margin: 0 16px 16px 4px; min-height: calc(100svh - 76px); overflow: clip; display: flex; flex-direction: column; }
   .v2 .v2-page-scroll { position: static; overflow: visible; flex: 1; }
-  .v2 .v2-pult { position: sticky; left: auto; translate: none; width: fit-content; margin: -72px auto 16px; }
+  .v2 .v2-pult { position: sticky; left: auto; right: auto; margin: -72px auto 16px; max-width: calc(100% - 32px); }
   .v2 .v2-side { grid-column: 2; grid-row: 3; padding: 0 16px 16px 4px; overflow: visible; }
 }
 

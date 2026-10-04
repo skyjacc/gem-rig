@@ -11,6 +11,11 @@ import { Bell } from './Bell.tsx'
 import { Booting, FirstRun, NoServer } from './States.tsx'
 import { Pill } from './ui.tsx'
 import { Screen, ScreenSide } from './screens.tsx'
+import { Overview } from './overview/Overview.tsx'
+import { Inspector } from './overview/Inspector.tsx'
+import { Alerts } from './overview/Alerts.tsx'
+import { currentGem } from './overview/Canvas.tsx'
+import { OverviewKpi } from './overview/kpi.tsx'
 
 // Часы для «N без связи». Именем, а не числом: поиск круглых тысяч
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
@@ -32,6 +37,8 @@ export default function AppV2() {
   // Привязка — нынешнее окно LinkAccount (старый вид, портал вне .v2);
   // новое — вместе с экраном Аккаунтов (этап 2.4).
   const [linking, setLinking] = useState(false)
+  // Выбранный гем Обзора: его показывают и холст, и инспектор справа.
+  const [gem, setGem] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), SECOND)
@@ -61,16 +68,29 @@ export default function AppV2() {
       <div className="v2">
         <div className="v2-app">
           <Rail screen={screen} onScreen={setScreen} onRules={() => setRules('rules')} />
-          <TopBar state={state} accounts={accounts} status={status} bell={<Bell state={state} live={live} now={now} goal={goal} />} />
+          <TopBar
+            state={state}
+            accounts={accounts}
+            kpi={screen === 'overview' && !empty ? <OverviewKpi state={state} goal={goal} settings={settings} now={now} /> : undefined}
+            status={status}
+            bell={<Bell state={state} live={live} now={now} goal={goal} />}
+          />
           <RailRow screen={screen} onScreen={setScreen} />
           <main className="v2-page" aria-label={title}>
             <div className="v2-page-scroll">
-              {empty ? <FirstRun onLink={() => setLinking(true)} /> : <Screen id={screen} title={title} />}
+              {empty ? <FirstRun onLink={() => setLinking(true)} />
+                : screen === 'overview' ? <Overview state={state} accounts={accounts} goal={goal} sel={gem} onSel={setGem} />
+                : <Screen id={screen} title={title} />}
             </div>
             <Pult state={state} live={live} now={now} onTune={() => setRules('run')} onBurn={() => setBurning(true)} />
           </main>
           <aside className="v2-side" aria-label="Правая колонка">
-            {empty ? null : <ScreenSide id={screen} />}
+            {empty ? null : screen === 'overview' ? (
+              <>
+                <Inspector state={state} gem={currentGem(state, goal, gem)} goal={goal} onInventory={() => setScreen('inventory')} />
+                <Alerts state={state} live={live} now={now} goal={goal} />
+              </>
+            ) : <ScreenSide id={screen} />}
           </aside>
         </div>
         {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}

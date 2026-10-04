@@ -80,6 +80,7 @@
   color: var(--ink2); font-size: 12px; white-space: nowrap;
 }
 .v2 .v2-pill b { color: var(--ink); font-weight: 500; }
+.v2 .v2-pill .v2-kpi-none, .v2 .v2-pill .v2-kpi-old { color: var(--mute); font-weight: 400; }
 .v2 .v2-pill.is-warn { color: var(--warn); background: var(--warns); border-color: transparent; }
 .v2 .v2-pill.is-stop { color: var(--stop); background: var(--stops); border-color: transparent; }
 
@@ -115,6 +116,7 @@
   opacity: 0; transition: opacity 120ms;
 }
 .v2 .v2-tip.at-right { left: calc(100% + 10px); top: 50%; translate: 0 -50%; }
+.v2 .v2-tip.at-left { right: calc(100% + 10px); top: 50%; translate: 0 -50%; }
 .v2 .v2-tip.at-bottom { top: calc(100% + 8px); left: 50%; translate: -50% 0; }
 .v2 .v2-tip.at-bottom-end { top: calc(100% + 8px); right: 0; }
 .v2 .v2-tip.at-top { bottom: calc(100% + 8px); left: 50%; translate: -50% 0; }
@@ -348,6 +350,136 @@
 .v2 .v2-lead { margin: -8px 0 0; color: var(--ink2); }
 .v2 .v2-text { margin: 0 0 8px; line-height: 1.45; }
 .v2 .v2-link { margin-top: 12px; text-decoration: none; width: fit-content; }
+
+/* ── Обзор: холст (§5.1) ── */
+
+/* Экран занимает всю страницу: шапка сверху, холст на остаток. */
+.v2 .v2-ov { height: 100%; min-height: 560px; display: flex; flex-direction: column; gap: 12px; }
+.v2 .v2-ov-head { display: flex; align-items: flex-start; gap: 16px; }
+.v2 .v2-ov-head .v2-hint { margin: 4px 0 0; }
+.v2 .v2-ov-stage {
+  position: relative; flex: 1; min-height: 420px; overflow: hidden; border-radius: var(--r2);
+  background-color: var(--bg);
+  background-image: radial-gradient(#ffffff0d 1px, transparent 1.2px); background-size: 20px 20px; background-position: 10px 10px;
+}
+.v2 .v2-ov-board { position: absolute; left: 50%; top: 50%; transform-origin: center; }
+.v2 .v2-ov-wires { position: absolute; inset: 0; overflow: visible; }
+
+.v2 .v2-edge { fill: none; stroke: #ffffff1f; stroke-width: 1.2; }
+.v2 .v2-edge.is-live { stroke: var(--ac); stroke-opacity: 0.55; }
+.v2 .v2-edge.is-live.is-glow { stroke-width: 5; stroke-opacity: 0.12; filter: blur(2px); }
+.v2 .v2-edge.is-warn { stroke: var(--warn); stroke-opacity: 0.45; stroke-dasharray: 3 5; }
+.v2 .v2-edge.is-stop { stroke: var(--stop); stroke-opacity: 0.45; stroke-dasharray: 3 5; }
+.v2 .v2-edge.is-item { stroke: #ffffff26; }
+.v2 .v2-edge.is-item.is-sel { stroke: var(--ac); stroke-opacity: 0.5; }
+.v2 .v2-pulse { fill: var(--ac); filter: drop-shadow(0 0 6px var(--ac)); }
+
+.v2 .v2-node {
+  position: absolute; border-radius: 14px; border: 1px solid var(--line2);
+  background: linear-gradient(180deg, #1d1d21, #18181b); box-shadow: 0 10px 30px #00000066, inset 0 1px 0 #ffffff0d;
+  transition: background-color var(--t-color), box-shadow var(--t-color);
+}
+.v2 .v2-node-acct { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.v2 .v2-acct-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.v2 .v2-ava.is-lg { width: 36px; height: 36px; border-radius: 10px; font-size: 14px; }
+.v2 .v2-acct-name { display: flex; flex-direction: column; min-width: 0; }
+.v2 .v2-acct-name b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-acct-name .v2-id { color: var(--mute); font-size: 10.5px; }
+.v2 .v2-acct-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.v2 .v2-acct-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.v2 .v2-acct-stats span { background: #111113; border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; }
+.v2 .v2-acct-stats i { font-style: normal; color: var(--mute); font-size: 10px; }
+.v2 .v2-acct-stats b { font-size: 13px; font-weight: 500; }
+
+.v2 .v2-node-gem { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 10px; text-align: left; cursor: pointer; }
+.v2 .v2-node-gem:hover { background: linear-gradient(180deg, #232327, #1c1c1f); }
+/* Выбор — кольцо внутрь и свечение тенью (§3.1): ничего не сдвигается. */
+.v2 .v2-node-gem.is-on { box-shadow: 0 10px 30px #00000066, inset 0 0 0 1px var(--ac), 0 0 24px #b8f25c22; }
+.v2 .v2-gem-ico, .v2 .v2-item-ico { flex: none; border-radius: 10px; border: 1px solid var(--line); background: #0f0f11 center / cover no-repeat; }
+.v2 .v2-gem-ico { width: 44px; height: 44px; }
+.v2 .v2-gem-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.v2 .v2-gem-nm { display: flex; align-items: baseline; gap: 6px; font-size: 13px; font-weight: 500; }
+.v2 .v2-gem-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-gem-cnt { margin-left: auto; flex: none; font-size: 11px; font-weight: 400; color: var(--mute); }
+.v2 .v2-gem-cnt b { color: var(--ink); font-weight: 500; }
+.v2 .v2-gem-hr { color: var(--mute); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-gem-bar { height: 3px; border-radius: 999px; background: var(--s3); margin-top: 5px; overflow: hidden; }
+.v2 .v2-gem-bar i { display: block; height: 100%; background: var(--ac); border-radius: 999px; }
+
+.v2 .v2-node-item { width: 214px; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 10px; font-size: 12px; animation: v2-in var(--t-in) ease-out; }
+.v2 .v2-item-ico { width: 28px; height: 28px; border-radius: 7px; }
+.v2 .v2-item-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink2); }
+.v2 .v2-item-eq { color: var(--mute); font-size: 10.5px; }
+.v2 .v2-node-item.is-more { justify-content: center; color: var(--mute); background: transparent; border-style: dashed; box-shadow: none; }
+
+.v2 .v2-elabel {
+  position: absolute; translate: -50% -50%; height: 20px; padding: 0 8px; border-radius: 999px; white-space: nowrap;
+  display: flex; align-items: center; background: #0e0e10; border: 1px solid var(--line2); color: var(--ink2); font-size: 10.5px;
+}
+
+.v2 .v2-ov-legend { position: absolute; left: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--mute); }
+.v2 .v2-ov-legend span { display: flex; align-items: center; gap: 8px; }
+.v2 .v2-ov-legend i { width: 18px; height: 0; border-top: 1.5px solid; }
+.v2 .v2-ov-legend i.is-live { border-color: var(--ac); }
+.v2 .v2-ov-legend i.is-warn { border-color: var(--warn); border-top-style: dashed; }
+.v2 .v2-ov-legend i.is-stop { border-color: var(--stop); border-top-style: dashed; }
+.v2 .v2-ov-zoom {
+  position: absolute; right: 14px; top: 50%; translate: 0 -50%; display: flex; flex-direction: column; gap: 4px; padding: 4px;
+  background: var(--s2); border: 1px solid var(--line); border-radius: 999px;
+}
+
+/* ── Обзор: инспектор и тревоги (§5.1) ── */
+
+.v2 .v2-insp-hero { display: flex; gap: 12px; align-items: center; }
+.v2 .v2-insp-hero h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+.v2 .v2-insp-hero .v2-hint { margin: 2px 0 0; }
+.v2 .v2-insp-ico { width: 56px; height: 56px; flex: none; border-radius: 14px; border: 1px solid var(--line2); background: #0f0f11 center / cover no-repeat; box-shadow: 0 0 30px #b8f25c1c; }
+.v2 .v2-insp-chip { margin-top: 6px; }
+.v2 .v2-insp-ring { display: grid; grid-template-columns: 132px 1fr; gap: 16px; align-items: center; margin-top: 16px; }
+.v2 .v2-ring-box { position: relative; width: 132px; height: 132px; }
+.v2 .v2-ring-c, .v2 .v2-ring-box.is-none { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.v2 .v2-ring-box.is-none { position: relative; border-radius: 999px; border: 8px solid var(--s3); }
+.v2 .v2-ring-c b, .v2 .v2-ring-box.is-none b { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; }
+.v2 .v2-ring-c span, .v2 .v2-ring-box.is-none span { color: var(--mute); font-size: 11px; }
+.v2 .v2-facts { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.v2 .v2-facts .v2-tile { display: flex; flex-direction: column; gap: 1px; }
+.v2 .v2-facts .v2-tile > span { color: var(--mute); font-size: 11px; }
+.v2 .v2-facts .v2-tile > b { font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.v2 .v2-insp-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.v2 .v2-insp-list li { display: flex; align-items: center; gap: 10px; height: 44px; border-top: 1px solid var(--line); font-size: 12.5px; }
+.v2 .v2-insp-list li:first-child { border-top: 0; }
+.v2 .v2-insp-list .v2-item-ico { width: 30px; height: 30px; border-radius: 8px; }
+.v2 .v2-insp-more { justify-content: center; color: var(--mute); }
+.v2 .v2-insp-acts { display: flex; gap: 8px; margin-top: 12px; }
+.v2 .v2-insp-acts .v2-btn { flex: 1; }
+.v2 .v2-alert-a { display: flex; gap: 6px; margin-top: 4px; }
+.v2 .v2-alert-a .v2-btn { height: 28px; padding: 0 12px; font-size: 11.5px; }
+
+/* ── переключатель (сегменты) ── */
+
+.v2 .v2-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--s2); flex: none; }
+.v2 .v2-seg button { height: 26px; padding: 0 12px; border-radius: 999px; color: var(--ink2); font-size: 12px; transition: background-color var(--t-color), color var(--t-color); }
+.v2 .v2-seg button:hover { color: var(--ink); }
+.v2 .v2-seg button[aria-pressed='true'] { background: var(--s3); color: var(--ink); }
+
+/* ── Обзор: сеть матчей ── */
+
+.v2 .v2-net-bar { position: absolute; z-index: 3; left: 50%; top: 12px; translate: -50% 0; display: flex; gap: 8px; align-items: center; }
+.v2 .v2-net-find { height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 999px; background: var(--s2); color: var(--mute); }
+.v2 .v2-net-find input { width: 110px; background: transparent; border: 0; outline: none; color: var(--ink); font: inherit; font-size: 12px; }
+.v2 .v2-net-find:focus-within { box-shadow: inset 0 0 0 1px var(--line2); }
+.v2 .v2-net-svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; user-select: none; cursor: grab; }
+.v2 .v2-net .v2-loading, .v2 .v2-net .v2-unavail { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: min(420px, 80%); }
+.v2 .v2-net-why { position: absolute; left: 50%; top: calc(50% + 48px); translate: -50% 0; width: min(420px, 80%); text-align: center; }
+.v2 .v2-net-card {
+  position: absolute; z-index: 3; left: 14px; bottom: 14px; width: 280px; padding: 14px;
+  background: var(--s1); border: 1px solid var(--line2); border-radius: var(--r1); box-shadow: 0 20px 50px #000000aa;
+}
+.v2 .v2-net-card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.v2 .v2-net-card-h img { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); }
+.v2 .v2-net-card-h b { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .v2-net-card .v2-hint { margin: 8px 0 0; }
+.v2 .v2-net-tip { position: absolute; z-index: 2; left: 50%; bottom: 14px; translate: -50% 0; margin: 0; white-space: nowrap; }
 
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */

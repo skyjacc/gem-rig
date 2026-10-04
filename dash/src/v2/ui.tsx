@@ -76,7 +76,7 @@ export function IconBtn({ label, children, onClick, current, boxed, badge, badge
   badge?: number
   badgeTone?: 'warn' | 'stop'
   // bottom-end — для кнопок у правого края: подсказка не вылезает за окно.
-  tip?: 'right' | 'bottom' | 'bottom-end' | 'top'
+  tip?: 'right' | 'left' | 'bottom' | 'bottom-end' | 'top'
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick'>) {
   return (
     <button

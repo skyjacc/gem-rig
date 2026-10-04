@@ -25,7 +25,8 @@ export type Account = {
 
 type Registry = { active: string; list: Account[] }
 
-const FILE = path.join(TOOLS, 'accounts.json')
+// ACCOUNTS_FILE — только для тестов (testenv.ts): свой реестр, рабочий не трогается.
+const FILE = process.env.ACCOUNTS_FILE || path.join(TOOLS, 'accounts.json')
 
 // Метка → безопасное имя файла. Кириллица и пробелы в путях к сессии
 // ничего хорошего не дают.

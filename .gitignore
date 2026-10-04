@@ -12,6 +12,9 @@ tools/panel.env.cmd
 tools/panel.log
 tools/gcwatch/token.json
 tools/gcwatch/token-*.json
+# Реестр аккаунтов: steamid и имена — личное, репозиторий публичный.
+# Сервер создаёт его сам при первом запуске (accounts.ts, load()).
+tools/accounts.json
 
 # рабочие данные
 tools/gcwatch/sent-*.json

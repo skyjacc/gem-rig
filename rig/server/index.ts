@@ -22,6 +22,7 @@ import { listOps, migrateMoney, MONEY_DDL } from './money.ts'
 import { ensureJournal, moneySync, recordBuy, reconcile } from './marketbuys.ts'
 import { checkSession, webCookieHeader } from './steamweb.ts'
 import { steamSync } from './steammarket.ts'
+import { keyState, lastSnapshot, summarize, syncKeys, TF2_DDL } from './tf2keys.ts'
 import { autopilotState, setAutopilot, tick, TICK } from './autopilot.ts'
 import { reset as resetSettings, settings, update as updateSettings } from './settings.ts'
 
@@ -34,6 +35,8 @@ const moneyMigrated = migrateMoney(db)
 if (moneyMigrated.migrated) console.log('миграция: money_ops — gross может быть пустым')
 db.exec(MONEY_DDL)
 ensureJournal(db)
+// Ключи TF2 (план 3.4): снимки — только вставка.
+db.exec(TF2_DDL)
 // Фронт живёт в отдельной папке: оформление переделано с нуля,
 // и держать его внутри движка больше незачем.
 const DIST = path.resolve(here, '..', '..', 'dash', 'dist')
@@ -381,6 +384,28 @@ app.post('/api/money/steam-sync', async (req: any) => {
     mode: b.mode == null ? undefined : b.mode,
     from: b.from == null ? undefined : Number(b.from),
   })
+})
+
+// Ключи TF2 (план 3.4): чтение инвентаря — только по запросу, без кук,
+// через ограничитель Steam; неполный инвентарь не сохраняется.
+app.post('/api/keys/sync', async (req: any) => {
+  const a = accountById(String(req.body?.id ?? ''))
+  if (!a) return { error: 'нет такого аккаунта' }
+  return syncKeys(db, { accountId: a.id, steamid: a.steamid })
+})
+
+// Итог по последнему снимку — без сети. Состояния считаются на сейчас.
+app.get('/api/keys', async (req: any) => {
+  const a = accountById(String(req.query?.id ?? ''))
+  if (!a) return { error: 'нет такого аккаунта' }
+  const s = lastSnapshot(db, a.id)
+  if (!s) return { snapshot: null }
+  const now = Date.now()
+  return {
+    snapshot: { id: s.id, seenAt: s.seenAt },
+    summary: summarize(s.keys, now),
+    keys: s.keys.map(k => ({ ...k, state: keyState(k, now) })),
+  }
 })
 
 // Отчёт сверки — без обращения к площадке.

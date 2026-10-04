@@ -110,8 +110,17 @@ export const steamHistoryUrl = (start: number) =>
 
 type Fetcher = (url: string, init: { headers: Record<string, string>; redirect: 'manual' }) => Promise<Response>
 
+// Два режима (план «полный проход»):
+//   новые   ежедневный: стоп на первой уже записанной сделке;
+//   полный  исторический: записанные страницы проходятся насквозь — повторы
+//           не вставляются (UNIQUE source + external_id), считаются «уже было».
+// from — смещение (только для «полного»), не курсор: если между запусками
+// появятся новые сделки, страницы сдвинутся (ограничение принято, план).
+export type SteamMode = 'новые' | 'полный'
+
 export type SteamSyncResult = {
   pages: number
+  next: number | null   // откуда продолжить «полный»; null — история кончилась или режим «новые» дошёл до записанного
   inserted: number
   existing: number
   skipped: Record<string, number>
@@ -125,18 +134,35 @@ export type SteamSyncResult = {
 export async function steamSync(db: DatabaseSync, o: {
   accountId: string
   me: string
-  cookie: string
+  cookie?: string
+  // Куки по требованию — только после проверки параметров: обмен токена тоже
+  // обращение к Steam, и при неверных параметрах его быть не должно.
+  getCookie?: () => Promise<string>
   pages?: number
+  mode?: SteamMode
+  from?: number
   fetcher?: Fetcher
 }): Promise<SteamSyncResult> {
-  const res: SteamSyncResult = { pages: 0, inserted: 0, existing: 0, skipped: {}, stoppedBy: 'лимит страниц' }
+  const mode = o.mode ?? 'новые'
+  const from = o.from ?? 0
+  const res: SteamSyncResult = { pages: 0, next: null, inserted: 0, existing: 0, skipped: {}, stoppedBy: 'лимит страниц' }
+  if (mode !== 'новые' && mode !== 'полный') return { ...res, stoppedBy: 'ошибка', error: 'неизвестный режим: ' + String(mode) }
+  if (!Number.isInteger(from) || from < 0 || from % STEAM_PAGE) return { ...res, stoppedBy: 'ошибка', error: 'from — целое ≥ 0, кратное ' + STEAM_PAGE }
+  if (mode === 'новые' && from) return { ...res, stoppedBy: 'ошибка', error: 'from — только для полного прохода' }
   if (!o.me) return { ...res, stoppedBy: 'ошибка', error: 'нет своего steamid — продажу от покупки не отличить' }
   const limit = o.pages == null ? 3 : Math.max(1, Math.min(MAX_PAGES, Math.trunc(Number(o.pages)) || 1))
   const fetcher: Fetcher = o.fetcher ?? ((url, init) => fetch(url, init))
-  const headers = { Cookie: o.cookie, 'User-Agent': 'gemtrack', Accept: 'application/json' }
+  let cookie = o.cookie ?? ''
+  if (!cookie && o.getCookie) {
+    try { cookie = await o.getCookie() } catch (e: any) { return { ...res, stoppedBy: 'ошибка', error: String(e?.message ?? e) } }
+  }
+  if (!cookie) return { ...res, stoppedBy: 'ошибка', error: 'нет веб-кук' }
+  const headers = { Cookie: cookie, 'User-Agent': 'gemtrack', Accept: 'application/json' }
 
   for (let i = 0; i < limit; i++) {
-    const start = i * STEAM_PAGE
+    const start = from + i * STEAM_PAGE
+    // Пока страница не обработана, продолжать надо с неё самой.
+    res.next = start
     const r = await steamLimiter.run(o.accountId, () => fetcher(steamHistoryUrl(start), { headers, redirect: 'manual' }))
     res.pages++
     if (r.status === 429) {
@@ -159,9 +185,10 @@ export async function steamSync(db: DatabaseSync, o: {
       if (w.inserted) res.inserted++
       else { res.existing++; known++ }
     }
-    if (known) return { ...res, stoppedBy: 'дошли до записанного' }
+    res.next = start + STEAM_PAGE
+    if (known && mode === 'новые') return { ...res, next: null, stoppedBy: 'дошли до записанного' }
     const events = Array.isArray(page.events) ? page.events.length : 0
-    if (events < STEAM_PAGE || start + STEAM_PAGE >= Number(page.total_count ?? 0)) return { ...res, stoppedBy: 'конец истории' }
+    if (events < STEAM_PAGE || start + STEAM_PAGE >= Number(page.total_count ?? 0)) return { ...res, next: null, stoppedBy: 'конец истории' }
   }
   return res
 }

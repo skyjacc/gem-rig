@@ -228,3 +228,79 @@ test('нет своего steamid — импорт не начинается: п
   assert.equal(calls.length, 0)
   assert.match(String(r.error), /steamid/)
 })
+
+// ── полный проход (малый PR после 3.3) ──
+
+const endless = () => steam(start => ({ status: 200, body: pageOf(start, 100, 99999) }))
+
+test('«полный» проходит записанные страницы насквозь и вставляет новые дальше', async () => {
+  const db = fresh()
+  await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 1, fetcher: endless() })
+  calls = []
+  const r = await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 3, mode: 'полный', fetcher: endless() })
+  assert.equal(calls.length, 3)
+  assert.equal(r.existing, 100)
+  assert.equal(r.inserted, 200)
+  assert.equal(r.stoppedBy, 'лимит страниц')
+  assert.equal(r.next, 300)
+})
+
+test('повторный полный проход ничего не добавляет', async () => {
+  const db = fresh()
+  const fetcher = steam(start => ({ status: 200, body: pageOf(start, start < 200 ? 100 : 40, 240) }))
+  const a = await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 20, mode: 'полный', fetcher })
+  const b = await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 20, mode: 'полный', fetcher })
+  assert.equal(a.inserted, 240)
+  assert.equal(b.inserted, 0)
+  assert.equal(b.existing, 240)
+  assert.equal(b.stoppedBy, 'конец истории')
+  assert.equal(b.next, null)
+})
+
+test('«новые» по-прежнему стоит на записанном, next = null', async () => {
+  const db = fresh()
+  await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 1, fetcher: endless() })
+  calls = []
+  const r = await steamSync(db, { accountId: 'main', me: ME, cookie: COOKIE, pages: 5, mode: 'новые', fetcher: endless() })
+  assert.equal(calls.length, 1)
+  assert.equal(r.stoppedBy, 'дошли до записанного')
+  assert.equal(r.next, null)
+})
+
+test('from: первый запрос с него; после лимита next — за последней обработанной', async () => {
+  const r = await steamSync(fresh(), { accountId: 'main', me: ME, cookie: COOKIE, pages: 2, mode: 'полный', from: 500, fetcher: endless() })
+  assert.deepEqual(calls.map(c => new URL(c.url).searchParams.get('start')), ['500', '600'])
+  assert.equal(r.next, 700)
+})
+
+test('429 и ошибка: next — та же страница, она не обработана', async () => {
+  const a = await steamSync(fresh(), { accountId: 'main', me: ME, cookie: COOKIE, pages: 5, mode: 'полный', from: 200,
+    fetcher: steam(start => (start === 200 ? { status: 200, body: pageOf(200, 100, 99999) } : { status: 429, body: '' })) })
+  assert.equal(a.stoppedBy, '429')
+  assert.equal(a.next, 300)
+  const b = await steamSync(fresh(), { accountId: 'main', me: ME, cookie: COOKIE, pages: 5, mode: 'полный', fetcher: steam(() => ({ status: 200, body: 'не json' })) })
+  assert.equal(b.next, 0)
+})
+
+test('неверный режим или from — ошибка без запроса', async () => {
+  for (const o of [{ mode: 'все' as any }, { mode: 'полный' as const, from: 150 }, { mode: 'полный' as const, from: -100 }, { mode: 'новые' as const, from: 100 }, { from: 100 }]) {
+    calls = []
+    const r = await steamSync(fresh(), { accountId: 'main', me: ME, cookie: COOKIE, fetcher: endless(), ...o })
+    assert.equal(calls.length, 0, JSON.stringify(o))
+    assert.equal(r.stoppedBy, 'ошибка')
+    assert.ok(r.error)
+  }
+})
+
+test('куки берутся только после проверки параметров: неверный режим — к Steam (и за куками) не ходим', async () => {
+  let asked = 0
+  const getCookie = async () => { asked++; return COOKIE }
+  const bad = await steamSync(fresh(), { accountId: 'main', me: ME, getCookie, mode: 'все' as any, fetcher: endless() })
+  assert.equal(asked, 0)
+  assert.equal(bad.stoppedBy, 'ошибка')
+  const ok = await steamSync(fresh(), { accountId: 'main', me: ME, getCookie, pages: 1, fetcher: endless() })
+  assert.equal(asked, 1)
+  assert.equal(ok.inserted, 100)
+  const fail = await steamSync(fresh(), { accountId: 'main', me: ME, getCookie: async () => { throw new Error('нет веб-сессии') }, fetcher: endless() })
+  assert.match(String(fail.error), /нет веб-сессии/)
+})

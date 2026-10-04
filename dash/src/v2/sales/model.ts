@@ -68,21 +68,43 @@ export function money(source: string, currency: string, units: number): { text: 
 
 // ── сторно (решение 12) ──
 
+// orphan    — сторно ссылается на операцию, которой нет среди загруженных;
+// malformed — external_id сторно не вида storno:<id> — ошибка записи.
+// Ни те, ни другие в суммы не входят.
 export function clean(ops: Op[]) {
   const byId = new Map(ops.map(o => [o.id, o]))
   const reversed = new Set<number>()
   let orphan = 0
+  let malformed = 0
   for (const o of ops) {
     if (o.type !== 'сторно') continue
-    const id = Number(/^storno:(\d+)$/.exec(o.external_id)?.[1] ?? NaN)
-    if (byId.has(id)) reversed.add(id)
+    const m = /^storno:(\d+)$/.exec(o.external_id)
+    if (!m) { malformed++; continue }
+    if (byId.has(Number(m[1]))) reversed.add(Number(m[1]))
     else orphan++
   }
   return {
     ops: ops.filter(o => o.type !== 'сторно' && !reversed.has(o.id)),
     reversed: reversed.size,
     orphan,
+    malformed,
   }
+}
+
+// Что значит сторно без исходной — зависит от того, вся ли история
+// загружена. Загружена вся (меньше предела) — исходной нет в журнале вовсе:
+// это расхождение журнала. Упёрлись в предел — исходная может быть просто
+// старше загруженного: так и говорим, без вывода об ошибке.
+export function stornoNotes(c: { reversed: number; orphan: number; malformed: number }, complete: boolean) {
+  const out: { text: string; tone: 'hint' | 'warn' }[] = []
+  if (c.reversed) out.push({ text: 'Сторнировано операций: ' + nf(c.reversed) + ' — вместе со сторно в итоги не входят.', tone: 'hint' })
+  if (c.orphan) {
+    out.push(complete
+      ? { text: 'Сторно без исходной операции в журнале: ' + nf(c.orphan) + ' — история загружена целиком, исходной нет; это расхождение журнала, в суммы не входит.', tone: 'warn' }
+      : { text: 'Сторно, чья исходная не среди загруженных: ' + nf(c.orphan) + ' — история загружена не целиком (предел), исходная может быть старше; в суммы не входит.', tone: 'hint' })
+  }
+  if (c.malformed) out.push({ text: 'Сторно с неверной ссылкой на исходную (не вида storno:<id>): ' + nf(c.malformed) + ' — ошибка записи журнала, в суммы не входит.', tone: 'warn' })
+  return out
 }
 
 // ── период ──
@@ -153,7 +175,8 @@ export function path(ops: Op[]) {
   }
 }
 
-// Средняя цена ключа — положительная: Σ(−net) / число покупок в этой валюте.
+// Средняя сумма одной покупки ключа — положительная: Σ(−net) / число покупок.
+// Это «за покупку», а не «за ключ»: поля количества в истории нет.
 export const avg = (s: Sum) => (s.n ? Math.round(s.units / s.n) : 0)
 
 // ── дни ──

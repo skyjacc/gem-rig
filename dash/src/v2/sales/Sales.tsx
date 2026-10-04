@@ -11,7 +11,7 @@ import { Loadable } from '../States.tsx'
 import { Btn, Chip, Panel, Src } from '../ui.tsx'
 import {
   avg, clean, countdown, currencyName, dayLabel, gemBuysDays, gmt, inPeriod, keyBatches, money, path,
-  PERIODS, salesDays, walletCurrencies, walletDays, when, type Invested, type Period, type Sum,
+  PERIODS, salesDays, stornoNotes, walletCurrencies, walletDays, when, type Invested, type Period, type Sum,
 } from './model.ts'
 import { LIMIT, type SalesData } from './data.ts'
 
@@ -54,9 +54,9 @@ export function SalesScreen({ data, now }: { data: SalesData; now: number }) {
 
       <Loadable what="журнал операций" loading={data.money.loading} error={data.money.error} ready={raw != null} onRetry={data.money.reload}>
         {list.length >= LIMIT ? <p className="v2-note is-warn">Загружен предел {nf(LIMIT)} операций — история может быть неполной.</p> : null}
-        {c.reversed || c.orphan ? (
-          <p className="v2-hint">Сторнировано операций: {nf(c.reversed)} — вместе со сторно в итоги не входят.{c.orphan ? ' Сторно без исходной в загруженном: ' + nf(c.orphan) + ' — в суммы не входят.' : ''}</p>
-        ) : null}
+        {stornoNotes(c, list.length < LIMIT).map(n => (
+          <p key={n.text} className={n.tone === 'warn' ? 'v2-note is-warn' : 'v2-hint'}>{n.text}</p>
+        ))}
 
         <Path p={p} data={data} now={now} />
         <Totals p={p} />
@@ -101,13 +101,13 @@ function Path({ p, data, now }: { p: ReturnType<typeof path>; data: SalesData; n
   const arrow = <ArrowRight size={14} className="v2-sl-arrow" aria-hidden="true" />
   return (
     <div className="v2-sl-path" aria-label="Путь денег">
-      {node(<>Гемы куплены <Src>площадка</Src></>, nf(p.gems.n) + ' шт', <Sums sums={p.gems.sums} none="покупок нет" />)}
+      {node(<>Гемы куплены <Src>площадка</Src></>, nf(p.gems.n) + ' ' + plural(p.gems.n, 'покупка', 'покупки', 'покупок'), <Sums sums={p.gems.sums} none="покупок нет" />)}
       {arrow}
-      {node(<>Продано на Steam <Src>журнал</Src></>, nf(p.sold.n) + ' ' + plural(p.sold.n, 'вещь', 'вещи', 'вещей'), <>пришло на кошелёк <Sums sums={p.sold.sums} none="—" /></>)}
+      {node(<>Продано на Steam <Src>журнал</Src></>, nf(p.sold.n) + ' ' + plural(p.sold.n, 'продажа', 'продажи', 'продаж'), <>пришло на кошелёк <Sums sums={p.sold.sums} none="—" /></>)}
       {arrow}
-      {node(<>Куплено ключей <Src>журнал</Src></>, nf(p.keys.n) + ' шт', <>
+      {node(<>Куплено ключей <Src>журнал</Src></>, nf(p.keys.n) + ' ' + plural(p.keys.n, 'покупка', 'покупки', 'покупок'), <>
         <Sums sums={p.keys.sums} none="покупок нет" />
-        {p.keys.sums.map(x => <span key={x.currency} className="v2-hint">за ключ ≈ <M source={x.source} currency={x.currency} units={avg(x)} /></span>)}
+        {p.keys.sums.map(x => <span key={x.currency} className="v2-hint">в среднем за покупку <M source={x.source} currency={x.currency} units={avg(x)} /></span>)}
       </>)}
       {arrow}
       {node(<>Ждут анлока <Src>инвентарь</Src></>, s ? nf(s.held) + ' шт' : '—',
@@ -177,7 +177,7 @@ function Wallet({ ops, currency, day, onDay }: { ops: ReturnType<typeof clean>['
       </p>
       {sel ? (
         <p className="v2-sl-day" role="status">
-          <b>{dayLabel(sel.day)}</b> · продано {nf(sel.salesN)}, пришло <M source={src} currency={currency} units={sel.sales} /> · ключей {nf(sel.keysN)}, потрачено <M source={src} currency={currency} units={sel.keys} />
+          <b>{dayLabel(sel.day)}</b> · продаж {nf(sel.salesN)}, пришло <M source={src} currency={currency} units={sel.sales} /> · покупок ключей {nf(sel.keysN)}, потрачено <M source={src} currency={currency} units={sel.keys} />
         </p>
       ) : <p className="v2-hint">Нажмите на день — суммы за день.</p>}
     </>
@@ -196,7 +196,7 @@ function SalesTable({ ops, currency }: { ops: ReturnType<typeof clean>['ops']; c
   return (
     <div className="v2-sl-table" role="table" aria-label="Продажи на Steam по дням">
       <div className="v2-sl-tr is-head" role="row">
-        <span role="columnheader">день</span><span role="columnheader" className="is-r">вещей</span>
+        <span role="columnheader">день</span><span role="columnheader" className="is-r">продаж</span>
         <span role="columnheader" className="is-r">заплатил покупатель</span><span role="columnheader" className="is-r">комиссия Steam</span>
         <span role="columnheader" className="is-r">комиссия игры</span><span role="columnheader" className="is-r">пришло на кошелёк</span>
       </div>
@@ -221,7 +221,7 @@ function BuysTable({ ops }: { ops: ReturnType<typeof clean>['ops'] }) {
   return (
     <div className="v2-sl-table is-buys" role="table" aria-label="Покупки гемов по дням">
       <div className="v2-sl-tr is-head" role="row">
-        <span role="columnheader">день</span><span role="columnheader" className="is-r">шт</span>
+        <span role="columnheader">день</span><span role="columnheader" className="is-r">покупок</span>
         <span role="columnheader" className="is-r">потрачено</span><span role="columnheader" className="is-r">возвраты</span>
       </div>
       {rows.map(r => (
@@ -291,8 +291,8 @@ function Keys({ data, ops, now }: { data: SalesData; ops: ReturnType<typeof clea
       {batches.length ? (
         <div className="v2-sl-table is-batches" role="table" aria-label="Партии покупок ключей">
           <div className="v2-sl-tr is-head" role="row">
-            <span role="columnheader">день</span><span role="columnheader" className="is-r">шт</span>
-            <span role="columnheader" className="is-r">за шт</span><span role="columnheader" className="is-r">сумма</span>
+            <span role="columnheader">день</span><span role="columnheader" className="is-r">покупок</span>
+            <span role="columnheader" className="is-r">в среднем</span><span role="columnheader" className="is-r">сумма</span>
             <span role="columnheader">станут передаваемыми</span>
           </div>
           {batches.map(b => (
@@ -304,7 +304,7 @@ function Keys({ data, ops, now }: { data: SalesData; ops: ReturnType<typeof clea
               <span role="cell">≈ {when(b.estimate.from)}{b.estimate.to - b.estimate.from > 60_000 ? ' – ' + when(b.estimate.to) : ''} <Chip tone="warn">оценка</Chip></span>
             </div>
           ))}
-          <p className="v2-hint v2-sl-foot">Оценка — время покупки + 7 суток. Точное время — выше, из снимка инвентаря TF2.</p>
+          <p className="v2-hint v2-sl-foot">Счёт — по покупкам: поля количества в истории рынка нет. Оценка — время покупки + 7 суток. Точное время и число ключей — выше, из снимка инвентаря TF2.</p>
         </div>
       ) : <p className="v2-hint">Покупок ключей за период нет.</p>}
     </Panel>

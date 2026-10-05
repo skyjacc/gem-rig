@@ -106,11 +106,9 @@ export function newSession(db: DatabaseSync, userId: string, kind: 'steam' | 'т
 
 type Session = { id: number; user_id: string; kind: 'steam' | 'токен'; last_seen_at: number; expires_at: number; revoked_at: number | null }
 
-// Кто это. Истёкшая по любому сроку — гасится; отключённый пользователь —
-// никто.
-export function sessionUser(db: DatabaseSync, token: string, now = Date.now()): { user: User; sessionId: number; kind: Session['kind'] } | null {
-  if (!token) return null
-  const s = db.prepare('select id, user_id, kind, last_seen_at, expires_at, revoked_at from sessions where token_hash = ?').get(hash(token)) as Session | undefined
+// Жива ли сессия: не отозвана, не истекла по любому сроку, пользователь не
+// отключён. Истёкшая — гасится.
+function alive(db: DatabaseSync, s: Session | undefined, now: number): User | null {
   if (!s || s.revoked_at != null) return null
   const idle = s.kind === 'steam' && now - s.last_seen_at > IDLE
   if (now > s.expires_at || idle) {
@@ -119,8 +117,27 @@ export function sessionUser(db: DatabaseSync, token: string, now = Date.now()): 
   }
   const user = userById(db, s.user_id)
   if (!user || user.disabled_at != null) return null
+  return user
+}
+
+const SESSION_COLS = 'id, user_id, kind, last_seen_at, expires_at, revoked_at'
+
+// Кто это — по предъявленному токену. Обращение продлевает только срок
+// бездействия.
+export function sessionUser(db: DatabaseSync, token: string, now = Date.now()): { user: User; sessionId: number; kind: Session['kind'] } | null {
+  if (!token) return null
+  const s = db.prepare(`select ${SESSION_COLS} from sessions where token_hash = ?`).get(hash(token)) as Session | undefined
+  const user = alive(db, s, now)
+  if (!user || !s) return null
   if (now - s.last_seen_at > SEEN_EVERY) db.prepare('update sessions set last_seen_at = ? where id = ?').run(now, s.id)
   return { user, sessionId: s.id, kind: s.kind }
+}
+
+// Для открытых потоков (streams.ts): по id сессии, без продления — открытый
+// поток сам по себе не считается делом.
+export function sessionAlive(db: DatabaseSync, sessionId: number, now = Date.now()): boolean {
+  const s = db.prepare(`select ${SESSION_COLS} from sessions where id = ?`).get(sessionId) as Session | undefined
+  return !!alive(db, s, now)
 }
 
 export function revokeSession(db: DatabaseSync, token: string, now = Date.now()) {
@@ -204,11 +221,32 @@ export async function handleReturn(
   if ('error' in r) return fail(r.error)
   db.prepare('delete from openid_nonces where seen_at < ?').run(now - 2 * NONCE_AGE)
   if (db.prepare('select 1 from openid_nonces where nonce = ?').get(r.nonce)) return fail('повтор ответа Steam')
+  // Ожидание Steam — без транзакции: базу на время сети не держим.
   const sig = await verifySignature(q, fetchFn)
   if ('error' in sig) return fail(sig.error)
-  db.prepare('insert or ignore into openid_nonces (nonce, seen_at) values (?, ?)').run(r.nonce, now)
-  db.prepare('update login_attempts set verified_steamid = ? where id = ? and used_at is null').run(r.steamid, a.id)
-  return { ok: true }
+  // После подписи — одной транзакцией (ревью PR #32, P2): попытка всё ещё
+  // годна и не подтверждена, nonce ещё не встречался. Два одновременных
+  // ответа с одним nonce или на одну попытку — подтвердится только один.
+  db.exec('begin immediate')
+  try {
+    const fresh = attemptOf(db, state)
+    if (!fresh || fresh.used_at != null || fresh.verified_steamid || now > fresh.expires_at) {
+      db.exec('rollback')
+      return { error: 'повтор ответа Steam' }
+    }
+    const n = db.prepare('insert or ignore into openid_nonces (nonce, seen_at) values (?, ?)').run(r.nonce, now)
+    if (Number(n.changes) !== 1) {
+      db.prepare('update login_attempts set used_at = ? where id = ? and used_at is null').run(now, a.id)
+      db.exec('commit')
+      return { error: 'повтор ответа Steam' }
+    }
+    db.prepare('update login_attempts set verified_steamid = ? where id = ? and used_at is null and verified_steamid is null').run(r.steamid, a.id)
+    db.exec('commit')
+    return { ok: true }
+  } catch (e: any) {
+    db.exec('rollback')
+    return { error: String(e?.message ?? e) }
+  }
 }
 
 // Завершение со своей страницы. Попытка гасится до действия — второй

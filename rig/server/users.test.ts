@@ -222,3 +222,71 @@ test('владелец создаётся один раз, без steamid', () =
   assert.equal(rows[0].role, 'владелец')
   assert.equal(rows[0].steamid, null)
 })
+
+// ── одновременные повторы ответа Steam (ревью PR #32, P2) ──
+//
+// Steam отвечает на проверку подписи с задержкой; оба запроса успевают
+// пройти проверки до ответа. Подтвердиться должен ровно один.
+
+const slowValid = (ms: number) => async () => {
+  await new Promise(r => setTimeout(r, ms))
+  return { ok: true, text: async () => 'ns:' + NS + '\nis_valid:true\n' }
+}
+
+test('один ответ Steam дважды одновременно на одну попытку — подтверждается один', async () => {
+  const db = fresh()
+  db.prepare('update users set steamid = ? where id = ?').run(OWNER_SID, OWNER_ID)
+  const a = startAttempt(db, 'вход', null, T0) as { state: string; binding: string }
+  const reply = steamReply(a.state, OWNER_SID, T0)
+  const rs = await Promise.all([
+    handleReturn(db, reply, a.binding, PANEL, T0, slowValid(30)),
+    handleReturn(db, reply, a.binding, PANEL, T0, slowValid(10)),
+  ])
+  assert.equal(rs.filter(r => 'ok' in r).length, 1, JSON.stringify(rs))
+  assert.match((rs.find(r => 'error' in r) as any).error, /повтор/)
+  assert.equal((db.prepare('select count(*) c from openid_nonces').get() as any).c, 1)
+})
+
+test('один nonce одновременно в двух попытках — подтверждается одна, вторая погашена', async () => {
+  const db = fresh()
+  db.prepare('update users set steamid = ? where id = ?').run(OWNER_SID, OWNER_ID)
+  const a = startAttempt(db, 'вход', null, T0) as { state: string; binding: string }
+  const b = startAttempt(db, 'вход', null, T0) as { state: string; binding: string }
+  const ra = steamReply(a.state, OWNER_SID, T0)
+  const rb = { ...ra, 'openid.return_to': returnTo(PANEL, b.state), state: b.state }
+  const rs = await Promise.all([
+    handleReturn(db, ra, a.binding, PANEL, T0, slowValid(30)),
+    handleReturn(db, rb, b.binding, PANEL, T0, slowValid(10)),
+  ])
+  assert.equal(rs.filter(r => 'ok' in r).length, 1, JSON.stringify(rs))
+  const done = [a, b].filter(x => 'session' in handleFinish(db, x.state, x.binding, null, T0))
+  assert.equal(done.length, 1, 'сессия — ровно одна')
+})
+
+test('два разных ответа Steam одновременно на одну попытку — подтверждается один', async () => {
+  const db = fresh()
+  db.prepare('update users set steamid = ? where id = ?').run(OWNER_SID, OWNER_ID)
+  const a = startAttempt(db, 'вход', null, T0) as { state: string; binding: string }
+  const r1 = steamReply(a.state, OWNER_SID, T0)
+  const r2 = steamReply(a.state, OWNER_SID, T0)          // свой nonce
+  assert.notEqual(r1['openid.response_nonce'], r2['openid.response_nonce'])
+  const rs = await Promise.all([
+    handleReturn(db, r1, a.binding, PANEL, T0, slowValid(30)),
+    handleReturn(db, r2, a.binding, PANEL, T0, slowValid(10)),
+  ])
+  assert.equal(rs.filter(r => 'ok' in r).length, 1, JSON.stringify(rs))
+})
+
+test('известный повтор nonce — отказ без запроса к Steam', async () => {
+  const db = fresh()
+  db.prepare('update users set steamid = ? where id = ?').run(OWNER_SID, OWNER_ID)
+  const a = startAttempt(db, 'вход', null, T0) as { state: string; binding: string }
+  const reply = steamReply(a.state, OWNER_SID, T0)
+  await handleReturn(db, reply, a.binding, PANEL, T0, valid)
+  const b = startAttempt(db, 'вход', null, T0) as { state: string; binding: string }
+  let asked = 0
+  const counting = async () => { asked++; return { ok: true, text: async () => 'ns:' + NS + '\nis_valid:true\n' } }
+  const r = await handleReturn(db, { ...reply, 'openid.return_to': returnTo(PANEL, b.state), state: b.state }, b.binding, PANEL, T0, counting)
+  assert.match((r as any).error, /повтор/)
+  assert.equal(asked, 0, 'в Steam за заведомым повтором не ходим')
+})

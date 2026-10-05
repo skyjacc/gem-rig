@@ -19,8 +19,9 @@ import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase
 import { ACCOUNT, active as activeAccount, activeId as activeAccountId, byId as accountById, list as accountList2 } from './accounts.ts'
 import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
 import { listOps, migrateMoney, MONEY_DDL } from './money.ts'
-import { attemptLimiter, ensureOwner, handleFinish, handleReturn, logAuth, newSession, OWNER_ID, revokeAll, revokeSession, sessionUser, startAttempt, STEAM_TTL, TOKEN_TTL, userById, USERS_DDL } from './users.ts'
+import { attemptLimiter, ensureOwner, handleFinish, handleReturn, logAuth, newSession, OWNER_ID, sessionUser, startAttempt, STEAM_TTL, TOKEN_TTL, userById, USERS_DDL } from './users.ts'
 import { authUrl } from './openid.ts'
+import { logoutAllFor, logoutFor, streamHub } from './streams.ts'
 import { handleCorrect, handlePayout, handleStorno, listPayouts } from './payouts.ts'
 import { ensureJournal, moneySync, recordBuy, reconcile } from './marketbuys.ts'
 import { checkSession, webCookieHeader } from './steamweb.ts'
@@ -72,6 +73,7 @@ const { token: PANEL_TOKEN, created: tokenCreated } = loadToken()
 // Пропуск — сессия пользователя (план 7.1). Сам токен панели больше не
 // пропуск: им владелец входит и получает сессию на 12 часов.
 const authed = (presentedToken: string) => !!sessionUser(db, presentedToken)
+const hub = streamHub()
 
 app.addHook('onRequest', async (req, reply) => {
   const g = gate({ method: req.method, url: req.url, headers: req.headers as any }, authed, ALLOWED)
@@ -121,15 +123,15 @@ app.post('/api/login', async (req: any, reply) => {
   return { ok: true }
 })
 
+// Выход закрывает и уже открытые потоки этой сессии (ревью PR #32, P1).
 app.post('/api/logout', async (req: any, reply) => {
-  revokeSession(db, presented(req))
+  logoutFor(db, hub, presented(req))
   reply.header('set-cookie', logoutCookie())
   return { ok: true }
 })
 
 app.post('/api/auth/logout-all', async (req: any, reply) => {
-  const who = sessionUser(db, presented(req))
-  if (who) revokeAll(db, who.user.id)
+  logoutAllFor(db, hub, presented(req))
   reply.header('set-cookie', logoutCookie())
   return { ok: true }
 })
@@ -177,7 +179,8 @@ const moved = importLegacy()
 if (!moved.skipped) console.log('перенёс из JSON:', moved)
 
 // ─────────────────────────────── SSE ───────────────────────────────
-const clients = new Set<any>()
+// Каждый открытый поток помнит свою сессию (streams.ts): выход и истечение
+// сессии закрывают и его, а не только следующий запрос.
 
 // Толчок состояния — не чаще раза в 250 мс.
 //
@@ -193,13 +196,13 @@ let pending: NodeJS.Timeout | null = null
 function flush() {
   pushAt = Date.now()
   pending = null
-  if (!clients.size) return
+  if (!hub.size()) return
   let line: string
   try { line = 'data: ' + JSON.stringify(buildState()) + '\n\n' } catch (e: any) {
     console.error('состояние не собралось:', e.message)
     return
   }
-  for (const res of clients) { try { res.raw.write(line) } catch { clients.delete(res) } }
+  hub.broadcast(line)
 }
 
 function push() {
@@ -210,6 +213,8 @@ function push() {
 }
 
 app.get('/api/stream', (req, reply) => {
+  const who = sessionUser(db, presented(req))
+  if (!who) return reply.code(401).send({ error: 'нужен вход', auth: true })
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream; charset=utf-8',
     'Cache-Control': 'no-cache',
@@ -218,16 +223,19 @@ app.get('/api/stream', (req, reply) => {
   })
   reply.raw.write('retry: 2000\n\n')
   reply.raw.write('data: ' + JSON.stringify(buildState()) + '\n\n')
-  clients.add(reply)
-  req.raw.on('close', () => clients.delete(reply))
+  hub.add(reply as any, who.sessionId, who.user.id)
+  req.raw.on('close', () => hub.remove(reply as any))
 })
 
 // Пульс. Без него обрыв канала по дороге (сон машины, прокси, спящая
 // вкладка) выглядит для браузера как тишина: EventSource молчит, панель
 // показывает вчерашние числа как сегодняшние. Комментарий SSE не событие
 // и состояние не пересобирает.
+// Заодно — проверка сессий открытых потоков: истёкшая, отозванная или
+// отключённый пользователь — поток закрывается не позже чем через 15 с.
 setInterval(() => {
-  for (const res of clients) { try { res.raw.write(': ping\n\n') } catch { clients.delete(res) } }
+  hub.sweep(db)
+  hub.broadcast(': ping\n\n')
 }, 15_000)
 
 app.get('/api/state', async () => buildState())
@@ -640,7 +648,7 @@ const cycle = async () => {
   const changed = await refreshInventory(ACCOUNT())
   await refreshEquipped(ACCOUNT())
   await warmOwned()
-  if (changed || clients.size) push()
+  if (changed || hub.size()) push()
 }
 
 // Автопилот тикает отдельно и чаще: он должен замечать смерть отправщика

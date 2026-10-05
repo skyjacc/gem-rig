@@ -442,15 +442,13 @@ function fenceDisabled(a: Account) {
 export async function tick(push: () => void) {
   // Инвентарь читается по каждому включённому аккаунту отдельно. Один общий
   // снимок означал бы, что второй работник жжёт по составу первого.
-  for (const a of accounts()) {
-    if (fenceDisabled(a)) continue
+  // Аккаунты отключённых пользователей в такт не входят вовсе (решение 10).
+  const live = accounts().filter(a => !fenceDisabled(a))
+  for (const a of live) {
     if (unit(a.id).enabled) await refreshInventory(a.steamid)
   }
   // Такт аккаунта — от имени его владельца: его личные настройки (план 7.2).
-  for (const a of accounts()) {
-    if (fenceDisabled(a)) continue
-    await asUser(ownerOf(a), () => tickOne(a, push))
-  }
+  for (const a of live) await asUser(ownerOf(a), () => tickOne(a, push))
 }
 
 export function unitState(a: Account) {

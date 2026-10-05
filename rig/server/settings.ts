@@ -174,7 +174,8 @@ export function merge(base: Settings, patch: any): Settings {
   return out
 }
 
-const FILE = path.join(TOOLS, 'settings.json')
+// SETTINGS_FILE — только для тестов (testenv.ts): свой файл, рабочий не трогается.
+const FILE = process.env.SETTINGS_FILE || path.join(TOOLS, 'settings.json')
 
 // Файл — настройки владельца и общие ограничения сервера (как до этапа 7).
 let current: Settings = merge(DEFAULTS, readJson<any>(FILE, {}))

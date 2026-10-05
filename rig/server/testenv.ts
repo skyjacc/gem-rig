@@ -28,3 +28,7 @@ if (!process.env.GC_DIR) {
 // И свой реестр аккаунтов. tools/accounts.json — рабочий: тест, который
 // привяжет или отвяжет аккаунт, поменял бы список живой панели.
 process.env.ACCOUNTS_FILE ??= path.join(process.env.GC_DIR!, 'accounts.json')
+
+// И свои настройки: tools/settings.json — рабочий; тест, который сохранит
+// правила от имени владельца, поменял бы их живой панели.
+process.env.SETTINGS_FILE ??= path.join(process.env.GC_DIR!, 'settings.json')

@@ -259,7 +259,13 @@ export function linkStart(label: string, onChange: () => void, relink: string | 
     // Чужой — без названия и без признака, чей он (решение 11).
     const already = reg.list.find(a => a.steamid === link.steamid)
     if (already) {
-      if (ownerOf(already) !== user) { try { fs.unlinkSync(path.join(GC, link.token)) } catch { } }
+      // Чужой: токен — в корзину, steamid из состояния привязки убирается —
+      // по нему видно, что этот Steam у кого-то есть (решение 11).
+      if (ownerOf(already) !== user) {
+        try { fs.unlinkSync(path.join(GC, link.token)) } catch { }
+        link.steamid = null
+        link.lines = link.lines.filter(l => !l.startsWith('STEAMID '))
+      }
       link.error = ownerOf(already) === user ? 'этот аккаунт уже привязан как «' + already.label + '»' : 'этот Steam привязать нельзя'
       link.done = true
       try { link.child?.kill() } catch { }

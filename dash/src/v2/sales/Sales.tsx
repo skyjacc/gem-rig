@@ -11,7 +11,7 @@ import { Loadable } from '../States.tsx'
 import { Btn, Chip, Panel, Src } from '../ui.tsx'
 import {
   avg, clean, countdown, currencyName, dayLabel, gemBuysDays, gmt, inPeriod, keyBatches, money, path,
-  PERIODS, salesDays, stornoNotes, walletCurrencies, walletDays, when, type Invested, type Period, type Sum,
+  PERIODS, realized, salesDays, stornoNotes, walletCurrencies, walletDays, when, type Invested, type Period, type Sum,
 } from './model.ts'
 import { LIMIT, type SalesData } from './data.ts'
 
@@ -37,6 +37,8 @@ export function SalesScreen({ data, now }: { data: SalesData; now: number }) {
   const c = clean(list)
   const ops = inPeriod(c.ops, period, now)
   const p = path(ops)
+  // Реализовано — из полного списка выплат, не из общего журнала с пределом (план 3.2, решение 11).
+  const paid = data.payouts.data ? realized(data.payouts.data, period, now) : null
   const wcs = walletCurrencies(c.ops)
   const wc = cur && wcs.includes(cur) ? cur : wcs[0] ?? null
 
@@ -58,8 +60,8 @@ export function SalesScreen({ data, now }: { data: SalesData; now: number }) {
           <p key={n.text} className={n.tone === 'warn' ? 'v2-note is-warn' : 'v2-hint'}>{n.text}</p>
         ))}
 
-        <Path p={p} data={data} now={now} />
-        <Totals p={p} />
+        <Path p={p} paid={paid} data={data} now={now} />
+        <Totals p={p} paid={paid} data={data} />
 
         {wc ? (
           <Panel title="Кошелёк Steam по дням" aside={<Src>журнал</Src>}>
@@ -88,7 +90,23 @@ export function SalesScreen({ data, now }: { data: SalesData; now: number }) {
 
 // ── путь денег (решение 5) ──
 
-function Path({ p, data, now }: { p: ReturnType<typeof path>; data: SalesData; now: number }) {
+type Paid = ReturnType<typeof realized> | null
+
+// Выплаты: пусто — «не было», не ноль; не загрузилось — словами.
+function paidState(paid: Paid, data: SalesData) {
+  if (data.payouts.error) return 'список выплат не загрузился'
+  if (!paid) return data.payouts.loading ? 'загружается…' : '—'
+  return paid.n ? null : 'выплат ещё не было'
+}
+
+const paidMarks = (paid: Paid) => paid ? (
+  <>
+    {paid.estimated ? <Chip tone="warn">оценка</Chip> : null}
+    {paid.complete ? null : <Chip tone="warn">неполно</Chip>}
+  </>
+) : null
+
+function Path({ p, paid, data, now }: { p: ReturnType<typeof path>; paid: Paid; data: SalesData; now: number }) {
   const k = data.keys.data
   const s = k?.summary
   const node = (title: ReactNode, big: ReactNode, body: ReactNode, cls?: string) => (
@@ -114,14 +132,18 @@ function Path({ p, data, now }: { p: ReturnType<typeof path>; data: SalesData; n
         s ? (s.nextRelease ? <>ближайшие {nf(s.nextRelease.keys)} — {when(s.nextRelease.at)}<span className="v2-hint">снимок {ago(k!.snapshot!.seenAt, now)} назад</span></> : 'удержанных нет')
           : data.keys.loading ? 'загружается…' : 'ключи ещё не читались — кнопка ниже, в «Ключи Mann Co.»')}
       {arrow}
-      {node(<>Продано на Clover.tf</>, '—', 'выплаты подключаются на этапе 3.2', 'is-last')}
+      {node(<>Выведено с Clover.tf <Src>вручную</Src></>, paid && paid.n ? nf(paid.n) + ' ' + plural(paid.n, 'выплата', 'выплаты', 'выплат') : '—', paidState(paid, data) ?? <>
+        <Sums sums={paid!.sums} none="—" />{paidMarks(paid)}
+        {paid!.keys ? <span className="v2-hint">ключей по выплатам {nf(paid!.keys)} — справочно</span> : null}
+      </>, 'is-last')}
     </div>
   )
 }
 
 // ── три итога (решение 6, §16) ──
 
-function Totals({ p }: { p: ReturnType<typeof path> }) {
+function Totals({ p, paid, data }: { p: ReturnType<typeof path>; paid: Paid; data: SalesData }) {
+  const none = paidState(paid, data)
   return (
     <div className="v2-sl-totals">
       <div className="v2-tile v2-sl-total">
@@ -134,8 +156,13 @@ function Totals({ p }: { p: ReturnType<typeof path> }) {
         )) : <b className="v2-sl-none">—<small>покупок за период нет</small></b>}
       </div>
       <div className="v2-tile v2-sl-total">
-        <span>Реализовано</span>
-        <b className="v2-sl-none">—<small>дошло до рук — выплаты Clover; подключается на этапе 3.2</small></b>
+        <span>Реализовано <Src>выплаты</Src> {paidMarks(paid)}</span>
+        {none ? <b className="v2-sl-none">—<small>{none} · дошло до рук — выплаты Clover</small></b> : (
+          <span className="v2-sl-total-v">
+            {paid!.sums.map(s => <b key={s.currency}><M source={s.source} currency={s.currency} units={s.units} /></b>)}
+            <small>{nf(paid!.n)} {plural(paid!.n, 'выплата', 'выплаты', 'выплат')} Clover{paid!.estimated ? ' · в монете — по оценке владельца' : ''}{paid!.complete ? '' : ' · неполно: сервер отдал не все выплаты'}</small>
+          </span>
+        )}
       </div>
       <div className="v2-tile v2-sl-total">
         <span>В работе <Chip tone="warn">оценка</Chip></span>

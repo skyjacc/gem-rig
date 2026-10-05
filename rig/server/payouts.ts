@@ -49,6 +49,7 @@ type Raw = {
   tx: string
   version: number
   corrects: number | null
+  movedFrom?: string            // исправление перенесло выплату с этого аккаунта
   asset: string
   assetAmount?: string
   network?: string
@@ -150,8 +151,9 @@ const correctionOf = (db: DatabaseSync, id: number) =>
 const isReversed = (db: DatabaseSync, id: number) =>
   !!db.prepare(`select 1 from money_ops where type = 'сторно' and external_id = ?`).get('storno:' + id)
 
-function write(db: DatabaseSync, p: Payout, version: number, corrects: number | null, now: number): Done | Fail {
+function write(db: DatabaseSync, p: Payout, version: number, corrects: number | null, now: number, movedFrom?: string): Done | Fail {
   const raw: Raw = { entry: 'вручную', tx: p.tx, version, corrects, asset: p.asset, usdBy: p.usdBy }
+  if (movedFrom) raw.movedFrom = movedFrom
   if (p.assetAmount) raw.assetAmount = p.assetAmount
   if (p.network) raw.network = p.network
   if (p.keys != null) raw.keys = p.keys
@@ -237,7 +239,7 @@ export function correctPayout(db: DatabaseSync, corrects: number, p: Payout, opt
     if ((o.version ?? 1) !== last) return { error: 'исправляется последняя версия номера' }
     if (rows.some(r => !isReversed(db, r.id))) return { error: 'у номера уже есть действующая запись' }
     opts.afterCheck?.()
-    return write(db, p, last + 1, corrects, now)
+    return write(db, p, last + 1, corrects, now, orig.account_id !== p.accountId ? orig.account_id ?? undefined : undefined)
   })
 }
 

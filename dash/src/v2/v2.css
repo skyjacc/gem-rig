@@ -955,6 +955,33 @@
 .v2 .v2-sl-todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .v2 .v2-sl-todo li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 12px; color: var(--ink2); }
 
+/* ── Выплаты Clover (план 3.2) ── */
+
+.v2 .v2-po-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+/* В узкой правой колонке — поле под полем; в окне исправления — в два столбца. */
+.v2 .v2-po-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px 10px; }
+.v2 .v2-po-dlg .v2-po-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.v2 .v2-po-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 11.5px; color: var(--mute); }
+.v2 .v2-po-f.is-wide { grid-column: 1 / -1; }
+.v2 .v2-po-f > span { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.v2 .v2-po-f small { font-size: 11px; color: var(--mute); }
+.v2 .v2-po-f input, .v2 .v2-po-f select { height: 34px; min-width: 0; padding: 0 10px; border-radius: 8px; border: 0; background: var(--s2); color: var(--ink); font: inherit; font-size: 12.5px; font-variant-numeric: tabular-nums; outline: none; }
+.v2 .v2-po-f input:focus, .v2 .v2-po-f select:focus { box-shadow: inset 0 0 0 1px var(--line2); }
+.v2 .v2-po-f input[readonly] { color: var(--ink2); background: var(--s1); }
+.v2 .v2-po-foot { display: flex; justify-content: flex-end; }
+.v2 .v2-po-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.v2 .v2-po-row { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--s2); }
+.v2 .v2-po-row.is-reversed .v2-po-main b { text-decoration: line-through; color: var(--mute); }
+.v2 .v2-po-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.v2 .v2-po-main b { font-weight: 500; }
+.v2 .v2-po-sub { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; }
+.v2 .v2-po-tx { font-variant-numeric: tabular-nums; word-break: break-all; }
+.v2 .v2-po-acts { display: flex; gap: 12px; justify-content: flex-end; }
+.v2 .v2-po-dl { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 4px 12px; margin: 0 0 10px; font-size: 12.5px; }
+.v2 .v2-po-dl dt { color: var(--mute); }
+.v2 .v2-po-dl dd { margin: 0; }
+.v2 .v2-po-dlg { max-width: 560px; }
+
 /* ── Окно «Настроить» (§5.7, план 9) и общее для окон ── */
 
 .v2 .v2-dialog .is-stop { color: var(--stop); }
@@ -1015,6 +1042,7 @@
 }
 
 @media (max-width: 767.98px) {
+  .v2 .v2-po-dlg .v2-po-fields { grid-template-columns: minmax(0, 1fr); }
   .v2 .v2-bay-h { grid-template-columns: auto auto 1fr; }
   .v2 .v2-bay-prog { grid-column: 1 / -1; }
   .v2 .v2-app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 60px auto auto auto; }

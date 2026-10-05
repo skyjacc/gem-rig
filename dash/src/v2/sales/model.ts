@@ -177,7 +177,7 @@ export type KeysResp = { snapshot: { id: number; seenAt: number } | null; summar
 export type PayoutList = { ops: Op[]; complete: boolean }
 
 type PayoutRaw = {
-  tx?: string; version?: number; corrects?: number | null; asset?: string; assetAmount?: string
+  tx?: string; version?: number; corrects?: number | null; movedFrom?: string; asset?: string; assetAmount?: string
   network?: string; usdBy?: string; keys?: number; note?: string
 }
 const payoutRaw = (o: Op): PayoutRaw => { try { return JSON.parse(o.raw_ref ?? '{}') } catch { return {} } }
@@ -198,7 +198,7 @@ export function realized(list: PayoutList, p: Period = 'all', now = 0) {
 }
 
 export type PayoutRow = {
-  op: Op; tx: string; version: number; corrects: number | null; asset: string; assetAmount: string | null
+  op: Op; tx: string; version: number; corrects: number | null; movedFrom: string | null; asset: string; assetAmount: string | null
   network: string | null; usdBy: string; keys: number | null; note: string | null; reversed: boolean
   stornoReason: string | null
 }
@@ -221,7 +221,7 @@ export function payoutRows(ops: Op[]): PayoutRow[] {
     .map(o => {
       const r = payoutRaw(o)
       return {
-        op: o, tx: r.tx ?? o.external_id, version: r.version ?? 1, corrects: r.corrects ?? null,
+        op: o, tx: r.tx ?? o.external_id, version: r.version ?? 1, corrects: r.corrects ?? null, movedFrom: r.movedFrom ?? null,
         asset: r.asset ?? '—', assetAmount: r.assetAmount ?? null, network: r.network ?? null,
         usdBy: r.usdBy ?? 'владелец', keys: r.keys ?? null, note: r.note ?? null,
         reversed: reasons.has(o.id), stornoReason: reasons.get(o.id) ?? null,

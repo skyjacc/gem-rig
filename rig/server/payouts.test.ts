@@ -252,6 +252,7 @@ test('исправление: сторнированная v1 → v2 того ж
   assert.equal(o.external_id, 'v2:ABC')
   assert.equal(raw(o).version, 2)
   assert.equal(raw(o).corrects, v1.id)
+  assert.equal('movedFrom' in raw(o), false, 'тот же аккаунт — не перенос')
   assert.equal(o.net, 1300)
   assert.equal(active(db, 'ABC').length, 1)
 })
@@ -290,6 +291,7 @@ test('исправление ошибочного аккаунта: перено
   const o = all(db).find(x => x.id === v2.id)!
   assert.equal(o.account_id, B)
   assert.equal(raw(o).corrects, v1.id)
+  assert.equal(raw(o).movedFrom, A, 'откуда перенесено — видно на новой записи')
   assert.deepEqual(active(db, 'ABC').map(x => x.account_id), [B])
   refused(addPayout(db, pay({ tx: 'ABC' }), { now: NOW, labelOf }), /номер уже внесён на аккаунт «второй»/)
   assert.deepEqual(ok(correctPayout(db, v1.id, pay({ tx: 'ABC', accountId: B }), { now: NOW })), { id: v2.id, inserted: false })

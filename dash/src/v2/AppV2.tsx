@@ -1,8 +1,8 @@
 import './v2.css'
 import { useEffect, useState } from 'react'
 import { ago, DEMO, useJson, useLive, type Accounts, type Settings } from '../lib/api.ts'
-import { Tune } from '../parts/Tune.tsx'
-import { LinkAccount } from '../parts/LinkAccount.tsx'
+import { TuneSheet, type TuneTab } from './Tune.tsx'
+import { LinkDialog } from './LinkDialog.tsx'
 import { Rail, RailRow, SCREENS, type ScreenId } from './Rail.tsx'
 import { TopBar } from './TopBar.tsx'
 import { Pult } from './Pult.tsx'
@@ -10,7 +10,6 @@ import { ConfirmBurn } from './ConfirmBurn.tsx'
 import { Bell } from './Bell.tsx'
 import { Booting, FirstRun, NoServer } from './States.tsx'
 import { Pill } from './ui.tsx'
-import { Screen, ScreenSide } from './screens.tsx'
 import { Overview } from './overview/Overview.tsx'
 import { Inspector } from './overview/Inspector.tsx'
 import { Alerts } from './overview/Alerts.tsx'
@@ -33,23 +32,24 @@ import { useSales } from './sales/data.ts'
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
 const SECOND = 1_000
 
-// Новая панель (спецификация v2). Открывается по /?ui=v2 на время миграции;
-// на этапе 9 переключатель исчезает, а старая панель удаляется.
+// Панель (спецификация v2). С этапа 9 — единственная: старая удалена,
+// переключателя ?ui=v2 больше нет.
 export default function AppV2() {
   const live = useLive()
   const { state, stale } = live
   const [screen, setScreen] = useState<ScreenId>('overview')
-  // «Общие правила» на рельсе и «настроить» на пульте открывают окно Tune
-  // (старый вид, портал в body, вне .v2). Те же правила и настройки каждого
-  // аккаунта — ещё и на экране Аккаунтов (план 2.4).
-  const [rules, setRules] = useState<null | 'run' | 'rules'>(null)
+  // «Общие правила» на рельсе и «настроить» на пульте открывают окно
+  // «Настроить» (§5.7, план 9) на своей вкладке. Быстрые настройки аккаунта
+  // и три правила — ещё и на экране Аккаунтов (план 2.4); это тот же POST.
+  const [rules, setRules] = useState<null | TuneTab>(null)
   const [now, setNow] = useState(() => Date.now())
   const accountsJson = useJson<Accounts>('/api/accounts', state?.ts)
   const accounts = accountsJson.data
-  const { data: settings } = useJson<Settings>('/api/settings', state?.ts)
+  const settingsJson = useJson<Settings>('/api/settings', state?.ts)
+  const settings = settingsJson.data
   const [burning, setBurning] = useState(false)
-  // Привязка игрового входа — окно LinkAccount (портал вне .v2), им же
-  // обновляется вход существующего аккаунта (relink). План 2.4, решение 8.
+  // Привязка игрового входа — окно LinkDialog (план 9), им же обновляется
+  // вход существующего аккаунта (relink).
   const [linking, setLinking] = useState<null | { relink: { id: string; label: string } | null }>(null)
   // Аккаунты: выбранный аккаунт (его настройки и работник справа) и окно
   // экрана — веб-вход, ключ, отвязка. Окно веб-входа открывается и справа.
@@ -123,7 +123,7 @@ export default function AppV2() {
                     onLink={relink => setLinking({ relink })} onBurn={() => setBurning(true)}
                   />
                 )
-                : <Screen id={screen} title={title} />}
+                : null}
             </div>
             <Pult state={state} live={live} now={now} onTune={() => setRules('run')} onBurn={() => setBurning(true)} />
           </main>
@@ -146,13 +146,13 @@ export default function AppV2() {
                 state={state} accounts={accounts} sel={acc} now={now}
                 onRelink={a => setLinking({ relink: a })} onWeb={id => setAccOpen({ kind: 'web', id })}
               />
-            ) : <ScreenSide id={screen} />}
+            ) : null}
           </aside>
         </div>
         {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}
+        {linking ? <LinkDialog accounts={accounts} relink={linking.relink} onClose={() => setLinking(null)} /> : null}
+        {rules ? <TuneSheet tab={rules} onTab={setRules} onClose={() => setRules(null)} state={state} settings={settings} onSaved={settingsJson.reload} /> : null}
       </div>
-      <LinkAccount open={linking != null} onClose={() => setLinking(null)} accounts={accounts} relink={linking?.relink ?? null} />
-      <Tune open={rules != null} initial={rules ?? undefined} onClose={() => setRules(null)} state={state} unit={state.autopilot} />
     </>
   )
 }

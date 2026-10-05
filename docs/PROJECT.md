@@ -119,7 +119,8 @@ npm run server        # http://localhost:4322, раздаёт собранный
 cd dash
 npm install
 npm run dev           # http://localhost:5173, /api проксируется на 4322
-npm run build         # сборка в dash/dist — её отдаёт движок
+npm run build         # проверка и сборка — НЕ в dash/dist
+npm run deploy        # сборка в dash/dist — её сразу отдаёт движок: это развёртывание
 
 # показ без сервера (обезличенный снимок, все POST отключены)
 VITE_DEMO=1 npm run demo   # dash/dist-demo

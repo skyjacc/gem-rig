@@ -488,7 +488,7 @@ if (fs.existsSync(DIST)) {
   app.setNotFoundHandler((_req, reply) => reply.sendFile('index.html'))
 } else {
   app.get('/', async (_req, reply) => {
-    reply.type('text/html').send('<pre style="font:14px monospace;padding:24px">Фронт не собран.\n\nnpm run build   — собрать\nnpm run dev     — режим разработки на http://localhost:5173</pre>')
+    reply.type('text/html').send('<pre style="font:14px monospace;padding:24px">Фронт не собран.\n\ncd dash && npm run deploy   — собрать фронт в dash/dist\nnpm run dev     — режим разработки на http://localhost:5173</pre>')
   })
 }
 

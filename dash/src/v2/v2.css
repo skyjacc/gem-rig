@@ -1,10 +1,10 @@
 /* Новая панель (спецификация v2, §4).
  *
- * Всё — только внутри .v2. Старая панель живёт рядом в той же сборке со
- * своим index.css, и ни одно правило отсюда не должно её задеть: ни один
+ * Всё — только внутри .v2: в той же сборке живёт вход (parts/login.css) со
+ * своими правилами, и ни одно правило отсюда не должно его задеть: ни один
  * селектор без .v2 впереди, классы — с префиксом v2- (§10: совпадение имён
  * с чужими стилями уже однажды ломало вид — .card с transform на hover).
- * Когда старая панель уйдёт (этап 9), этот файл станет index.css.
+ * База страницы (сброс стилей браузера и пр.) — в base.css (этап 9).
  *
  * Никаких прыжков (§3.1): наведение меняет только фон, выбор — кольцо
  * акцентом внутрь (inset box-shadow). Ни transform, ни border-width,
@@ -346,8 +346,6 @@
 
 /* ── заглушки экранов ── */
 
-.v2 .v2-screen { display: flex; flex-direction: column; gap: 16px; max-width: 720px; }
-.v2 .v2-lead { margin: -8px 0 0; color: var(--ink2); }
 .v2 .v2-text { margin: 0 0 8px; line-height: 1.45; }
 .v2 .v2-link { margin-top: 12px; text-decoration: none; width: fit-content; }
 
@@ -957,6 +955,38 @@
 .v2 .v2-sl-todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .v2 .v2-sl-todo li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 12px; color: var(--ink2); }
 
+/* ── Окно «Настроить» (§5.7, план 9) и общее для окон ── */
+
+.v2 .v2-dialog .is-stop { color: var(--stop); }
+.v2 .v2-sheet-veil { place-items: stretch end; padding: 0; }
+.v2 .v2-sheet {
+  width: min(560px, 100%); height: 100svh; overflow: auto; scrollbar-width: thin;
+  background: var(--s1); border-left: 1px solid var(--line2); padding: 20px;
+  display: flex; flex-direction: column; gap: 14px; box-shadow: -30px 0 80px #000000aa;
+}
+.v2 .v2-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.v2 .v2-sheet-head h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+.v2 .v2-sheet-tabs { align-self: flex-start; }
+.v2 .v2-sheet-body { min-height: 0; }
+.v2 .v2-tune { display: flex; flex-direction: column; gap: 0; }
+.v2 .v2-tune-line { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line); }
+.v2 .v2-tune-line:first-child { border-top: 0; padding-top: 4px; }
+.v2 .v2-tune-line .v2-hint { margin: 0; }
+.v2 .v2-tune-seg { flex-wrap: wrap; border-radius: 16px; align-self: flex-start; }
+.v2 .v2-tune-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.v2 .v2-tune-chips span { padding: 3px 8px; border-radius: 999px; background: var(--s2); font-size: 12px; color: var(--ink2); }
+.v2 .v2-tune-chips span.is-ok { color: var(--ac); background: var(--acs); }
+.v2 .v2-tune-group { display: flex; flex-direction: column; padding: 8px 0 4px; }
+.v2 .v2-tune-group h3 { margin: 6px 0 4px; font-size: 12px; font-weight: 500; color: var(--mute); text-transform: none; }
+.v2 .v2-tune-rule { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 12px; align-items: center; padding: 10px 8px; margin: 0 -8px; border-radius: var(--r2); transition: box-shadow var(--t-color); }
+.v2 .v2-tune-rule.is-changed { box-shadow: inset 3px 0 0 var(--warn); background: var(--warns); }
+.v2 .v2-tune-field { height: 32px; }
+.v2 .v2-tune-field input { text-align: right; }
+.v2 .v2-tune-field span { flex: none; min-width: 22px; }
+.v2 .v2-tune-foot { position: sticky; bottom: -20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 0; margin-top: 8px; background: var(--s1); border-top: 1px solid var(--line); }
+.v2 .v2-tune-foot .v2-hint { flex: 1; min-width: 160px; }
+.v2 .v2-tune-defaults { margin: 8px 0 0; line-height: 1.5; }
+
 /* Пороги §4.4 — в конце файла: правило под @media должно стоять ПОСЛЕ
    базового с той же специфичностью, иначе базовое его перебьёт (§10). */
 
@@ -1022,6 +1052,7 @@
   .v2 .v2-sl-tr > span:first-child { grid-column: 1 / -1; font-weight: 500; }
   .v2 .v2-sl-tr .is-r { justify-self: start; text-align: left; }
   .v2 .v2-sl-keysync { align-items: flex-start; }
+  .v2 .v2-tune-rule { grid-template-columns: minmax(0, 1fr); gap: 6px; }
 }
 
 /* §4.3: без движения для тех, кто его отключил. */

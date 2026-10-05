@@ -1,0 +1,92 @@
+/* База страницы для новой панели (план 9, решение 6).
+
+   Раньше её давал старый index.css: Tailwind (сброс стилей браузера —
+   Preflight), классы у <body> в index.html и глобальные правила старой
+   панели. Новая панель живёт поверх этого с самого начала, поэтому здесь —
+   ровно то, без чего её вид меняется; лишнее снято по отпечатку
+   вычисленных стилей до и после.
+
+   Слои — в том же порядке, что у Tailwind: правила без слоя (v2.css)
+   по-прежнему сильнее базы, как и было.
+
+   Preflight — из сборки Tailwind CSS v4.3.3 (MIT License, Tailwind Labs, Inc.,
+   https://tailwindcss.com), значения темы подставлены. */
+
+@layer theme, base, components, utilities;
+
+@layer theme {
+  :root, :host { --font-sans:"Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;--font-mono:"Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;--default-font-family:var(--font-sans);--default-mono-font-family:var(--font-mono) }
+}
+
+@layer base {
+*,:after,:before,::backdrop{box-sizing:border-box;border:0 solid;margin:0;padding:0}::file-selector-button{box-sizing:border-box;border:0 solid;margin:0;padding:0}html,:host{-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;line-height:1.5;font-family:var(--default-font-family,-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");font-feature-settings:var(--default-font-feature-settings,normal);font-variation-settings:var(--default-font-variation-settings,normal);-webkit-tap-highlight-color:transparent}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;-webkit-text-decoration:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:var(--default-mono-font-family,ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);font-feature-settings:var(--default-mono-font-feature-settings,normal);font-variation-settings:var(--default-mono-font-variation-settings,normal);font-size:1em}small{font-size:80%}sub,sup{vertical-align:baseline;font-size:75%;line-height:0;position:relative}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}:-moz-focusring:where(:not(iframe)){outline:auto}progress{vertical-align:baseline}summary{display:list-item}ol,ul,menu{list-style:none}img,svg,video,canvas,audio,iframe,embed,object{vertical-align:middle;display:block}img,video{max-width:100%;height:auto}button,input,select,optgroup,textarea{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}::file-selector-button{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}:where(select:is([multiple],[size])) optgroup{font-weight:bolder}:where(select:is([multiple],[size])) optgroup option{padding-inline-start:20px}::file-selector-button{margin-inline-end:4px}::placeholder{opacity:1}@supports (not ((-webkit-appearance:-apple-pay-button))) or (contain-intrinsic-size:1px){::placeholder{color:currentColor}@supports (color:color-mix(in lab,red,red)){::placeholder{color:color-mix(in oklab,currentcolor 50%,transparent)}}}textarea{resize:vertical}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-date-and-time-value{min-height:1lh;text-align:inherit}::-webkit-datetime-edit{display:inline-flex}::-webkit-datetime-edit-fields-wrapper{padding:0}::-webkit-datetime-edit{padding-block:0}::-webkit-datetime-edit-year-field{padding-block:0}::-webkit-datetime-edit-month-field{padding-block:0}::-webkit-datetime-edit-day-field{padding-block:0}::-webkit-datetime-edit-hour-field{padding-block:0}::-webkit-datetime-edit-minute-field{padding-block:0}::-webkit-datetime-edit-second-field{padding-block:0}::-webkit-datetime-edit-millisecond-field{padding-block:0}::-webkit-datetime-edit-meridiem-field{padding-block:0}::-webkit-calendar-picker-indicator{line-height:1}:-moz-ui-invalid{box-shadow:none}button,input:where([type=button],[type=reset],[type=submit]){-webkit-appearance:button;-moz-appearance:button;appearance:button}::file-selector-button{-webkit-appearance:button;-moz-appearance:button;appearance:button}::-webkit-inner-spin-button{height:auto}::-webkit-outer-spin-button{height:auto}[hidden]:where(:not([hidden=until-found])){display:none!important}
+}
+
+/* Классы у <body> из index.html — font-sans antialiased bg-background
+   text-foreground — так, как их собирал Tailwind (--color-background и
+   --color-foreground в его теме — это var(--background) и var(--foreground)). */
+@layer utilities {
+  body{font-family:var(--font-sans);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background-color:var(--background);color:var(--foreground)}
+}
+
+/* ── глобальные правила прежнего index.css ──
+
+   Что осталось и почему (отпечаток стилей, план 9, решение 6):
+   - фон и цвет страницы — две переменные тёмной темы (<html class="dark">);
+     без них у body другой фон и цвет;
+   - правила состояний — фокус, переходы, «уменьшить движение», скрытые
+     полосы прокрутки — отпечаток не видит (он снимается без фокуса и с
+     выключенными переходами), поэтому они перенесены как были, чтобы не
+     изменить поведение;
+   - высота html/body/#root = 100% — на узком экране (страница прокручивается
+     целиком) без неё html и body растут по содержимому;
+   - сняты как не влияющие ни на новую панель, ни на вход (проверено на 1440
+     и 700): светлая тема :root, body { margin: 0 } (его и так даёт сброс
+     выше), --portal и прочие переменные старой темы. */
+
+.dark {
+  --background: oklch(12.5% 0.012 265);
+  --foreground: oklch(98.5% 0 0);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body::-webkit-scrollbar,
+html::-webkit-scrollbar {
+  display: none;
+}
+
+*:focus-visible {
+  outline: 2px solid #fafafa;
+  outline-offset: 1px;
+  box-shadow: none;
+  border-radius: 1px;
+}
+
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid rgb(143 178 255 / 0.75);
+  outline-offset: 2px;
+}
+
+:root {
+  --t-fast: 120ms;
+}
+
+/* Строки таблиц и списков подсвечиваются мягко, а не мгновенно. */
+tbody tr { transition: background-color var(--t-fast) linear; }
+
+/* Всё, что можно нажать, отзывается одинаково. */
+button, a, input, summary { transition: color var(--t-fast), background-color var(--t-fast), border-color var(--t-fast), opacity var(--t-fast); }
+
+/* Уменьшить движение: гасим начисто и анимации, и переходы. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

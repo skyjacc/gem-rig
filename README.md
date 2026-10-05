@@ -325,8 +325,14 @@ npm run check      # проверка типов
 
 cd ../dash
 npm run dev        # фронт на 5173 с проксированием /api на 4322
-npm run build      # проверка типов и сборка в dash/dist
+npm run build      # проверка типов и сборка — НЕ в dash/dist (в node_modules/.verify-dist)
+npm run deploy     # сборка в dash/dist — это развёртывание живой панели
 ```
+
+**`dash/dist` — живая панель.** Работающий сервер отдаёт его с диска, без перезапуска:
+любая сборка туда сразу видна в панели. Поэтому проверочная сборка (`npm run build`, CI)
+пишет в другую папку, а `npm run deploy` — только как развёртывание после мёржа и с
+разрешения владельца, из `master`.
 
 Что умеет:
 
@@ -521,7 +527,7 @@ gem-rig/
 ### Быстрый старт
 
 ```bash
-cd dash && npm install && npm run build
+cd dash && npm install && npm run deploy
 cd ../rig && npm install && npm run server
 ```
 

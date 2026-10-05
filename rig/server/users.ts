@@ -40,7 +40,8 @@ export const USERS_DDL = `
     role        text not null check (role in ('владелец', 'пользователь')),
     limits_json text,
     disabled_at integer,
-    created_at  integer not null
+    created_at  integer not null,
+    settings_json text
   );
   create table if not exists sessions (
     id           integer primary key autoincrement,
@@ -82,6 +83,64 @@ type Fail = { error: string }
 
 const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex')
 const secret = () => crypto.randomBytes(32).toString('base64url')
+
+// Таблица этапа 7.1 без личных настроек — добавить колонку (только добавление).
+export function migrateUsers(db: DatabaseSync) {
+  const cols = (db.prepare(`pragma table_info(users)`).all() as any[]).map(c => c.name)
+  if (cols.length && !cols.includes('settings_json')) db.exec(`alter table users add column settings_json text`)
+}
+
+// ── пределы и отключение (план 7.2, решение 10) ──
+
+// Изменяемые значения по умолчанию для приглашённого (рекомендация сверки):
+// 3 рабочих аккаунта, 1 одновременно работающий отправщик. У владельца
+// предела нет.
+export const DEFAULT_LIMITS = { accounts: 3, senders: 1 }
+
+export function limitsOf(db: DatabaseSync, userId: string): { accounts: number; senders: number } {
+  if (userId === OWNER_ID) return { accounts: Infinity, senders: Infinity }
+  const r = db.prepare('select limits_json from users where id = ?').get(userId) as { limits_json: string | null } | undefined
+  let l: any = {}
+  try { l = JSON.parse(r?.limits_json ?? '{}') ?? {} } catch { }
+  const n = (v: unknown, d: number) => (Number.isInteger(v) && (v as number) >= 0 ? (v as number) : d)
+  return { accounts: n(l.accounts, DEFAULT_LIMITS.accounts), senders: n(l.senders, DEFAULT_LIMITS.senders) }
+}
+
+// Активен ли пользователь: есть и не отключён. Пустой id — запрос без входа.
+export function userActive(db: DatabaseSync, userId: string): boolean {
+  if (!userId) return false
+  const u = userById(db, userId)
+  return !!u && u.disabled_at == null
+}
+
+// Пометка и сессии. Остальное (потоки, работники, закупка, QR) гасит
+// app.ts — у него эти части сервера.
+export function markDisabled(db: DatabaseSync, userId: string, now = Date.now()): { ok: true } | Fail {
+  if (userId === OWNER_ID) return { error: 'владельца не отключить' }
+  const u = userById(db, userId)
+  if (!u) return { error: 'нет такого пользователя' }
+  db.prepare('update users set disabled_at = coalesce(disabled_at, ?) where id = ?').run(now, userId)
+  revokeAll(db, userId, now)
+  logAuth(db, 'пользователь отключён', now, userId)
+  return { ok: true }
+}
+
+export function markEnabled(db: DatabaseSync, userId: string, now = Date.now()): { ok: true } | Fail {
+  const u = userById(db, userId)
+  if (!u) return { error: 'нет такого пользователя' }
+  db.prepare('update users set disabled_at = null where id = ?').run(userId)
+  logAuth(db, 'пользователь включён', now, userId)
+  return { ok: true }
+}
+
+export function getPersonalSettings(db: DatabaseSync, userId: string): any {
+  const r = db.prepare('select settings_json from users where id = ?').get(userId) as { settings_json: string | null } | undefined
+  try { return r?.settings_json ? JSON.parse(r.settings_json) : null } catch { return null }
+}
+
+export function setPersonalSettings(db: DatabaseSync, userId: string, v: any) {
+  db.prepare('update users set settings_json = ? where id = ?').run(v == null ? null : JSON.stringify(v), userId)
+}
 
 export function ensureOwner(db: DatabaseSync, now = Date.now()) {
   db.prepare(`insert or ignore into users (id, steamid, name, role, created_at) values (?, null, 'владелец', 'владелец', ?)`).run(OWNER_ID, now)

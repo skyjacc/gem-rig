@@ -24,7 +24,14 @@ import { ACCOUNT, active as activeAccount, activeId as activeAccountId, own as a
 import { asUser, currentUser } from './ctx.ts'
 import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
 import { listOps, migrateMoney, MONEY_DDL } from './money.ts'
-import { attemptLimiter, ensureOwner, handleFinish, handleReturn, logAuth, newSession, OWNER_ID, sessionUser, startAttempt, STEAM_TTL, TOKEN_TTL, userById, USERS_DDL } from './users.ts'
+import {
+  attemptLimiter, ensureOwner, getPersonalSettings, handleFinish, handleReturn, limitsOf, logAuth, markDisabled, markEnabled, migrateUsers,
+  newSession, OWNER_ID, sessionUser, setPersonalSettings, startAttempt, STEAM_TTL, TOKEN_TTL, userActive, userById, USERS_DDL,
+} from './users.ts'
+import { accountsHooks, linkCancel, webLinkCancel } from './accounts.ts'
+import { purchaseHooks } from './purchase.ts'
+import { autopilotHooks } from './autopilot.ts'
+import { settingsHooks } from './settings.ts'
 import { authUrl } from './openid.ts'
 import { logoutAllFor, logoutFor, streamHub } from './streams.ts'
 import { handleCorrect, handlePayout, handleStorno, listPayouts } from './payouts.ts'
@@ -45,6 +52,7 @@ export function prepareDb() {
   if (moneyMigrated.migrated) console.log('миграция: money_ops — gross может быть пустым')
   db.exec(MONEY_DDL)
   db.exec(USERS_DDL)
+  migrateUsers(db)
   ensureOwner(db)
   ensureJournal(db)
   // Ключи TF2 (план 3.4): снимки — только вставка.
@@ -60,6 +68,16 @@ export type AppOpts = {
 export async function buildApp(opts: AppOpts) {
   const ALLOWED = opts.allowed
   const PANEL_TOKEN = opts.token
+
+  // Что модули сервера знают о пользователях (план 7.2): активен ли,
+  // пределы, личные настройки. Модули базу пользователей не читают сами.
+  accountsHooks.userActive = u => userActive(db, u)
+  accountsHooks.maxAccounts = u => limitsOf(db, u).accounts
+  purchaseHooks.userActive = u => userActive(db, u)
+  autopilotHooks.userActive = u => userActive(db, u)
+  autopilotHooks.maxSenders = u => limitsOf(db, u).senders
+  settingsHooks.getPersonal = u => getPersonalSettings(db, u)
+  settingsHooks.setPersonal = (u, v) => setPersonalSettings(db, u, v)
   const app = Fastify({ logger: false, bodyLimit: 1_048_576 })
 
   // ─────────────────────────────── вход ───────────────────────────────
@@ -204,12 +222,16 @@ export async function buildApp(opts: AppOpts) {
     pushAt = Date.now()
     pending = null
     if (!hub.size()) return
-    let line: string
-    try { line = 'data: ' + JSON.stringify(buildState()) + '\n\n' } catch (e: any) {
-      console.error('состояние не собралось:', e.message)
-      return
+    // Состояние — своё у каждого пользователя (план 7.2, решение 6): собирается
+    // от его имени и уходит только его клиентам.
+    for (const user of hub.users()) {
+      let line: string
+      try { line = 'data: ' + JSON.stringify(asUser(user, () => buildState())) + '\n\n' } catch (e: any) {
+        console.error('состояние не собралось:', e.message)
+        continue
+      }
+      hub.sendTo(user, line)
     }
-    hub.broadcast(line)
   }
 
   function push() {
@@ -562,6 +584,42 @@ export async function buildApp(opts: AppOpts) {
     push()
     return r
   })
+  // ── пользователи: только владельцу (решение 10; экран — 7.3) ──
+  //
+  // Отключение — одним действием, по порядку: пометка и сессии → потоки →
+  // работники и отправщики → закупка → QR-входы. Запоздавшие ответы
+  // отключённого ничего не оживляют: модули проверяют «активен ли» сами.
+  function disableUser(id: string) {
+    const r = markDisabled(db, id)
+    if ('error' in r) return r
+    hub.closeUser(id)
+    for (const a of accountList2().filter(x => (x.user || OWNER_ID) === id)) {
+      setAutopilot(a.id, { on: false })
+      if (senderState(a.id).running) stop(a.id)
+    }
+    stopPurchase(id)
+    linkCancel(id)
+    webLinkCancel(id)
+    push()
+    return { ok: true }
+  }
+
+  const ownerOnly = (reply: any) => {
+    if (currentUser() === OWNER_ID) return false
+    reply.code(403).send({ error: 'только владельцу' })
+    return true
+  }
+
+  app.post('/api/users/disable', async (req: any, reply) => {
+    if (ownerOnly(reply)) return reply
+    return disableUser(String(req.body?.id ?? ''))
+  })
+
+  app.post('/api/users/enable', async (req: any, reply) => {
+    if (ownerOnly(reply)) return reply
+    return markEnabled(db, String(req.body?.id ?? ''))
+  })
+
   // История счётчиков — по вещам всех аккаунтов сервера, без деления по
   // владельцам (её рисовал график, снятый на этапе 9): только владельцу.
   app.get('/api/counters', async (_req, reply) => {
@@ -612,5 +670,5 @@ export async function buildApp(opts: AppOpts) {
   }
 
 
-  return { app, push, hub, ingestStatus, watchSender }
+  return { app, push, hub, ingestStatus, watchSender, disableUser }
 }

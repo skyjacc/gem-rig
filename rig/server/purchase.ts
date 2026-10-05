@@ -18,6 +18,7 @@
 // и переходим к следующей позиции, а в журнале видно обе цены.
 
 import { settings } from './settings.ts'
+import { currentUser } from './ctx.ts'
 import { balance, bestOffer, buyInfo, buyOne, units, type Currency } from './market.ts'
 import type { Bought } from './marketbuys.ts'
 
@@ -203,21 +204,30 @@ const EMPTY: Job = {
   positions: [], log: [], error: null,
 }
 
-let job: Job = { ...EMPTY }
+// Закупка — у каждого пользователя своя (план 7.2, решение 7): своё
+// состояние, своя остановка, «уже идёт» — в пределах пользователя.
+const jobs = new Map<string, Job>()
+const jobFor = (user: string) => jobs.get(user) ?? { ...EMPTY }
 
-export const purchaseState = () => ({
-  ...job,
-  log: job.log.slice(0, 60),
-})
+// Что сервер знает о пользователях — снаружи (app.ts). Отключённый
+// пользователь (решение 10): новых покупок нет; уже отправленная на
+// площадку доводится и записывается как обычно.
+export const purchaseHooks = { userActive: (_user: string) => true }
 
-export function stopPurchase() {
-  if (!job.active) return { error: 'закупка не идёт' }
+export const purchaseState = (user = currentUser()) => {
+  const job = jobFor(user)
+  return { ...job, log: job.log.slice(0, 60) }
+}
+
+export function stopPurchase(user = currentUser()) {
+  const job = jobs.get(user)
+  if (!job?.active) return { error: 'закупка не идёт' }
   job.cancel = true
   job.current = 'останавливаюсь'
   return { ok: true }
 }
 
-const note = (e: Entry) => {
+const note = (job: Job, e: Entry) => {
   job.log.unshift(e)
   if (job.log.length > 400) job.log.pop()
 }
@@ -239,7 +249,7 @@ function classify(error: string): Entry['reason'] {
 // запроса при обрыве связи — и оба вызова проходили проверку, пока флаг
 // ещё не поднят, а потом оба уходили покупать. Деньги списываются дважды,
 // и вернуть их нельзя: лоты уже куплены.
-let starting = false
+const starting = new Set<string>()
 
 // Ключ и аккаунт приходят снаружи: их выбирает и проверяет marketkeys.buyKey.
 // Здесь закупка только тратит тем ключом, который ей дали.
@@ -256,8 +266,9 @@ function report(hooks: Hooks, b: Bought) {
 }
 
 export async function startPurchase(lines: Line[], currency: Currency, push: () => void, target: Target, hooks: Hooks = {}) {
-  if (job.active || starting) return { error: 'закупка уже идёт' }
-  starting = true
+  const user = currentUser()
+  if (jobFor(user).active || starting.has(user)) return { error: 'закупка уже идёт' }
+  starting.add(user)
   try {
     const key = String(target?.key ?? '')
     if (!key) return { error: 'нет ключа площадки' }
@@ -276,7 +287,7 @@ export async function startPurchase(lines: Line[], currency: Currency, push: () 
       return { error: 'на счету ' + acc.money + ' ' + accCur + ', нужно ' + total.toFixed(2) }
     }
 
-    job = {
+    const job: Job = {
       ...EMPTY,
       active: true,
       startedAt: Date.now(),
@@ -285,24 +296,25 @@ export async function startPurchase(lines: Line[], currency: Currency, push: () 
       log: [],
       account: { id: target.id, label: target.label },
     }
+    jobs.set(user, job)
     push()
 
     // Работа идёт своим чередом, ответ уходит сразу: панель дальше смотрит
     // на состояние, а не ждёт конца.
-    void run(lines, key, accCur, settings().priceTolerance, push, target.id, hooks)
+    void run(job, user, lines, key, accCur, settings().priceTolerance, push, target.id, hooks)
     return { started: true, planned, total, currency: accCur, account: target.label }
   } finally {
     // Снимаем замок только после того, как job.active поднят: дальше
     // от второго запуска защищает уже он.
-    starting = false
+    starting.delete(user)
   }
 }
 
 // Идёт ли закупка прямо сейчас — с учётом того, что она может быть
 // в середине проверок и ещё не отражена в job.
-export const purchaseBusy = () => job.active || starting
+export const purchaseBusy = (user = currentUser()) => jobFor(user).active || starting.has(user)
 
-async function run(lines: Line[], key: string, currency: Currency, tolerance: number, push: () => void, accountId: string, hooks: Hooks) {
+async function run(job: Job, user: string, lines: Line[], key: string, currency: Currency, tolerance: number, push: () => void, accountId: string, hooks: Hooks) {
   // Список работ: у каждой позиции своё «сколько ещё надо».
   const work = lines
     .map(l => ({
@@ -329,7 +341,7 @@ async function run(lines: Line[], key: string, currency: Currency, tolerance: nu
     // Несколько заходов по списку. Сбой связи не должен стоить позиции:
     // недобранное остаётся в работе и добирается на следующем круге.
     for (let round = 1; round <= 3; round++) {
-      if (job.cancel || work.every(w => w.done || w.left === 0)) break
+      if (job.cancel || !purchaseHooks.userActive(user) || work.every(w => w.done || w.left === 0)) break
       job.pass = round
 
       for (let i = 0; i < work.length; i++) {
@@ -339,8 +351,9 @@ async function run(lines: Line[], key: string, currency: Currency, tolerance: nu
         let failsInARow = 0
 
         while (w.left > 0 && !w.done) {
-          if (job.cancel) {
-            note({ ts: Date.now(), gem: w.gem, ok: false, price: w.price, reason: 'остановлено' })
+          // Остановили или пользователя отключили — перед следующей покупкой.
+          if (job.cancel || !purchaseHooks.userActive(user)) {
+            note(job, { ts: Date.now(), gem: w.gem, ok: false, price: w.price, reason: 'остановлено' })
             mark(i)
             return
           }
@@ -377,7 +390,7 @@ async function run(lines: Line[], key: string, currency: Currency, tolerance: nu
                 ts: Date.now(), gem: w.gem, ok: false, price: call.price, planned: w.price,
                 reason: 'неясно', detail: 'ответ не получен — проверяю по custom_id…', customId,
               }
-              note(e)
+              note(job, e)
               w.why = 'неясно'
               mark(i)
               push()
@@ -424,7 +437,7 @@ async function run(lines: Line[], key: string, currency: Currency, tolerance: nu
             failsInARow++
           }
 
-          note({ ts: Date.now(), gem: w.gem, ok, price: paid, planned: w.price, reason, detail })
+          note(job, { ts: Date.now(), gem: w.gem, ok, price: paid, planned: w.price, reason, detail })
           mark(i)
           push()
 

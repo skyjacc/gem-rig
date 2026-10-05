@@ -959,7 +959,8 @@
 
 .v2 .v2-po-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 /* В узкой правой колонке — поле под полем; в окне исправления — в два столбца. */
-.v2 .v2-po-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px 10px; }
+.v2 .v2-po-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px 10px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.v2 .v2-po-fields:disabled { opacity: 0.6; }
 .v2 .v2-po-dlg .v2-po-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .v2 .v2-po-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 11.5px; color: var(--mute); }
 .v2 .v2-po-f.is-wide { grid-column: 1 / -1; }

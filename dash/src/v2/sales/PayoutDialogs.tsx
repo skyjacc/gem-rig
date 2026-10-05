@@ -12,50 +12,22 @@ import { useAction } from '../../lib/api.ts'
 import { Btn, Chip } from '../ui.tsx'
 import { useTrap } from '../useTrap.ts'
 import { money, when, type PayoutRow } from './model.ts'
+import { afterSend, bodyOf, draftOf, emptyDraft, short, type Draft } from './payoutForm.ts'
+
+export { short }
 
 export type Acc = { id: string; label: string }
 
 const ASSETS = ['USDT', 'USDC', 'LTC', 'BTC', 'ETH', 'SOL', 'USD']
 
-export type Draft = {
-  tx: string; asset: string; assetAmount: string; network: string; usd: string; at: string; keys: string; note: string
-}
-
-// datetime-local — местное время без пояса: «2026-10-05T14:30».
-const local = (ts: number) => {
-  const d = new Date(ts - new Date(ts).getTimezoneOffset() * 60_000)
-  return d.toISOString().slice(0, 16)
-}
-
-export const emptyDraft = (now = Date.now()): Draft =>
-  ({ tx: '', asset: '', assetAmount: '', network: '', usd: '', at: local(now), keys: '', note: '' })
-
-export const draftOf = (r: PayoutRow): Draft => ({
-  tx: r.tx, asset: r.asset, assetAmount: r.assetAmount ?? '', network: r.network ?? '',
-  usd: (r.op.net / 100).toFixed(2), at: local(r.op.happened_at), keys: r.keys == null ? '' : String(r.keys), note: r.note ?? '',
-})
-
-export const bodyOf = (d: Draft, accountId: string) => ({
-  accountId,
-  tx: d.tx,
-  asset: d.asset,
-  assetAmount: d.assetAmount,
-  network: d.network,
-  usd: d.usd,
-  happenedAt: d.at ? new Date(d.at).getTime() : undefined,
-  keys: d.keys,
-  note: d.note,
-})
-
-export const short = (tx: string) => (tx.length > 18 ? tx.slice(0, 10) + '…' + tx.slice(-6) : tx)
-
 // ── поля ──
 
-export function PayoutFields({ d, set, txLocked = false }: { d: Draft; set: (d: Draft) => void; txLocked?: boolean }) {
+// busy — запрос в пути: поля заблокированы, пока не пришёл ответ (ревью PR #31).
+export function PayoutFields({ d, set, txLocked = false, busy = false }: { d: Draft; set: (d: Draft) => void; txLocked?: boolean; busy?: boolean }) {
   const f = (k: keyof Draft) => (e: { target: { value: string } }) => set({ ...d, [k]: e.target.value })
   const coin = d.asset && d.asset !== 'USD'
   return (
-    <div className="v2-po-fields">
+    <fieldset className="v2-po-fields" disabled={busy}>
       <label className="v2-po-f is-wide">
         <span>Номер транзакции {txLocked ? <small>— не меняется: другой номер — другая выплата</small> : <small>— хэш перевода, если есть</small>}</span>
         <input value={d.tx} onChange={f('tx')} readOnly={txLocked} spellCheck={false} autoComplete="off" placeholder="0x… или номер выплаты с сайта" aria-label="Номер транзакции" />
@@ -96,7 +68,7 @@ export function PayoutFields({ d, set, txLocked = false }: { d: Draft; set: (d: 
         <span>Заметка</span>
         <input value={d.note} onChange={f('note')} placeholder="необязательно" aria-label="Заметка" />
       </label>
-    </div>
+    </fieldset>
   )
 }
 
@@ -111,23 +83,29 @@ export function PayoutForm({ account, accounts, onDone }: { account: string | nu
   const [note, setNote] = useState<string | null>(null)
   const label = (id: string | null) => accounts.find(a => a.id === id)?.label ?? id ?? '—'
 
+  // Что на экране к приходу ответа — из ссылки: замыкание помнит момент нажатия.
+  const live = useRef({ d, acc })
+  live.current = { d, acc }
+
   const send = async () => {
     if (!acc) return
     setNote(null)
-    const r: any = await act.run('/api/money/payout', bodyOf(d, acc))
-    if (r?.error) return
-    setNote(r?.inserted === false ? 'Эта выплата уже внесена — новой записи нет.' : 'Внесено.')
-    if (r?.inserted !== false) setD(emptyDraft())
-    onDone()
+    const sent = { d, acc }
+    const r: any = await act.run('/api/money/payout', bodyOf(sent.d, sent.acc))
+    const now = live.current
+    const next = afterSend('new', r, sent.d, sent.acc, now.d, now.acc ?? '', emptyDraft())
+    setD(next.draft)
+    setNote(next.note)
+    if (!r?.error) onDone()
   }
 
   return (
     <div className="v2-po-form">
       <p className="v2-hint">Выплата за ключи аккаунта <b>«{label(acc)}»</b> — закреплён при открытии формы.</p>
       {acc && account && acc !== account ? (
-        <p className="v2-note is-warn" role="status">Активный аккаунт сменился — выплата будет записана на «{label(acc)}», как показано. <button type="button" className="v2-linkbtn" onClick={() => setAcc(account)}>записать на «{label(account)}»</button></p>
+        <p className="v2-note is-warn" role="status">Активный аккаунт сменился — выплата будет записана на «{label(acc)}», как показано. <button type="button" className="v2-linkbtn" disabled={act.busy} onClick={() => setAcc(account)}>записать на «{label(account)}»</button></p>
       ) : null}
-      <PayoutFields d={d} set={x => { setD(x); setNote(null); act.clear() }} />
+      <PayoutFields d={d} set={x => { setD(x); setNote(null); act.clear() }} busy={act.busy} />
       {act.error ? <p className="v2-note is-stop" role="alert">Не внесено: {act.error}. Введённое не потеряно.</p> : null}
       {note ? <p className="v2-note" role="status">{note}</p> : null}
       <div className="v2-po-foot">
@@ -165,7 +143,7 @@ export function StornoDialog({ row, accountLabel, onClose, onDone }: { row: Payo
         <p className="v2-text">Запись останется в журнале; рядом ляжет обратная — и из «реализовано» выплата уйдёт. Вернуть её можно только исправлением.</p>
         <label className="v2-po-f is-wide">
           <span>Причина <small>— обязательно</small></span>
-          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="например: опечатка в сумме" aria-label="Причина сторно" />
+          <input value={reason} onChange={e => setReason(e.target.value)} disabled={act.busy} placeholder="например: опечатка в сумме" aria-label="Причина сторно" />
         </label>
         {act.error ? <p className="v2-note is-stop" role="alert">Не вышло: {act.error}</p> : null}
         <footer className="v2-dialog-foot">
@@ -188,12 +166,17 @@ export function CorrectDialog({ row, accounts, onClose, onDone }: { row: PayoutR
   useTrap(box, onClose)
   const from = row.op.account_id ?? ''
   const label = (id: string) => accounts.find(a => a.id === id)?.label ?? id
+  const live = useRef({ d, acc })
+  live.current = { d, acc }
   const go = async () => {
-    const r: any = await act.run('/api/money/payout/correct', { ...bodyOf(d, acc), corrects: row.op.id })
+    const sent = { d, acc }
+    const r: any = await act.run('/api/money/payout/correct', { ...bodyOf(sent.d, sent.acc), corrects: row.op.id })
     if (r?.error) return
+    const now = live.current
+    const next = afterSend('fix', r, sent.d, sent.acc, now.d, now.acc, now.d)
     onDone()
-    if (r?.inserted === false) { setNote('Это исправление уже внесено — новой записи нет.'); return }
-    onClose()
+    setNote(next.note)
+    if (next.close) onClose()
   }
   return (
     <div className="v2-veil" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -205,13 +188,13 @@ export function CorrectDialog({ row, accounts, onClose, onDone }: { row: PayoutR
         <p className="v2-text">Новая запись того же номера — версия {row.version + 1}, со ссылкой на сторнированную. Ошибся аккаунтом — выберите верный: это перенос.</p>
         <label className="v2-po-f is-wide">
           <span>Аккаунт</span>
-          <select value={acc} onChange={e => setAcc(e.target.value)} aria-label="Аккаунт выплаты">
+          <select value={acc} onChange={e => setAcc(e.target.value)} disabled={act.busy} aria-label="Аккаунт выплаты">
             {accounts.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
             {accounts.some(a => a.id === from) ? null : <option value={from}>{from}</option>}
           </select>
           {acc !== from ? <small className="v2-hint">перенос с «{label(from)}» на «{label(acc)}»</small> : null}
         </label>
-        <PayoutFields d={d} set={x => { setD(x); setNote(null); act.clear() }} txLocked />
+        <PayoutFields d={d} set={x => { setD(x); setNote(null); act.clear() }} txLocked busy={act.busy} />
         {act.error ? <p className="v2-note is-stop" role="alert">Не внесено: {act.error}</p> : null}
         {note ? <p className="v2-note" role="status">{note}</p> : null}
         <footer className="v2-dialog-foot">

@@ -15,17 +15,20 @@ const root = createRoot(document.getElementById('root')!)
 // Показ работает без сервера — ему вход не нужен.
 async function boot() {
   let authed = DEMO
+  let steam = false
   if (!DEMO) {
     try {
       const r = await fetch('/api/auth')
-      authed = r.ok && !!(await r.json())?.authed
+      const d = r.ok ? await r.json() : null
+      authed = !!d?.authed
+      steam = !!d?.steamLogin
     } catch {
       authed = true // сервер недоступен — пусть панель сама покажет, что связи нет
     }
   }
   root.render(
     <StrictMode>
-      {authed ? <AppV2 /> : <Login />}
+      {authed ? <AppV2 /> : <Login steam={steam} />}
     </StrictMode>,
   )
 }

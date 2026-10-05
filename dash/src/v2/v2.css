@@ -983,6 +983,10 @@
 .v2 .v2-po-dl dd { margin: 0; }
 .v2 .v2-po-dlg { max-width: 560px; }
 
+/* ── Вход в панель (план 7.1) ── */
+
+.v2 .v2-login-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
 /* ── Окно «Настроить» (§5.7, план 9) и общее для окон ── */
 
 .v2 .v2-dialog .is-stop { color: var(--stop); }

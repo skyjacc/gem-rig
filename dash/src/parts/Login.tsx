@@ -17,7 +17,8 @@ type Phase = 'idle' | 'busy' | 'ok' | 'bad'
 // Сцена портала — отдельным куском: основная панель за неё не платит.
 const PortalScene = lazy(() => import('./PortalScene.tsx').then(m => ({ default: m.PortalScene })))
 
-export function Login() {
+// steam — сервер умеет вход через Steam (задан внешний адрес панели).
+export function Login({ steam = false }: { steam?: boolean }) {
   const [token, setToken] = useState('')
   const [show, setShow] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
@@ -54,6 +55,26 @@ export function Login() {
       setError('Нет связи с панелью')
     }
     requestAnimationFrame(() => input.current?.select())
+  }
+
+  // Вход через Steam (план 7.1): сервер заводит попытку, ставит куку этого
+  // браузера и отдаёт адрес страницы Steam.
+  const viaSteam = async () => {
+    setError(null)
+    try {
+      const r = await fetch('/api/auth/steam/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ purpose: 'вход' }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (d?.url) { location.href = d.url; return }
+      setPhase('bad')
+      setError(d?.error ?? 'Панель ответила ' + r.status)
+    } catch {
+      setPhase('bad')
+      setError('Нет связи с панелью')
+    }
   }
 
   const filled = token.length > 0
@@ -112,6 +133,11 @@ export function Login() {
                 : 'Войти'}
           </span>
         </button>
+        {steam ? (
+          <button type="button" className="lg-steam" onClick={() => void viaSteam()} disabled={phase === 'busy' || phase === 'ok'}>
+            Войти через Steam
+          </button>
+        ) : null}
       </form>
     </main>
   )

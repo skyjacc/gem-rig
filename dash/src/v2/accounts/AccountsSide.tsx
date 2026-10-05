@@ -5,6 +5,7 @@ import { ago, clock, nf, type Accounts, type State } from '../../lib/api.ts'
 import { Btn, Chip, Panel } from '../ui.tsx'
 import { accountsOf, unitOf } from './data.ts'
 import { troubles } from './model.ts'
+import { PanelLogin } from './PanelLogin.tsx'
 
 export function AccountsSide({ state, accounts, sel, now, onRelink, onWeb }: {
   state: State
@@ -68,6 +69,8 @@ export function AccountsSide({ state, accounts, sel, now, onRelink, onWeb }: {
           {' '}<b>Отвязать</b> можно, только когда аккаунтов больше одного.
         </p>
       </Panel>
+
+      <PanelLogin />
     </>
   )
 }

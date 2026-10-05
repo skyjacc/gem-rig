@@ -15,10 +15,12 @@
 // Поэтому три слоя:
 //   Host     только свои имена: localhost, 127.0.0.1, ::1 и ALLOWED_HOSTS
 //   Origin   запросы, меняющие что-то, — только со своих страниц
-//   токен    каждый /api/* — с кукой входа или заголовком Authorization
+//   сессия   каждый /api/* — с кукой сессии или заголовком Authorization
 //
-// Токен берётся из PANEL_TOKEN, иначе из tools/panel.token. Файла нет —
-// создаётся случайный, и ссылка входа печатается в консоль при запуске.
+// Сессии — по пользователю (план 7.1, users.ts). Токен панели больше не
+// пропуск сам по себе: им владелец входит (запасной вход) и получает сессию
+// на 12 часов. Токен берётся из PANEL_TOKEN, иначе из tools/panel.token.
+// Файла нет — создаётся случайный, и ссылка входа печатается в консоль.
 
 import crypto from 'node:crypto'
 import fs from 'node:fs'
@@ -109,11 +111,12 @@ export type Req = {
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
-// Пути, открытые без токена: сама проверка входа и вход по ссылке.
-const OPEN = new Set(['/api/auth', '/api/login'])
+// Пути, открытые без входа: проверка входа, вход токеном и вход через Steam.
+const OPEN = new Set(['/api/auth', '/api/login', '/api/auth/steam/start', '/api/auth/steam/return', '/api/auth/steam/finish'])
 
 // Решение по запросу. Без ввода-вывода — проверяется тестами.
-export function gate(req: Req, token: string, allowed: Set<string>): { ok: true } | { ok: false; code: number; why: string } {
+// authed — строка (сравнение с токеном, для тестов) или проверка сессии.
+export function gate(req: Req, authed: string | ((presented: string) => boolean), allowed: Set<string>): { ok: true } | { ok: false; code: number; why: string } {
   if (!hostAllowed(one(req.headers.host), allowed)) {
     return { ok: false, code: 403, why: 'чужое имя хоста' }
   }
@@ -126,16 +129,26 @@ export function gate(req: Req, token: string, allowed: Set<string>): { ok: true 
   if (OPEN.has(p)) return { ok: true }
 
   const got = cookieValue(one(req.headers.cookie)) || bearer(one(req.headers.authorization))
-  if (!sameToken(got, token)) return { ok: false, code: 401, why: 'нужен вход' }
+  const ok = typeof authed === 'function' ? authed(got) : sameToken(got, authed)
+  if (!ok) return { ok: false, code: 401, why: 'нужен вход' }
   return { ok: true }
 }
 
 // Кука входа. HttpOnly — скрипт страницы её не прочитает. SameSite=Strict —
 // чужая страница не приложит её к своему запросу. Secure — только когда
 // панель открыта по https (Tailscale serve), иначе браузер её не сохранит.
-export function loginCookie(token: string, secure: boolean): string {
-  return `${COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24 * 30}` +
+// Срок куки — срок сессии (users.ts); сервер срок проверяет сам.
+export function loginCookie(token: string, secure: boolean, maxAgeSec = 60 * 60 * 24 * 30): string {
+  return `${COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(maxAgeSec)}` +
     (secure ? '; Secure' : '')
 }
+
+// Кука попытки входа через Steam (план 7, решение 2а). Lax, а не Strict:
+// возврат от Steam — переход с чужого сайта, Strict в нём не придёт. Только
+// для путей входа и на 10 минут.
+export const ATTEMPT_COOKIE = 'rig_login'
+export const attemptCookie = (binding: string, secure: boolean) =>
+  `${ATTEMPT_COOKIE}=${encodeURIComponent(binding)}; Path=/api/auth/steam; HttpOnly; SameSite=Lax; Max-Age=600` + (secure ? '; Secure' : '')
+export const attemptCookieClear = () => `${ATTEMPT_COOKIE}=; Path=/api/auth/steam; HttpOnly; SameSite=Lax; Max-Age=0`
 
 export const logoutCookie = () => `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`

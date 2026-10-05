@@ -44,3 +44,8 @@ export function readSteamid(dir = TOOLS): string {
 }
 
 export const STEAMID = readSteamid()
+
+// Внешний адрес панели (план 7, §12.5): нужен входу через Steam — адрес
+// возврата и realm. Только из окружения, никогда из заголовка Host. Нет —
+// вход через Steam выключен.
+export const PANEL_URL = String(process.env.PANEL_URL ?? '').trim().replace(/\/+$/, '')

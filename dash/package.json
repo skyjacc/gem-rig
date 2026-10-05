@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "deploy": "tsc --noEmit && vite build --outDir dist --emptyOutDir",
     "check": "tsc --noEmit",
-    "verify": "tsc --noEmit && vite build --outDir node_modules/.verify-dist --emptyOutDir",
     "preview": "vite preview",
     "demo": "vite build"
   },

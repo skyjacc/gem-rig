@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "check": "tsc --noEmit",
+    "verify": "tsc --noEmit && vite build --outDir node_modules/.verify-dist --emptyOutDir",
     "preview": "vite preview",
     "demo": "vite build"
   },

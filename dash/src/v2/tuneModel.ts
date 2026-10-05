@@ -54,6 +54,15 @@ export const get = (o: any, p: string) => p.split('.').reduce((a, k) => a?.[k], 
 export const shown = (r: Rule, raw: number) => Number.isFinite(raw) ? String(Math.round((r.scale ? raw / r.scale : raw) * 1_000) / 1_000) : ''
 
 // Правка → одно тело запроса: { goal, pace: { floor, up } … }.
+// После сохранения из черновика уходит только отправленное и с тех пор не
+// тронутое (ревью PR #30, P2): поля во время запроса доступны, и правка,
+// сделанная, пока ждали ответа, не должна пропасть вместе с отправленными.
+export function afterSave(draft: Record<string, string>, sent: Record<string, string>): Record<string, string> {
+  const left = { ...draft }
+  for (const k of Object.keys(sent)) if (left[k] === sent[k]) delete left[k]
+  return left
+}
+
 export function patchOf(draft: Record<string, string>, rules: Rule[]): { patch: Record<string, any>; bad: string[] } {
   const patch: Record<string, any> = {}
   const bad: string[] = []

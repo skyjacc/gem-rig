@@ -55,8 +55,8 @@ export function LinkDialog({ accounts, relink, onClose }: {
     return () => clearTimeout(t)
   }, [done, link?.id, link?.label, label, relink, onClose])
 
-  const close = () => { void flow.cancel(); onClose() }
-  const again = async () => { await flow.cancel(); await start() }
+  const close = () => { void flow.close(); onClose() }
+  const again = async () => { await flow.cancel(); await start() }   // после close() start() ничего не запустит
   useTrap(box, close)
 
   return (

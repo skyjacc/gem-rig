@@ -22,6 +22,11 @@
 //   позже отмены, вход проживёт до таймаута steam-session (30 с) — гонка в
 //   этом случае не закрыта (дорожная карта, задача З1).
 //
+// Закрытое окно ничего не запускает (ревью PR #30, P1): «другой код» ждёт
+// отмены прежнего входа и только потом просит новый — закрой окно в этот
+// момент, и новый вход завёлся бы уже без окна. После close() запуск
+// отказывает и при вызове, и когда до него дошла очередь.
+//
 // Сервер не различает, чья привязка идёт: отмена из этого окна погасит и
 // привязку, начатую в другой вкладке (сверка PR #30).
 
@@ -40,8 +45,12 @@ export function linkFlow(send: Send, wait = WAIT) {
     last = p.catch(() => { })   // ошибка прошлого запроса не отменяет следующий
     return p
   }
+  let closed = false
+  const shut = { error: 'окно закрыто' }
+  const cancel = () => queue(() => send('/api/accounts/link/cancel', {}))
   return {
-    start: (body: unknown) => queue(() => send('/api/accounts/link', body)),
-    cancel: () => queue(() => send('/api/accounts/link/cancel', {})),
+    start: (body: unknown) => closed ? Promise.resolve(shut) : queue(() => closed ? Promise.resolve(shut) : send('/api/accounts/link', body)),
+    cancel,
+    close: () => { closed = true; return cancel() },
   }
 }

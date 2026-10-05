@@ -19,7 +19,7 @@ import { icon, nf, useAction, type Settings, type State, type Unit } from '../li
 import { Btn, IconBtn } from './ui.tsx'
 import { ActionDialog } from './Dialog.tsx'
 import { useTrap } from './useTrap.ts'
-import { get, GROUPS, patchOf, shown, type Rule } from './tuneModel.ts'
+import { afterSave, get, GROUPS, patchOf, shown, type Rule } from './tuneModel.ts'
 
 export type TuneTab = 'run' | 'rules'
 
@@ -260,7 +260,8 @@ function Rules({ settings, onSaved, onReset }: { settings: Settings | null; onSa
   if (!settings) return <p className="v2-hint">Правила загружаются…</p>
 
   const save = async () => {
-    const { patch, bad } = patchOf(Object.fromEntries(changed.map(k => [k, draft[k]])), all)
+    const sent = Object.fromEntries(changed.map(k => [k, draft[k]]))
+    const { patch, bad } = patchOf(sent, all)
     if (bad.length) { setNote('Не число: ' + bad.join(', ')); return }
     const res: any = await act.run('/api/settings', patch)
     if (res?.error) return
@@ -268,10 +269,10 @@ function Rules({ settings, onSaved, onReset }: { settings: Settings | null; onSa
     const fixed = changed.map(k => {
       const r = all.find(x => x.path === k)!
       const accepted = get(res, k)
-      return typeof accepted === 'number' && shown(r, accepted) !== String(Number(draft[k].replace(',', '.'))) ? r.label + ': ' + draft[k] + ' → ' + shown(r, accepted) : null
+      return typeof accepted === 'number' && shown(r, accepted) !== String(Number(sent[k].replace(',', '.'))) ? r.label + ': ' + sent[k] + ' → ' + shown(r, accepted) : null
     }).filter(Boolean)
     setNote(fixed.length ? 'Сохранено; сервер поправил по своим пределам — ' + fixed.join('; ') : 'Сохранено.')
-    setDraft({})
+    setDraft(d => afterSave(d, sent))
     onSaved()
   }
 

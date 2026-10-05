@@ -135,3 +135,31 @@ test('ответа на запуск нет — отмена уходит по �
   assert.equal(runs[0].killed, true)
   assert.equal(accounts.linkState()!.done, true)
 })
+
+// Ревью PR #30, P1: «другой код», и сразу «закрыть» (или Esc). «Другой код»
+// ждёт отмены прежнего входа и потом просит новый — окно к этому времени
+// закрыто. Новый вход не должен заводиться.
+test('«другой код», затем сразу закрыть — после отмены новый вход не запускается', async () => {
+  const flow = linkFlow(wire({ start: 30, cancel: 10 }))
+  await flow.start({ label: 'третий' })
+  const again = (async () => { await flow.cancel(); return flow.start({ label: 'третий' }) })()   // «другой код»
+  await flow.close()                                                                               // закрыли окно
+  const r: any = await again
+  await settled()
+  assert.deepEqual(seen, ['start', 'cancel', 'cancel'], 'запуска после закрытия нет')
+  assert.equal(r.error, 'окно закрыто')
+  assert.equal(runs.length, 1)
+  assert.equal(runs[0].killed, true)
+  assert.equal(accounts.linkState()!.done, true, 'активного входа нет')
+})
+
+test('закрытое окно не запускает вход и из очереди: запуск, поставленный до закрытия, но не дошедший до отправки', async () => {
+  const flow = linkFlow(wire({ start: 30, cancel: 30 }))
+  const pending = flow.cancel()
+  const late: Promise<any> = flow.start({ label: 'третий' })   // ждёт в очереди за отменой
+  await flow.close()
+  await pending
+  assert.equal((await late).error, 'окно закрыто')
+  assert.deepEqual(seen, ['cancel', 'cancel'])
+  assert.equal(runs.length, 0)
+})

@@ -12,14 +12,28 @@
 // Сервер разбирает запрос синхронно (accounts.ts, linkStart/linkCancel),
 // так что ответ на запуск означает: процесс входа уже заведён, и отмена его
 // погасит. Проверка — rig/server/linkflow.test.ts, на настоящем сервере.
+//
+// Отмена не пропускается и не ждёт вечно:
+// - запуск кончился ошибкой (сеть, ответ сервера) — отмена всё равно уходит:
+//   сервер мог успеть завести вход, а лишняя отмена безвредна;
+// - ответа на запуск нет дольше WAIT — отмена уходит, не дожидаясь его.
+//   Сервер отвечает на запуск сразу, так что столько тишины — потерянный
+//   ответ, а не долгий запуск. Если запуск всё же дойдёт позже отмены, вход
+//   проживёт до таймаута steam-session — как при закрытой вкладке.
 
 type Send = (url: string, body: unknown) => Promise<any>
 
-export function linkFlow(send: Send) {
+export const WAIT = 10_000
+
+export function linkFlow(send: Send, wait = WAIT) {
   let last: Promise<unknown> = Promise.resolve()
   const queue = <T>(run: () => Promise<T>): Promise<T> => {
-    const p = last.then(run)
-    last = p.catch(() => { })
+    const prev = last
+    const p = new Promise<void>(go => {
+      const t = setTimeout(go, wait)
+      void prev.then(() => { clearTimeout(t); go() })
+    }).then(run)
+    last = p.catch(() => { })   // ошибка прошлого запроса не отменяет следующий
     return p
   }
   return {

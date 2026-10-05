@@ -87,7 +87,7 @@ export function LinkDialog({ accounts, relink, onClose }: {
           {failed ? <span className="is-stop">Не вышло: {failed}</span>
             : link?.error ? <span className="is-stop">{link.error}</span>
             : done ? 'Вошёл: ' + link!.steamid
-            : waiting && link?.url ? 'Код живёт около минуты — если протух, возьмите другой.' + (relink ? '' : ' Метку можно вписать, пока код ждёт.')
+            : waiting && link?.url ? 'Код живёт полминуты — если протух, возьмите другой.' + (relink ? '' : ' Метку можно вписать, пока код ждёт.')
             : 'Valve выдаёт код…'}
         </p>
         <footer className="v2-dialog-foot">

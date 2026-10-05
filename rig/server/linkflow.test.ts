@@ -102,3 +102,36 @@ test('с очередью: «другой код» — отмена прежне
   assert.equal(accounts.linkState()!.done, false)
   accounts.linkCancel()
 })
+
+// Запуск выполнен на сервере, но окно ответа не получило: ответ — ошибка
+// (сеть оборвалась после отправки) или его нет вовсе. Сессия уже заведена —
+// отмена должна уйти в любом случае и не ждать вечно.
+const executed = (answer: 'reject' | 'lost') => (url: string, body: any) => {
+  if (url === '/api/accounts/link') {
+    seen.push('start')
+    accounts.linkStart(String(body?.label ?? ''), () => { })
+    return answer === 'reject' ? Promise.reject(new Error('сеть оборвалась')) : new Promise<any>(() => { })
+  }
+  seen.push('cancel')
+  return Promise.resolve(accounts.linkCancel())
+}
+
+test('запуск кончился ошибкой, хотя сервер его выполнил — отмена всё равно уходит и гасит вход', async () => {
+  const flow = linkFlow(executed('reject'))
+  await assert.rejects(flow.start({ label: 'третий' }))
+  await flow.cancel()
+  assert.deepEqual(seen, ['start', 'cancel'])
+  assert.equal(runs[0].killed, true)
+  assert.equal(accounts.linkState()!.done, true)
+})
+
+test('ответа на запуск нет — отмена уходит по истечении ожидания, не вечно', { timeout: 2_000 }, async () => {
+  const flow = linkFlow(executed('lost'), 50)
+  void flow.start({ label: 'третий' })
+  const t0 = Date.now()
+  await flow.cancel()
+  assert.ok(Date.now() - t0 >= 40, 'сначала ждём ответа на запуск')
+  assert.deepEqual(seen, ['start', 'cancel'])
+  assert.equal(runs[0].killed, true)
+  assert.equal(accounts.linkState()!.done, true)
+})

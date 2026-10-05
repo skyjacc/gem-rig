@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import {
-  allowedHosts, bearer, cookieValue, gate, hostAllowed, hostname, loadToken, loginCookie, originAllowed, sameToken,
+  allowedHosts, attemptCookie, bearer, cookieValue, gate, hostAllowed, hostname, loadToken, loginCookie, originAllowed, sameToken,
 } from './auth.ts'
 
 const T = 'a'.repeat(48)
@@ -103,4 +103,37 @@ test('токен создаётся один раз и дальше читает
   assert.equal(again.token, first.token)
   assert.deepEqual(loadToken({ PANEL_TOKEN: 'from-env' }, file), { token: 'from-env', created: false })
   fs.rmSync(dir, { recursive: true, force: true })
+})
+
+// ── план 7.1: пропуск — сессия, вход через Steam ──
+
+test('пропуск — проверка сессии: ей отдаётся предъявленное из куки или Bearer', () => {
+  const seen: string[] = []
+  const check = (p: string) => { seen.push(p); return p === 'сессия-1' }
+  assert.deepEqual(gate(req({ headers: { cookie: 'rig_auth=сессия-1' } }), check, A), { ok: true })
+  assert.deepEqual(gate(req({ headers: { authorization: 'Bearer сессия-1' } }), check, A), { ok: true })
+  assert.equal(gate(req({ headers: { cookie: 'rig_auth=' + T } }), check, A).ok, false, 'токен панели сам по себе — не пропуск')
+  assert.ok(seen.includes(T))
+})
+
+test('пути входа через Steam открыты без входа; начало входа — только со своей страницы', () => {
+  const never = () => false
+  for (const url of ['/api/auth/steam/start', '/api/auth/steam/finish']) {
+    assert.deepEqual(gate(req({ method: 'POST', url, headers: { origin: 'http://localhost:4322' } }), never, A), { ok: true })
+    assert.equal(gate(req({ method: 'POST', url, headers: { origin: 'https://evil.example' } }), never, A).ok, false)
+  }
+  assert.deepEqual(gate(req({ url: '/api/auth/steam/return?state=x' }), never, A), { ok: true })
+  assert.equal(gate(req({ url: '/api/auth/logout-all', method: 'POST' }), never, A).ok, false, 'выход везде — только с входом')
+})
+
+test('куки: сессия со сроком сессии; попытка входа — Lax, только пути входа, 10 минут', () => {
+  assert.match(loginCookie('t', true, 43_200), /Max-Age=43200/)
+  assert.match(loginCookie('t', true, 43_200), /SameSite=Strict/)
+  const c = attemptCookie('b', true)
+  assert.match(c, /^rig_login=b;/)
+  assert.match(c, /Path=\/api\/auth\/steam;/)
+  assert.match(c, /HttpOnly/)
+  assert.match(c, /SameSite=Lax/)
+  assert.match(c, /Max-Age=600/)
+  assert.match(c, /Secure/)
 })

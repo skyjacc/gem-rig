@@ -6,19 +6,21 @@ import fstatic from '@fastify/static'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { GC, readJson } from './paths.ts'
+import { GC, PANEL_URL, readJson } from './paths.ts'
 import { counterLines, db, importLegacy, pushEvent, supplyRows } from './db.ts'
 import { fresh, ingestOne } from './ledger.ts'
 import { refreshEquipped, refreshInventory } from './steam.ts'
 import { entityMatches, type Kind } from './opendota.ts'
 import { buildState } from './state.ts'
 import { senderState, statusFile, stop } from './sender.ts'
-import { allowedHosts, bearer, cookieValue, gate, loadToken, loginCookie, logoutCookie, sameToken } from './auth.ts'
+import { allowedHosts, ATTEMPT_COOKIE, attemptCookie, attemptCookieClear, bearer, cookieValue, gate, loadToken, loginCookie, logoutCookie, sameToken } from './auth.ts'
 import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph, itemPool, marketScan, queuePreview, tree, webCheck } from './api.ts'
 import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase.ts'
 import { ACCOUNT, active as activeAccount, activeId as activeAccountId, byId as accountById, list as accountList2 } from './accounts.ts'
 import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
 import { listOps, migrateMoney, MONEY_DDL } from './money.ts'
+import { attemptLimiter, ensureOwner, handleFinish, handleReturn, logAuth, newSession, OWNER_ID, revokeAll, revokeSession, sessionUser, startAttempt, STEAM_TTL, TOKEN_TTL, userById, USERS_DDL } from './users.ts'
+import { authUrl } from './openid.ts'
 import { handleCorrect, handlePayout, handleStorno, listPayouts } from './payouts.ts'
 import { ensureJournal, moneySync, recordBuy, reconcile } from './marketbuys.ts'
 import { checkSession, webCookieHeader } from './steamweb.ts'
@@ -35,6 +37,8 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const moneyMigrated = migrateMoney(db)
 if (moneyMigrated.migrated) console.log('миграция: money_ops — gross может быть пустым')
 db.exec(MONEY_DDL)
+db.exec(USERS_DDL)
+ensureOwner(db)
 ensureJournal(db)
 // Ключи TF2 (план 3.4): снимки — только вставка.
 db.exec(TF2_DDL)
@@ -65,8 +69,12 @@ const app = Fastify({ logger: false, bodyLimit: 1_048_576 })
 const ALLOWED = allowedHosts()
 const { token: PANEL_TOKEN, created: tokenCreated } = loadToken()
 
+// Пропуск — сессия пользователя (план 7.1). Сам токен панели больше не
+// пропуск: им владелец входит и получает сессию на 12 часов.
+const authed = (presentedToken: string) => !!sessionUser(db, presentedToken)
+
 app.addHook('onRequest', async (req, reply) => {
-  const g = gate({ method: req.method, url: req.url, headers: req.headers as any }, PANEL_TOKEN, ALLOWED)
+  const g = gate({ method: req.method, url: req.url, headers: req.headers as any }, authed, ALLOWED)
   if (!g.ok) {
     reply.code(g.code).type('application/json; charset=utf-8').send({ error: g.why, auth: g.code === 401 })
     return reply
@@ -78,28 +86,91 @@ const presented = (req: any) =>
 const isHttps = (req: any) =>
   req.protocol === 'https' || String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https'
 
-app.get('/api/auth', async (req: any) => ({ authed: sameToken(presented(req), PANEL_TOKEN) }))
+app.get('/api/auth', async (req: any) => {
+  const who = sessionUser(db, presented(req))
+  const owner = userById(db, OWNER_ID)
+  return {
+    authed: !!who,
+    user: who ? { name: who.user.name, role: who.user.role, via: who.kind, steamBound: !!owner?.steamid } : null,
+    steamLogin: !!PANEL_URL,
+  }
+})
+
+// Запасной вход владельца — токен панели (решение 3): сессия на 12 часов,
+// без продления; не больше 5 попыток в минуту с адреса; каждый вход — в журнал.
+const tokenTries = attemptLimiter(5, 60_000)
+function tokenLogin(req: any, reply: any, given: string) {
+  if (!tokenTries.allow(String(req.ip ?? ''))) return { code: 429, error: 'слишком много попыток — подождите минуту' }
+  if (!sameToken(given, PANEL_TOKEN)) { logAuth(db, 'токен не подошёл', Date.now()); return { code: 401, error: 'токен не подходит' } }
+  const s = newSession(db, OWNER_ID, 'токен', Date.now(), String(req.headers['user-agent'] ?? ''))
+  logAuth(db, 'вход по токену', Date.now())
+  reply.header('set-cookie', loginCookie(s.token, isHttps(req), TOKEN_TTL / 1000))
+  return null
+}
 
 // Вход: ссылка из консоли (GET) или поле на экране входа (POST).
 app.get('/api/login', async (req: any, reply) => {
-  if (!sameToken(String(req.query?.token ?? ''), PANEL_TOKEN)) {
-    return reply.code(401).type('text/plain; charset=utf-8').send('токен не подходит')
-  }
-  reply.header('set-cookie', loginCookie(PANEL_TOKEN, isHttps(req)))
+  const bad = tokenLogin(req, reply, String(req.query?.token ?? ''))
+  if (bad) return reply.code(bad.code).type('text/plain; charset=utf-8').send(bad.error)
   return reply.redirect('/')
 })
 
 app.post('/api/login', async (req: any, reply) => {
-  if (!sameToken(String(req.body?.token ?? ''), PANEL_TOKEN)) {
-    return reply.code(401).send({ error: 'токен не подходит' })
-  }
-  reply.header('set-cookie', loginCookie(PANEL_TOKEN, isHttps(req)))
+  const bad = tokenLogin(req, reply, String(req.body?.token ?? ''))
+  if (bad) return reply.code(bad.code).send({ error: bad.error })
   return { ok: true }
 })
 
-app.post('/api/logout', async (_req, reply) => {
+app.post('/api/logout', async (req: any, reply) => {
+  revokeSession(db, presented(req))
   reply.header('set-cookie', logoutCookie())
   return { ok: true }
+})
+
+app.post('/api/auth/logout-all', async (req: any, reply) => {
+  const who = sessionUser(db, presented(req))
+  if (who) revokeAll(db, who.user.id)
+  reply.header('set-cookie', logoutCookie())
+  return { ok: true }
+})
+
+// Вход через Steam (план 7.1, решения 2–2б). Начало — с нашей страницы
+// (Origin проверен); возврат — от Steam, с куки попытки этого браузера;
+// завершение — со своей страницы возврата.
+app.post('/api/auth/steam/start', async (req: any, reply) => {
+  if (!PANEL_URL) return { error: 'вход через Steam выключен: не задан PANEL_URL' }
+  const purpose = req.body?.purpose === 'привязка владельца' ? 'привязка владельца' : 'вход'
+  const a = startAttempt(db, purpose, presented(req) || null)
+  if ('error' in a) return a
+  reply.header('set-cookie', attemptCookie(a.binding, isHttps(req)))
+  return { url: authUrl(PANEL_URL, a.state) }
+})
+
+const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+const page = (body: string) => '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Вход</title>'
+  + '<body style="font:15px system-ui;background:#0e0e10;color:#ecebe8;display:grid;place-items:center;height:100vh;margin:0">' + body + '</body>'
+
+app.get('/api/auth/steam/return', async (req: any, reply) => {
+  const q: Record<string, string> = {}
+  for (const [k, v] of Object.entries(req.query ?? {})) if (typeof v === 'string') q[k] = v
+  const r = PANEL_URL
+    ? await handleReturn(db, q, cookieValue(req.headers.cookie, ATTEMPT_COOKIE), PANEL_URL)
+    : { error: 'вход через Steam выключен: не задан PANEL_URL' }
+  reply.type('text/html; charset=utf-8')
+  if ('error' in r) return page('<p>Не вошли: ' + esc(r.error) + '. <a style="color:#8fb2ff" href="/">На главную</a></p>')
+  // Завершение — новым запросом с этой страницы: для браузера он уже не
+  // с чужого сайта, и кука сессии (Strict) в нём есть.
+  return page('<p id="m">Входим…</p><script>fetch("/api/auth/steam/finish",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({state:'
+    + JSON.stringify(q.state ?? '').replace(/</g, '\\u003c') + '})}).then(r=>r.json()).then(d=>{if(d&&(d.ok||d.bound))location.replace("/");else document.getElementById("m").textContent="Не вошли: "+((d&&d.error)||"ошибка")}).catch(()=>{document.getElementById("m").textContent="Нет связи с панелью"})</script>')
+})
+
+app.post('/api/auth/steam/finish', async (req: any, reply) => {
+  const r = handleFinish(db, String(req.body?.state ?? ''), cookieValue(req.headers.cookie, ATTEMPT_COOKIE), presented(req) || null)
+  const cookies = [attemptCookieClear()]
+  if ('session' in r) cookies.push(loginCookie(r.session.token, isHttps(req), STEAM_TTL / 1000))
+  reply.header('set-cookie', cookies)
+  if ('error' in r) return r
+  return 'bound' in r ? { bound: true } : { ok: true }
 })
 
 const moved = importLegacy()

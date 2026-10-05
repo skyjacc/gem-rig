@@ -14,6 +14,7 @@ import { post, type Accounts } from '../lib/api.ts'
 import { Btn } from './ui.tsx'
 import { Qr } from './Qr.tsx'
 import { useTrap } from './useTrap.ts'
+import { linkFlow } from './linkFlow.ts'
 
 const defaultLabel = (a: Accounts | null) => 'аккаунт ' + ((a?.list.length ?? 0) + 1)
 
@@ -26,12 +27,14 @@ export function LinkDialog({ accounts, relink, onClose }: {
   const [failed, setFailed] = useState<string | null>(null)
   const asked = useRef(false)
   const box = useRef<HTMLDivElement>(null)
+  // Запуск и отмена — по очереди: отмена не обгонит запуск (linkFlow.ts).
+  const [flow] = useState(() => linkFlow(post))
   const link = accounts?.link ?? null
   const waiting = !!link && !link.done
   const done = !!link?.done && !!link.steamid && !link.error
 
   const start = async () => {
-    const r: any = await post('/api/accounts/link', relink ? { relink: relink.id } : { label: label.trim() || defaultLabel(accounts) })
+    const r: any = await flow.start(relink ? { relink: relink.id } : { label: label.trim() || defaultLabel(accounts) })
     setFailed(r?.error ? String(r.error) : null)
   }
 
@@ -52,8 +55,8 @@ export function LinkDialog({ accounts, relink, onClose }: {
     return () => clearTimeout(t)
   }, [done, link?.id, link?.label, label, relink, onClose])
 
-  const close = () => { void post('/api/accounts/link/cancel', {}); onClose() }
-  const again = async () => { await post('/api/accounts/link/cancel', {}); await start() }
+  const close = () => { void flow.cancel(); onClose() }
+  const again = async () => { await flow.cancel(); await start() }
   useTrap(box, close)
 
   return (

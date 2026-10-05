@@ -26,7 +26,9 @@
 import type { DatabaseSync } from 'node:sqlite'
 
 export const OP_TYPES = ['покупка гема', 'возврат за покупку', 'продажа вещи', 'покупка ключа', 'выплата Clover', 'сторно'] as const
-export const OP_SOURCES = ['market.dota2.net', 'рынок Steam', 'вручную'] as const
+// Clover.tf — выплаты, внесённые владельцем (план 3.2): источник — площадка,
+// а не «вручную», чтобы номер транзакции был уникален в пределах площадки.
+export const OP_SOURCES = ['market.dota2.net', 'рынок Steam', 'вручную', 'Clover.tf'] as const
 export type OpType = (typeof OP_TYPES)[number]
 export type OpSource = (typeof OP_SOURCES)[number]
 

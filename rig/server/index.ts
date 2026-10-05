@@ -19,6 +19,7 @@ import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase
 import { ACCOUNT, active as activeAccount, activeId as activeAccountId, byId as accountById, list as accountList2 } from './accounts.ts'
 import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
 import { listOps, migrateMoney, MONEY_DDL } from './money.ts'
+import { handleCorrect, handlePayout, handleStorno, listPayouts } from './payouts.ts'
 import { ensureJournal, moneySync, recordBuy, reconcile } from './marketbuys.ts'
 import { checkSession, webCookieHeader } from './steamweb.ts'
 import { steamSync } from './steammarket.ts'
@@ -428,6 +429,38 @@ app.get('/api/keys', async (req: any) => {
     summary: summarize(s.keys, now),
     keys: s.keys.map(k => ({ ...k, state: keyState(k, now) })),
   }
+})
+
+// Выплаты Clover руками (план 3.2). Аккаунт приходит в теле явно — форма
+// закрепляет его при открытии; сервер активный не подставляет.
+const accountForPayout = (id: string) => {
+  const a = accountById(id)
+  return a ? { id: a.id, label: a.label } : undefined
+}
+
+app.post('/api/money/payout', async (req: any) => {
+  const r = handlePayout(db, req.body, accountForPayout)
+  push()
+  return r
+})
+
+app.post('/api/money/payout/correct', async (req: any) => {
+  const r = handleCorrect(db, req.body, accountForPayout)
+  push()
+  return r
+})
+
+app.post('/api/money/storno', async (req: any) => {
+  const r = handleStorno(db, req.body)
+  push()
+  return r
+})
+
+// Все выплаты аккаунта и их сторно — без предела общего журнала (решение 11).
+app.get('/api/money/payouts', async (req: any) => {
+  const a = accountById(String(req.query?.id ?? ''))
+  if (!a) return { error: 'нет такого аккаунта' }
+  return listPayouts(db, a.id)
 })
 
 // Отчёт сверки — без обращения к площадке.

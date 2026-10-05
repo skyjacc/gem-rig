@@ -7,7 +7,7 @@
 //                net > 0; сторно вместе с исходной из итогов исключается;
 //   решение 2  — суммы разных валют не складываются никогда.
 
-import { nf } from '../../lib/api.ts'
+import { nf } from '../../lib/num.ts'
 
 export type OpType = 'покупка гема' | 'возврат за покупку' | 'продажа вещи' | 'покупка ключа' | 'выплата Clover' | 'сторно'
 
@@ -39,6 +39,8 @@ export const SCALE: { source: string; currency: RegExp; div: number; status: str
   { source: 'market.dota2.net', currency: /^(USD|EUR)$/, div: 1_000, status: 'VERIFIED по документации' },
   // правдоподобие: средняя цена ключа при ÷100 = рыночной в валюте кошелька
   { source: 'рынок Steam', currency: /^steam:\d+$/, div: 100, status: 'OBSERVED по правдоподобию' },
+  // план 3.2: выплаты Clover — центы долларовой суммы, которую ввёл владелец
+  { source: 'Clover.tf', currency: /^USD$/, div: 100, status: 'ввод владельца, центы' },
 ]
 
 export const scaleOf = (source: string, currency: string) =>
@@ -165,6 +167,67 @@ export type KeysSummary = {
   nextRelease: { at: number; keys: number } | null
 }
 export type KeysResp = { snapshot: { id: number; seenAt: number } | null; summary?: KeysSummary; keys?: { assetid: string; tradable: 0 | 1; tradableAfter: number | null; tradableAfterRaw: string | null; state: string }[]; error?: string }
+
+// ── выплаты Clover (план 3.2) ──
+//
+// Список приходит отдельным маршрутом (/api/money/payouts): все выплаты
+// аккаунта и их сторно, без предела общего журнала (решение 11). complete =
+// false — сервер упёрся в свой защитный предел: итог тогда «неполно».
+
+export type PayoutList = { ops: Op[]; complete: boolean }
+
+type PayoutRaw = {
+  tx?: string; version?: number; corrects?: number | null; asset?: string; assetAmount?: string
+  network?: string; usdBy?: string; keys?: number; note?: string
+}
+const payoutRaw = (o: Op): PayoutRaw => { try { return JSON.parse(o.raw_ref ?? '{}') } catch { return {} } }
+
+// Реализовано (§16) — только выплаты Clover: дошло до рук. Продажи на Steam
+// и любые другие типы сюда не входят никогда (решение 2): продажа и выплата
+// одной суммы — два события, а не два заработка. Сторнированные выплаты
+// убираются вместе со своим сторно (clean) по всему списку, потом — период.
+export function realized(list: PayoutList, p: Period = 'all', now = 0) {
+  const kept = inPeriod(clean(list.ops).ops.filter(o => o.type === 'выплата Clover'), p, now)
+  return {
+    sums: came(kept, 'выплата Clover'),
+    n: kept.length,
+    keys: kept.reduce((a, o) => a + (payoutRaw(o).keys ?? 0), 0),
+    estimated: kept.some(o => payoutRaw(o).usdBy !== 'получено'),
+    complete: list.complete,
+  }
+}
+
+export type PayoutRow = {
+  op: Op; tx: string; version: number; corrects: number | null; asset: string; assetAmount: string | null
+  network: string | null; usdBy: string; keys: number | null; note: string | null; reversed: boolean
+  stornoReason: string | null
+}
+
+// Строки списка выплат, новые сверху. Номер — из raw_ref.tx, не из
+// external_id: «v2:ABC» и самостоятельный «ABC#2» — разные номера.
+export function payoutRows(ops: Op[]): PayoutRow[] {
+  const reasons = new Map<number, string>()
+  for (const o of ops) {
+    if (o.type !== 'сторно') continue
+    const m = /^storno:(\d+)$/.exec(o.external_id)
+    if (!m) continue
+    let reason = ''
+    try { reason = String(JSON.parse(o.raw_ref ?? '{}').reason ?? '') } catch { }
+    reasons.set(Number(m[1]), reason)
+  }
+  return ops
+    .filter(o => o.type === 'выплата Clover')
+    .sort((a, b) => b.happened_at - a.happened_at || b.id - a.id)
+    .map(o => {
+      const r = payoutRaw(o)
+      return {
+        op: o, tx: r.tx ?? o.external_id, version: r.version ?? 1, corrects: r.corrects ?? null,
+        asset: r.asset ?? '—', assetAmount: r.assetAmount ?? null, network: r.network ?? null,
+        usdBy: r.usdBy ?? 'владелец', keys: r.keys ?? null, note: r.note ?? null,
+        reversed: reasons.has(o.id), stornoReason: reasons.get(o.id) ?? null,
+      }
+    })
+}
 
 // Путь денег: пять узлов (решение 5).
 export function path(ops: Op[]) {

@@ -445,7 +445,7 @@ export function useAction() {
 
 // ── формат ──
 
-export const nf = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+export { nf } from './num.ts'
 
 export const ago = (ts: number, now: number) => {
   if (!ts) return 'никогда'

@@ -14,6 +14,7 @@ import path from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { GC, TOOLS, STEAMID, readJson } from './paths.ts'
 import { forgetWeb, webTokenFile } from './steamweb.ts'
+import { currentUser, OWNER } from './ctx.ts'
 
 export type Account = {
   id: string
@@ -21,9 +22,14 @@ export type Account = {
   steamid: string
   token: string
   added: number
+  // Пользователь панели, чей это рабочий аккаунт (план 7.2, решение 4).
+  // Нет поля — владелец: все аккаунты до этапа 7.
+  user?: string
 }
 
-type Registry = { active: string; list: Account[] }
+// active — «активный» владельца (как до этапа 7); actives — остальных
+// пользователей: у каждого свой (решение 4).
+type Registry = { active: string; actives?: Record<string, string>; list: Account[] }
 
 // ACCOUNTS_FILE — только для тестов (testenv.ts): свой реестр, рабочий не трогается.
 const FILE = process.env.ACCOUNTS_FILE || path.join(TOOLS, 'accounts.json')
@@ -66,29 +72,66 @@ function load(): Registry {
 
 let reg: Registry = load()
 
-export const list = () => reg.list
-export const activeId = () => reg.active
-export const active = () => reg.list.find(a => a.id === reg.active) ?? reg.list[0]
+// Что сервер знает о пользователях — снаружи (app.ts): accounts.ts базу
+// не читает. По умолчанию — как до этапа 7: все активны, предела нет.
+export const accountsHooks = {
+  userActive: (_user: string) => true,
+  maxAccounts: (_user: string) => Infinity,
+}
 
-// steamid текущего аккаунта. Журнал расхода ведётся по нему.
-export const ACCOUNT = () => active()?.steamid || STEAMID
+export const ownerOf = (a: Pick<Account, 'user'>) => a.user || OWNER
+
+// Все аккаунты сервера — для его собственной работы (такты, разбор отчётов).
+// Пользователю — только listFor.
+export const list = () => reg.list
+export const listFor = (user: string) => reg.list.filter(a => ownerOf(a) === user)
+
+function activeIdOf(user: string) {
+  return user === OWNER ? reg.active : reg.actives?.[user] ?? ''
+}
+
+export function activeFor(user: string): Account | undefined {
+  const mine = listFor(user)
+  return mine.find(a => a.id === activeIdOf(user)) ?? mine[0]
+}
+
+export const active = () => activeFor(currentUser())
+export const activeId = () => active()?.id ?? ''
+
+// steamid активного аккаунта пользователя запроса. Журнал расхода ведётся
+// по нему. Запасной STEAMID — только владельцу (как до этапа 7).
+export const ACCOUNT = () => active()?.steamid || (currentUser() === OWNER ? STEAMID : '')
 
 export function byId(id: string) {
   return reg.list.find(a => a.id === id) ?? null
 }
 
-// Новый аккаунт в реестр. Первый (или если активного нет) становится
-// активным: пустой реестр бывает на свежей установке без steamid.
+// Охранник владения (решение 5): аккаунт этого пользователя или null.
+// Чужой и несуществующий неразличимы (решение 11).
+export function own(id: string, user = currentUser()): Account | null {
+  const a = byId(String(id ?? ''))
+  return a && ownerOf(a) === user && accountsHooks.userActive(user) ? a : null
+}
+
+// Новый аккаунт в реестр. Первый у пользователя становится его активным.
 export function addAccount(a: Account) {
+  const user = ownerOf(a)
+  if (user !== OWNER) a.user = user
   reg.list.push(a)
-  if (!byId(reg.active)) reg.active = a.id
+  if (!listFor(user).some(x => x.id === activeIdOf(user))) setActiveOf(user, a.id)
   save(reg)
   return { ok: true as const }
 }
 
+function setActiveOf(user: string, id: string) {
+  if (user === OWNER) reg.active = id
+  else reg.actives = { ...(reg.actives ?? {}), [user]: id }
+}
+
 export function setActive(id: string) {
-  if (!byId(id)) return { error: 'нет такого аккаунта' }
-  reg.active = id
+  const user = currentUser()
+  if (!own(id, user)) return { error: 'нет такого аккаунта' }
+  setActiveOf(user, id)
   save(reg)
   return { ok: true, active: id }
 }
@@ -117,19 +160,22 @@ type Link = {
   // Токен тогда пишется во временный файл и заменяет прежний, только если
   // вошли тем же Steam.
   relink: string | null
+  // Чья привязка (решение 7): «одна за раз» — в пределах пользователя.
+  user: string
 }
 
-let link: Link | null = null
+const links = new Map<string, Link>()
 
 // Запуск входа — через объект: тест подменяет его и проверяет разбор вывода
 // и уборку временного файла, не входя в Steam.
 export const proc = { spawn }
 
 // Привязка одна за раз — игровая или веб: два QR сразу человек не отличит.
-const alive = (x: { done: boolean; child: ChildProcess | null } | null) =>
+const alive = (x: { done: boolean; child: ChildProcess | null } | null | undefined) =>
   !!x && !x.done && !!x.child && x.child.exitCode === null
 
-export function linkState() {
+export function linkState(user = currentUser()) {
+  const link = links.get(user)
   if (!link) return null
   const { id, label, url, steamid, error, done, relink } = link
   return { id, label, url, steamid, error, done, relink, lines: link.lines.slice(-12) }
@@ -140,9 +186,14 @@ export function linkState() {
 // а привязать тот же Steam заново как новый аккаунт нельзя (он уже есть).
 // Поэтому relink: тот же вход по QR, но для существующей строки реестра.
 export function linkStart(label: string, onChange: () => void, relink: string | null = null) {
-  if (alive(link) || alive(webLink)) return { error: 'привязка уже идёт' }
-  const target = relink ? byId(relink) : null
+  const user = currentUser()
+  if (!accountsHooks.userActive(user)) return { error: 'нет такого аккаунта' }
+  if (alive(links.get(user)) || alive(webLinks.get(user))) return { error: 'привязка уже идёт' }
+  const target = relink ? own(relink, user) : null
   if (relink && !target) return { error: 'нет такого аккаунта' }
+  // Предел аккаунтов пользователя (решение 10) — только для новой привязки.
+  const max = accountsHooks.maxAccounts(user)
+  if (!target && listFor(user).length >= max) return { error: 'достигнут предел рабочих аккаунтов: ' + max }
   const clean = target ? target.label : (String(label || '').trim() || 'второй')
   const id = target ? target.id : slug(clean, reg.list.map(a => a.id))
   // Новый токен — во временный файл: прежний не трогаем, пока не убедимся,
@@ -156,16 +207,17 @@ export function linkStart(label: string, onChange: () => void, relink: string | 
     windowsHide: true,
   })
 
-  link = { id, label: clean, token, url: null, steamid: null, error: null, done: false, child, lines: [], relink: target?.id ?? null }
+  const link: Link = { id, label: clean, token, url: null, steamid: null, error: null, done: false, child, lines: [], relink: target?.id ?? null, user }
+  links.set(user, link)
 
   const read = (b: Buffer) => {
     for (const raw of String(b).split(/\r?\n/)) {
       const l = raw.trim()
       if (!l) continue
-      link!.lines.push(l)
-      if (l.startsWith('QRURL ')) link!.url = l.slice(6).trim()
+      link.lines.push(l)
+      if (l.startsWith('QRURL ')) link.url = l.slice(6).trim()
       if (l.startsWith('STEAMID ')) {
-        link!.steamid = l.slice(8).trim()
+        link.steamid = l.slice(8).trim()
         finish()
       }
     }
@@ -173,10 +225,20 @@ export function linkStart(label: string, onChange: () => void, relink: string | 
   }
 
   const finish = () => {
-    if (!link || link.done) return
+    if (link.done) return
     if (!link.steamid) return
+    // Пользователя отключили, пока шёл вход (решение 10): поздний ответ
+    // ничего не добавляет и не заменяет, временный токен — в корзину.
+    if (!accountsHooks.userActive(user)) {
+      try { fs.unlinkSync(path.join(GC, link.token)) } catch { }
+      link.error = 'доступ отключён владельцем'
+      link.done = true
+      try { link.child?.kill() } catch { }
+      onChange()
+      return
+    }
     if (link.relink) {
-      const a = byId(link.relink)
+      const a = own(link.relink, user)
       const tmp = path.join(GC, link.token)
       if (!a || a.steamid !== link.steamid) {
         try { fs.unlinkSync(tmp) } catch { }
@@ -194,15 +256,17 @@ export function linkStart(label: string, onChange: () => void, relink: string | 
       return
     }
     // Тот же аккаунт дважды не заводим: сессия перезапишется, а строк станет две.
-    const already = reg.list.find(a => a.steamid === link!.steamid)
+    // Чужой — без названия и без признака, чей он (решение 11).
+    const already = reg.list.find(a => a.steamid === link.steamid)
     if (already) {
-      link.error = 'этот аккаунт уже привязан как «' + already.label + '»'
+      if (ownerOf(already) !== user) { try { fs.unlinkSync(path.join(GC, link.token)) } catch { } }
+      link.error = ownerOf(already) === user ? 'этот аккаунт уже привязан как «' + already.label + '»' : 'этот Steam привязать нельзя'
       link.done = true
       try { link.child?.kill() } catch { }
       onChange()
       return
     }
-    addAccount({ id: link.id, label: link.label, steamid: link.steamid, token: link.token, added: Date.now() })
+    addAccount({ id: link.id, label: link.label, steamid: link.steamid, token: link.token, added: Date.now(), user })
     link.done = true
     try { link.child?.kill() } catch { }
     onChange()
@@ -211,7 +275,7 @@ export function linkStart(label: string, onChange: () => void, relink: string | 
   child.stdout?.on('data', read)
   child.stderr?.on('data', read)
   child.on('exit', () => {
-    if (link && !link.done) {
+    if (!link.done) {
       // Недоделанное обновление не должно оставить временный токен.
       if (link.relink) { try { fs.unlinkSync(path.join(GC, link.token)) } catch { } }
       link.error = link.error ?? 'вход не подтверждён'
@@ -223,7 +287,8 @@ export function linkStart(label: string, onChange: () => void, relink: string | 
   return { ok: true, id }
 }
 
-export function linkCancel() {
+export function linkCancel(user = currentUser()) {
+  const link = links.get(user)
   if (!link) return { ok: true }
   try { link.child?.kill() } catch { }
   link.done = true
@@ -251,13 +316,15 @@ type WebLink = {
   error: string | null
   done: boolean
   child: ChildProcess | null
+  user: string
 }
 
-let webLink: WebLink | null = null
+const webLinks = new Map<string, WebLink>()
 
 export const webTmpFile = (a: Pick<Account, 'id'>) => 'token-web-' + a.id + '.tmp.json'
 
-export function webLinkState() {
+export function webLinkState(user = currentUser()) {
+  const webLink = webLinks.get(user)
   if (!webLink) return null
   const { id, label, url, steamid, seen, error, done } = webLink
   return { id, label, url, steamid, seen, error, done }
@@ -280,16 +347,17 @@ export function acceptWebToken(id: string, steamid: string, tmp: string): { ok: 
 }
 
 export function webLinkStart(id: string, onChange: () => void) {
-  if (alive(link) || alive(webLink)) return { error: 'привязка уже идёт' }
-  const a = byId(id)
+  const user = currentUser()
+  const a = own(id, user)
   if (!a) return { error: 'нет такого аккаунта' }
+  if (alive(links.get(user)) || alive(webLinks.get(user))) return { error: 'привязка уже идёт' }
   const tmp = webTmpFile(a)
   const tmpPath = path.join(GC, tmp)
   try { fs.unlinkSync(tmpPath) } catch { }   // хвост прошлой попытки
 
   const child = proc.spawn(process.execPath, ['weblogin.js', '--id', a.id, '--out', tmp], { cwd: GC, windowsHide: true })
-  const w: WebLink = { id: a.id, label: a.label, tmp, url: null, steamid: null, seen: false, error: null, done: false, child }
-  webLink = w
+  const w: WebLink = { id: a.id, label: a.label, tmp, url: null, steamid: null, seen: false, error: null, done: false, child, user }
+  webLinks.set(user, w)
 
   const finish = (error: string | null) => {
     if (w.done) return
@@ -309,7 +377,10 @@ export function webLinkStart(id: string, onChange: () => void) {
       else if (l.startsWith('ERROR ')) w.error = l.slice(6).trim()
       else if (l.startsWith('STEAMID ')) {
         w.steamid = l.slice(8).trim()
-        const r = acceptWebToken(w.id, w.steamid, w.tmp)
+        // Отключён, пока шёл вход (решение 10) — веб-токен не принимается.
+        const r = accountsHooks.userActive(user) && own(w.id, user)
+          ? acceptWebToken(w.id, w.steamid, w.tmp)
+          : { error: 'доступ отключён владельцем' }
         finish('error' in r ? r.error : null)
       }
     }
@@ -323,8 +394,8 @@ export function webLinkStart(id: string, onChange: () => void) {
   return { ok: true, id: a.id }
 }
 
-export function webLinkCancel() {
-  const w = webLink
+export function webLinkCancel(user = currentUser()) {
+  const w = webLinks.get(user)
   if (!w || w.done) return { ok: true }
   w.done = true
   w.error = 'отменено'
@@ -339,9 +410,10 @@ export function webLinkCancel() {
 // матчи на том аккаунте действительно израсходованы, и если его привяжут
 // заново, очередь должна об этом помнить.
 export function unlink(id: string) {
-  const a = byId(id)
+  const user = currentUser()
+  const a = own(id, user)
   if (!a) return { error: 'нет такого аккаунта' }
-  if (reg.list.length === 1) return { error: 'это единственный аккаунт' }
+  if (listFor(user).length === 1) return { error: 'это единственный аккаунт' }
 
   try { fs.unlinkSync(path.join(GC, a.token)) } catch { }
   // И веб-вход: без хозяина он остался бы на диске, а аккаунт, получивший
@@ -349,13 +421,13 @@ export function unlink(id: string) {
   try { fs.unlinkSync(path.join(GC, webTokenFile(a))) } catch { }
   forgetWeb(a.id)
   reg.list = reg.list.filter(x => x.id !== id)
-  if (reg.active === id) reg.active = reg.list[0].id
+  if (activeIdOf(user) === id) setActiveOf(user, listFor(user)[0].id)
   save(reg)
   return { ok: true }
 }
 
 export function rename(id: string, label: string) {
-  const a = byId(id)
+  const a = own(id)
   if (!a) return { error: 'нет такого аккаунта' }
   a.label = String(label).trim() || a.label
   save(reg)

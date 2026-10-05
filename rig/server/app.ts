@@ -17,7 +17,11 @@ import { senderState, statusFile, stop } from './sender.ts'
 import { ATTEMPT_COOKIE, attemptCookie, attemptCookieClear, bearer, cookieValue, gate, loginCookie, logoutCookie, sameToken } from './auth.ts'
 import { accountList, accountsApi, arrivalAside, arrivalList, burnedList, graph, itemPool, marketScan, queuePreview, tree, webCheck } from './api.ts'
 import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase.ts'
-import { ACCOUNT, active as activeAccount, activeId as activeAccountId, byId as accountById, list as accountList2 } from './accounts.ts'
+// Охранник владения (план 7.2, решение 5): в маршрутах аккаунт берётся
+// только через own — аккаунт пользователя запроса или null. Все аккаунты
+// сервера (accountList2) — только для его собственной работы.
+import { ACCOUNT, active as activeAccount, activeId as activeAccountId, own as accountById, list as accountList2, listFor } from './accounts.ts'
+import { asUser, currentUser } from './ctx.ts'
 import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
 import { listOps, migrateMoney, MONEY_DDL } from './money.ts'
 import { attemptLimiter, ensureOwner, handleFinish, handleReturn, logAuth, newSession, OWNER_ID, sessionUser, startAttempt, STEAM_TTL, TOKEN_TTL, userById, USERS_DDL } from './users.ts'
@@ -67,12 +71,25 @@ export async function buildApp(opts: AppOpts) {
   const authed = (presentedToken: string) => !!sessionUser(db, presentedToken)
   const hub = streamHub()
 
-  app.addHook('onRequest', async (req, reply) => {
+  // Пропуск и чей запрос. Всё, что вызывает обработчик, видит пользователя
+  // запроса (ctx.ts): «активный аккаунт», настройки, закупку, поток.
+  // Без входа (открытые пути входа) — пустой пользователь: ничьих данных.
+  app.addHook('onRequest', (req, reply, done) => {
     const g = gate({ method: req.method, url: req.url, headers: req.headers as any }, authed, ALLOWED)
     if (!g.ok) {
       reply.code(g.code).type('application/json; charset=utf-8').send({ error: g.why, auth: g.code === 401 })
-      return reply
+      return
     }
+    const who = sessionUser(db, presented(req))
+    asUser(who ? who.user.id : '', done)
+  })
+
+  // Чужой и несуществующий объект — один и тот же ответ (решение 11): 404
+  // с тем же текстом.
+  const NOT_FOUND = new Set(['нет такого аккаунта', 'нет такой выплаты Clover', 'нет такой выплаты'])
+  app.addHook('preSerialization', async (_req, reply, payload: any) => {
+    if (reply.statusCode === 200 && payload && typeof payload === 'object' && NOT_FOUND.has(payload.error)) reply.code(404)
+    return payload
   })
 
   const presented = (req: any) =>
@@ -232,6 +249,7 @@ export async function buildApp(opts: AppOpts) {
   // кнопка «стоп» останавливала отправку секунд на двадцать.
   app.post('/api/sender/stop', async (req: any) => {
     const id = String(req.body?.id ?? activeAccountId())
+    if (!accountById(id)) return { error: 'нет такого аккаунта' }
     const was = senderState(id).running
     setAutopilot(id, { on: false })
     if (senderState(id).running) stop(id)
@@ -247,6 +265,7 @@ export async function buildApp(opts: AppOpts) {
   app.post('/api/autopilot', async (req: any) => {
     const b = req.body ?? {}
     const id = String(b.id ?? activeAccountId())
+    if (!accountById(id)) return { error: 'нет такого аккаунта' }
     const patch: any = {}
     if (b.on !== undefined) patch.on = !!b.on
     if (b.delay !== undefined) patch.delay = Number(b.delay)
@@ -280,7 +299,8 @@ export async function buildApp(opts: AppOpts) {
     // Работник этого аккаунта на время входа гасится: он бы стучался
     // со старым токеном и выбивал новую сессию.
     const relink = req.body?.relink ? String(req.body.relink) : null
-    if (relink && accountById(relink)) {
+    if (relink && !accountById(relink)) return { error: 'нет такого аккаунта' }
+    if (relink) {
       setAutopilot(relink, { on: false })
       if (senderState(relink).running) stop(relink)
     }
@@ -323,7 +343,7 @@ export async function buildApp(opts: AppOpts) {
   // разбирал — расход шёл мимо журнала.
   app.post('/api/accounts/unlink', async (req: any) => {
     const id = String(req.body?.id ?? '')
-    if (accountList2().some(a => a.id === id)) {
+    if (accountById(id)) {
       setAutopilot(id, { on: false })
       if (senderState(id).running) stop(id)
       ingestStatus()
@@ -331,7 +351,7 @@ export async function buildApp(opts: AppOpts) {
       // и оставлять его без хозяина незачем. tools/market.key основного
       // не трогаем: это прежнее место ключа, его человек удаляет сам.
       const a = accountById(id)
-      if (a && a.id !== 'main' && accountList2().length > 1) removeKey(a)
+      if (a && a.id !== 'main' && listFor(currentUser()).length > 1) removeKey(a)
     }
     const r = accountsApi.unlink(id)
     push()
@@ -366,7 +386,7 @@ export async function buildApp(opts: AppOpts) {
     const currency = String(b.currency ?? 'RUB') as any
     // Покупаем на конкретный аккаунт: план считался по нему, и лоты должны
     // прийти туда же. Без явного id — активный, как видит панель.
-    const who = b.id ? accountById(String(b.id)) : activeAccount()
+    const who = b.id ? accountById(String(b.id)) : activeAccount() ?? null
     if (!who) return { error: 'нет такого аккаунта' }
     // Цены сверяются с разбором площадки в той же валюте: сервер покупает
     // только то и не дороже того, что видел сам.
@@ -417,6 +437,7 @@ export async function buildApp(opts: AppOpts) {
   // Веб-сессия аккаунта (план 2.4) — один обмен токена на куки, по кнопке.
   // В ответ — только состояние; куки остаются на сервере.
   app.post('/api/accounts/web-check', async (req: any) => {
+    if (!accountById(String(req.body?.id ?? ''))) return { error: 'нет такого аккаунта' }
     const r = await webCheck(String(req.body?.id ?? ''))
     push()
     return r
@@ -448,10 +469,11 @@ export async function buildApp(opts: AppOpts) {
     return moneySync(db, { accountId: a.id, key, days: Number(req.body?.days) || undefined })
   })
 
-  app.get('/api/money', async (req: any) => listOps(db, {
-    accountId: req.query?.id ? String(req.query.id) : undefined,
-    limit: Number(req.query?.limit) || undefined,
-  }))
+  app.get('/api/money', async (req: any) => {
+    const a = req.query?.id ? accountById(String(req.query.id)) : activeAccount() ?? null
+    if (!a) return { error: 'нет такого аккаунта' }
+    return listOps(db, { accountId: a.id, limit: Number(req.query?.limit) || undefined })
+  })
 
   // История рынка Steam (план 3.3) — только по запросу. Куки — из веб-токена
   // аккаунта на сервере, в ответ не попадают; нет веб-сессии — понятная ошибка.
@@ -510,7 +532,7 @@ export async function buildApp(opts: AppOpts) {
   })
 
   app.post('/api/money/storno', async (req: any) => {
-    const r = handleStorno(db, req.body)
+    const r = handleStorno(db, req.body, accountForPayout)
     push()
     return r
   })
@@ -534,13 +556,18 @@ export async function buildApp(opts: AppOpts) {
 
   // Приходы сканера слепых лотов. Откладывание меняет farm-решения работника,
   // поэтому после него — толчок состояния.
-  app.get('/api/arrivals', async () => arrivalList())
+  app.get('/api/arrivals', async () => arrivalList(listFor(currentUser()).map(a => a.steamid)))
   app.post('/api/arrivals/aside', async (req: any) => {
-    const r = arrivalAside(String(req.body?.assetid ?? ''), !!req.body?.aside)
+    const r = arrivalAside(String(req.body?.assetid ?? ''), !!req.body?.aside, listFor(currentUser()).map(a => a.steamid))
     push()
     return r
   })
-  app.get('/api/counters', async () => counterLines())
+  // История счётчиков — по вещам всех аккаунтов сервера, без деления по
+  // владельцам (её рисовал график, снятый на этапе 9): только владельцу.
+  app.get('/api/counters', async (_req, reply) => {
+    if (currentUser() !== OWNER_ID) return reply.code(403).send({ error: 'только владельцу' })
+    return counterLines()
+  })
   app.get('/api/tree', async (req: any) => tree(Number(req.query?.top) || settings().treeTop))
 
   // ───────────────────── файлы отправщика: ловим изменения ─────────────────────

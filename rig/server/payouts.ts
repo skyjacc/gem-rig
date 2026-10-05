@@ -190,7 +190,9 @@ function atomically<T>(db: DatabaseSync, run: () => T | Fail): T | Fail {
   }
 }
 
-type Opts = { now?: number; afterCheck?: () => void; labelOf?: (accountId: string) => string }
+// labelOf: метка своего аккаунта; null — аккаунт не пользователя запроса:
+// тогда в тексте ни метки, ни id (план 7.2, решение 11).
+type Opts = { now?: number; afterCheck?: () => void; labelOf?: (accountId: string) => string | null }
 
 // ── запись (решения 3–5, 8) ──
 
@@ -202,7 +204,10 @@ export function addPayout(db: DatabaseSync, p: Payout, opts: Opts = {}): Done | 
     const live = rows.filter(o => !isReversed(db, o.id))
     if (live.length) {
       const a = live[0]
-      if (a.account_id !== p.accountId) return { error: 'номер уже внесён на аккаунт «' + label(a.account_id ?? '') + '»' }
+      if (a.account_id !== p.accountId) {
+        const l = label(a.account_id ?? '')
+        return { error: l == null ? 'этот номер транзакции уже внесён' : 'номер уже внесён на аккаунт «' + l + '»' }
+      }
       if (a.net !== p.cents) return { error: 'номер уже внесён с другой суммой: ' + usd(a.net) }
       return { id: a.id, inserted: false }
     }
@@ -284,7 +289,7 @@ export function handlePayout(db: DatabaseSync, body: unknown, find: Find, now = 
   const p = parsePayout(body, now)
   if ('error' in p) return p
   if (!find(p.accountId)) return { error: 'нет такого аккаунта' }
-  return addPayout(db, p, { now, labelOf: id => find(id)?.label ?? id })
+  return addPayout(db, p, { now, labelOf: id => find(id)?.label ?? null })
 }
 
 export function handleCorrect(db: DatabaseSync, body: unknown, find: Find, now = Date.now()): Done | Fail {
@@ -293,11 +298,20 @@ export function handleCorrect(db: DatabaseSync, body: unknown, find: Find, now =
   const p = parsePayout(body, now)
   if ('error' in p) return p
   if (!find(p.accountId)) return { error: 'нет такого аккаунта' }
+  // Исправляется только своя выплата (план 7.2): чужая неотличима от
+  // несуществующей.
+  if (!ownOp(db, corrects, find)) return { error: 'нет такой выплаты Clover' }
   return correctPayout(db, corrects, p, { now })
 }
 
-export function handleStorno(db: DatabaseSync, body: unknown, now = Date.now()): { id: number } | Fail {
+const ownOp = (db: DatabaseSync, id: number, find: Find) => {
+  const o = db.prepare('select account_id from money_ops where id = ?').get(id) as { account_id: string | null } | undefined
+  return !!o && o.account_id != null && !!find(o.account_id)
+}
+
+export function handleStorno(db: DatabaseSync, body: unknown, find: Find, now = Date.now()): { id: number } | Fail {
   const id = Number((body as any)?.id)
   if (!Number.isInteger(id) || id <= 0) return { error: 'не указано, какую запись сторнировать' }
+  if (!ownOp(db, id, find)) return { error: 'нет такой выплаты' }
   return stornoPayout(db, id, String((body as any)?.reason ?? ''), now)
 }

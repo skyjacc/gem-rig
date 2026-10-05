@@ -379,7 +379,7 @@ test('маршрут записи: аккаунт из тела, несущес�
 test('маршрут исправления: перенос на несуществующий аккаунт — отказ, записей не прибавилось', () => {
   const db = fresh()
   const v1 = ok(handlePayout(db, body(), find, NOW))
-  ok(handleStorno(db, { id: v1.id, reason: 'не тот аккаунт' }, NOW))
+  ok(handleStorno(db, { id: v1.id, reason: 'не тот аккаунт' }, find, NOW))
   const n = all(db).length
   refused(handleCorrect(db, { ...body({ accountId: 'ghost' }), corrects: v1.id }, find, NOW), /нет такого аккаунта/)
   refused(handleCorrect(db, { ...body(), corrects: 'x' }, find, NOW), /какую запись исправить/)
@@ -389,8 +389,8 @@ test('маршрут исправления: перенос на несущес�
 
 test('маршрут сторно: id и причина из тела', () => {
   const db = fresh()
-  refused(handleStorno(db, { id: 'x', reason: 'r' }, NOW), /какую запись/)
-  refused(handleStorno(db, { id: 1 }, NOW), /нет такой выплаты|причин/)
+  refused(handleStorno(db, { id: 'x', reason: 'r' }, find, NOW), /какую запись/)
+  refused(handleStorno(db, { id: 1 }, find, NOW), /нет такой выплаты|причин/)
 })
 
 test('все маршруты выплат закрыты без входа', () => {

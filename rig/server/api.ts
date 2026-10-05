@@ -7,8 +7,9 @@ import { cachedStatus, keyFor } from './marketkeys.ts'
 import { checkWeb, gameStatus, webStatus } from './steamweb.ts'
 import { db } from './db.ts'
 import {
-  ACCOUNT, active, byId, hasSession, linkCancel, linkStart, linkState, list, rename, setActive, unlink, webLinkCancel, webLinkStart, webLinkState, type Account,
+  ACCOUNT, active, byId, hasSession, linkCancel, linkStart, linkState, listFor, rename, setActive, unlink, webLinkCancel, webLinkStart, webLinkState, type Account,
 } from './accounts.ts'
+import { currentUser } from './ctx.ts'
 import { buildGraph, type GraphEntity } from './graph.ts'
 import { hasMap } from './supply.ts'
 import { queueFor } from './queue.ts'
@@ -26,7 +27,7 @@ export function accountList() {
     active: active()?.id ?? null,
     link: linkState(),
     webLink: webLinkState(),
-    list: list().map(a => ({
+    list: listFor(currentUser()).map(a => ({
       id: a.id,
       label: a.label,
       steamid: a.steamid,
@@ -288,12 +289,14 @@ export function burnedList(limit = 500) {
 // Сканер слепых лотов: что лежало в купленной вещи до нас. Список идёт
 // с текущим числом и отметкой «ушло» — вещь могли уже продать, и тогда
 // строка остаётся историей, а не делом.
-export function arrivalList() {
+// Приходы — только по своим аккаунтам (план 7.2): steamids — аккаунты
+// пользователя запроса.
+export function arrivalList(steamids: string[] = [ACCOUNT()]) {
   const acc = ACCOUNT()
   const now = new Map(invOf(acc).rows.map(r => [r.assetid, r.value]))
   return {
-    summary: arrivalSummary(db),
-    rows: arrivalsOf(db).map(r => ({
+    summary: arrivalSummary(db, steamids),
+    rows: arrivalsOf(db, 400, steamids).map(r => ({
       ...r,
       now: now.get(r.assetid) ?? null,
       gone: !now.has(r.assetid),
@@ -301,8 +304,8 @@ export function arrivalList() {
   }
 }
 
-export function arrivalAside(assetid: string, aside: boolean) {
-  setAside(db, assetid, aside)
+export function arrivalAside(assetid: string, aside: boolean, steamids: string[] = [ACCOUNT()]) {
+  if (!setAside(db, assetid, aside, steamids)) return { error: 'нет такого прихода' }
   return { ok: true }
 }
 
@@ -473,8 +476,9 @@ async function money(force: boolean, a: Account) {
 // Разбор площадки — для конкретного аккаунта: что у НЕГО уже лежит и что
 // накручивается, его баланс и его ключ. Раньше всё бралось у активного,
 // а покупалось общим ключом — и лоты уезжали не туда, куда считался план.
-export async function marketScan(force = false, currency: Currency = 'USD', who: Account | null = active()) {
+export async function marketScan(force = false, currency: Currency = 'USD', who: Account | null = active() ?? null) {
   const a = who ?? active()
+  if (!a) return { error: 'нет такого аккаунта' }
   const s = settings()
   const goal = s.goal
 

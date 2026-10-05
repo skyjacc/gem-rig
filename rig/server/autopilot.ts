@@ -29,7 +29,8 @@ import { invOf, refreshInventory } from './steam.ts'
 import { queueFile, senderState, start as startSender, statusFile, stop as stopSender, writePace, forget } from './sender.ts'
 import { advise, creditRate, evenDelay, silenceLimit, type Sample } from './pace.ts'
 import { capFor, reached, spreadPlan, type Wave } from './spread.ts'
-import { ACCOUNT, active, list as accounts, type Account } from './accounts.ts'
+import { ACCOUNT, active, list as accounts, listFor, type Account } from './accounts.ts'
+import { currentUser } from './ctx.ts'
 import { settings } from './settings.ts'
 import { sessionStatus } from './steamweb.ts'
 
@@ -507,7 +508,8 @@ export function autopilotState() {
     goal: GOAL(),
     objects: list.reduce((n, p) => n + p.objects, 0),
     gems: list.map(p => ({ gem: p.key, objects: p.objects })),
-    units: accounts().map(unitState),
+    // Работники — только своих аккаунтов (план 7.2).
+    units: listFor(currentUser()).map(unitState),
     pace: a ? paceAdvice(a.id) : null,
     // Поля активного аккаунта подняты наверх: дашборд смотрит на него.
     ...(a ? unitState(a) : {}),

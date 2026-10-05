@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { post, type Accounts, type State } from '../lib/api.ts'
-import { accountTone } from '../parts/Sidebar.tsx'
+import { accountTone } from './tone.ts'
 import { Dot, Pill } from './ui.tsx'
 
 export function TopBar({ state, accounts, kpi, status, bell }: {

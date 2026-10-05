@@ -16,7 +16,7 @@ import { Loadable } from '../States.tsx'
 import { Btn, Chip, Panel, Src } from '../ui.tsx'
 import { STATE, useStacks, withOf } from './Inventory.tsx'
 
-// Та же ссылка, что в старом Пульте (views/Work.tsx:30): поиск гема
+// Та же ссылка, что была в Пульте старой панели (удалена на этапе 9): поиск гема
 // «Spectator {гем}» в категории самоцветов — не ссылка на саму вещь.
 const MARKET = 'https://steamcommunity.com/market/search?q=&category_570_Type%5B%5D=tag_supply_crate&appid=570&q='
 

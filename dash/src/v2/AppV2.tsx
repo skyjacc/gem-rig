@@ -1,8 +1,8 @@
 import './v2.css'
 import { useEffect, useState } from 'react'
 import { ago, DEMO, useJson, useLive, type Accounts, type Settings } from '../lib/api.ts'
-import { Tune } from '../parts/Tune.tsx'
-import { LinkAccount } from '../parts/LinkAccount.tsx'
+import { TuneSheet, type TuneTab } from './Tune.tsx'
+import { LinkDialog } from './LinkDialog.tsx'
 import { Rail, RailRow, SCREENS, type ScreenId } from './Rail.tsx'
 import { TopBar } from './TopBar.tsx'
 import { Pult } from './Pult.tsx'
@@ -39,17 +39,18 @@ export default function AppV2() {
   const live = useLive()
   const { state, stale } = live
   const [screen, setScreen] = useState<ScreenId>('overview')
-  // «Общие правила» на рельсе и «настроить» на пульте открывают окно Tune
-  // (старый вид, портал в body, вне .v2). Те же правила и настройки каждого
-  // аккаунта — ещё и на экране Аккаунтов (план 2.4).
-  const [rules, setRules] = useState<null | 'run' | 'rules'>(null)
+  // «Общие правила» на рельсе и «настроить» на пульте открывают окно
+  // «Настроить» (§5.7, план 9) на своей вкладке. Быстрые настройки аккаунта
+  // и три правила — ещё и на экране Аккаунтов (план 2.4); это тот же POST.
+  const [rules, setRules] = useState<null | TuneTab>(null)
   const [now, setNow] = useState(() => Date.now())
   const accountsJson = useJson<Accounts>('/api/accounts', state?.ts)
   const accounts = accountsJson.data
-  const { data: settings } = useJson<Settings>('/api/settings', state?.ts)
+  const settingsJson = useJson<Settings>('/api/settings', state?.ts)
+  const settings = settingsJson.data
   const [burning, setBurning] = useState(false)
-  // Привязка игрового входа — окно LinkAccount (портал вне .v2), им же
-  // обновляется вход существующего аккаунта (relink). План 2.4, решение 8.
+  // Привязка игрового входа — окно LinkDialog (план 9), им же обновляется
+  // вход существующего аккаунта (relink).
   const [linking, setLinking] = useState<null | { relink: { id: string; label: string } | null }>(null)
   // Аккаунты: выбранный аккаунт (его настройки и работник справа) и окно
   // экрана — веб-вход, ключ, отвязка. Окно веб-входа открывается и справа.
@@ -150,9 +151,9 @@ export default function AppV2() {
           </aside>
         </div>
         {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}
+        {linking ? <LinkDialog accounts={accounts} relink={linking.relink} onClose={() => setLinking(null)} /> : null}
+        {rules ? <TuneSheet tab={rules} onTab={setRules} onClose={() => setRules(null)} state={state} settings={settings} onSaved={settingsJson.reload} /> : null}
       </div>
-      <LinkAccount open={linking != null} onClose={() => setLinking(null)} accounts={accounts} relink={linking?.relink ?? null} />
-      <Tune open={rules != null} initial={rules ?? undefined} onClose={() => setRules(null)} state={state} unit={state.autopilot} />
     </>
   )
 }

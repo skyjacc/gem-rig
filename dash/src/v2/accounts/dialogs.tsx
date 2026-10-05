@@ -1,28 +1,12 @@
 // Окна экрана «Аккаунты» (план 2.4, решение 8): веб-вход по QR, ключ
 // площадки, отвязка. Игровая привязка — прежнее окно LinkAccount.
 
-import { useEffect, useRef, useState, type RefObject } from 'react'
-import QRCode from 'qrcode'
+import { useEffect, useRef, useState } from 'react'
 import { nf, useAction, type AccountRow, type Accounts } from '../../lib/api.ts'
 import { Btn } from '../ui.tsx'
 import { keyCheck } from './model.ts'
-
-// Tab держится внутри окна; Esc — то, что окно разрешает (или ничего).
-function useTrap(box: RefObject<HTMLDivElement | null>, onEsc: (() => void) | null) {
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onEsc?.(); return }
-      if (e.key !== 'Tab' || !box.current) return
-      const f = [...box.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])')]
-      if (!f.length) return
-      const first = f[0], last = f[f.length - 1]
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
-    }
-    document.addEventListener('keydown', key, true)
-    return () => document.removeEventListener('keydown', key, true)
-  }, [box, onEsc])
-}
+import { useTrap } from '../useTrap.ts'
+import { Qr } from '../Qr.tsx'
 
 // ── веб-вход по QR ──
 //
@@ -82,18 +66,6 @@ export function WebLinkDialog({ a, accounts, onClose }: { a: AccountRow; account
       </div>
     </div>
   )
-}
-
-function Qr({ url, ok, failed }: { url: string | null; ok: boolean; failed: boolean }) {
-  const ref = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    if (!url || !ref.current) return
-    QRCode.toCanvas(ref.current, url, { width: 168, margin: 1, color: { dark: '#ecebe8', light: '#1b1b1e' } }).catch(() => { })
-  }, [url])
-  if (ok) return <div className="v2-acc-qr is-ok">готово</div>
-  if (failed) return <div className="v2-acc-qr"><span className="v2-hint">кода нет</span></div>
-  if (!url) return <div className="v2-acc-qr"><span className="v2-hint">код готовится…</span></div>
-  return <canvas ref={ref} className="v2-acc-qr" aria-label="QR-код для входа" />
 }
 
 // ── ключ площадки ──

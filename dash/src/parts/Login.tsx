@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import './login.css'
 import { Check, Eye, EyeOff, Gem, LoaderCircle, Lock } from 'lucide-react'
 
 // Вход. Фон — шейдерная сцена Portal Field из ThreeUI (MIT); выбран из шести

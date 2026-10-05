@@ -10,7 +10,6 @@ import { ConfirmBurn } from './ConfirmBurn.tsx'
 import { Bell } from './Bell.tsx'
 import { Booting, FirstRun, NoServer } from './States.tsx'
 import { Pill } from './ui.tsx'
-import { Screen, ScreenSide } from './screens.tsx'
 import { Overview } from './overview/Overview.tsx'
 import { Inspector } from './overview/Inspector.tsx'
 import { Alerts } from './overview/Alerts.tsx'
@@ -33,8 +32,8 @@ import { useSales } from './sales/data.ts'
 // по src/v2 проверяет, что цель нигде не зашита (§3.2), и должен быть пуст.
 const SECOND = 1_000
 
-// Новая панель (спецификация v2). Открывается по /?ui=v2 на время миграции;
-// на этапе 9 переключатель исчезает, а старая панель удаляется.
+// Панель (спецификация v2). С этапа 9 — единственная: старая удалена,
+// переключателя ?ui=v2 больше нет.
 export default function AppV2() {
   const live = useLive()
   const { state, stale } = live
@@ -124,7 +123,7 @@ export default function AppV2() {
                     onLink={relink => setLinking({ relink })} onBurn={() => setBurning(true)}
                   />
                 )
-                : <Screen id={screen} title={title} />}
+                : null}
             </div>
             <Pult state={state} live={live} now={now} onTune={() => setRules('run')} onBurn={() => setBurning(true)} />
           </main>
@@ -147,7 +146,7 @@ export default function AppV2() {
                 state={state} accounts={accounts} sel={acc} now={now}
                 onRelink={a => setLinking({ relink: a })} onWeb={id => setAccOpen({ kind: 'web', id })}
               />
-            ) : <ScreenSide id={screen} />}
+            ) : null}
           </aside>
         </div>
         {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}

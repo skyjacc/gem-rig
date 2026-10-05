@@ -1,0 +1,217 @@
+/* Вход (parts/Login.tsx) — правила и анимации .lg-* из прежнего index.css,
+   дословно. Живут здесь до этапа 7: там вход переделывается (§5.8). */
+
+/* ── вход ──
+   Фон — Portal Field (ThreeUI), поверх компактная тёмная карточка.
+   Холодный синий портала — единственный акцент: им светятся фокус поля
+   и кнопка. Фон отвечает на действия: фокус — ярче, «Войти» — пульс,
+   вход — портал затягивает экран. */
+
+.lg {
+  --ink: #f1f3f7;
+  --mute: rgb(241 243 247 / 0.5);
+  --line: rgb(255 255 255 / 0.09);
+  --portal: #8fb2ff;
+  --bad: #ff7b7b;
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  overflow: hidden;
+  background: #05060a;
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.lg-scene { position: absolute; inset: 0; }
+.lg-scene-in {
+  position: absolute;
+  inset: 0;
+  filter: brightness(0.8) saturate(0.95);
+  transition: filter 600ms ease, transform 900ms cubic-bezier(.5, 0, .2, 1), opacity 900ms ease;
+}
+.lg-bg, .lg-scene-in > * { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
+.lg-scene iframe { width: 100% !important; height: 100% !important; border: 0; pointer-events: none; }
+.is-focus .lg-scene-in { filter: brightness(1.05) saturate(1.1); }
+.lg-scene-in.pulse-0 { animation: lg-pulse-a 700ms cubic-bezier(.3, .7, .2, 1); }
+.lg-scene-in.pulse-1 { animation: lg-pulse-b 700ms cubic-bezier(.3, .7, .2, 1); }
+.is-ok .lg-scene-in { transform: scale(1.9); filter: brightness(1.6) saturate(1.2); opacity: 0.35; }
+.lg-scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 42% 40% at 50% 46%, rgb(0 0 0 / 0.5), transparent 75%);
+}
+
+.lg-card {
+  position: relative;
+  z-index: 2;
+  width: min(316px, 100%);
+  margin-top: -6vh;
+  padding: 26px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 18px;
+  background: rgb(9 10 13 / 0.86);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 30px 70px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: lg-in 700ms cubic-bezier(.2, .8, .2, 1) both;
+  transition: opacity 500ms ease, transform 700ms cubic-bezier(.5, 0, .2, 1);
+}
+.is-ok .lg-card { opacity: 0; transform: scale(0.96); }
+
+.lg-mark { color: var(--portal); opacity: 0.9; }
+.lg-title {
+  margin-top: 10px;
+  font-family: 'Unbounded', var(--font-sans);
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding-left: 0.16em;
+}
+
+/* Поле: тонкая тёмная рамка в покое, синее свечение только в фокусе.
+   Подпись лежит внутри и всплывает, когда поле в фокусе или заполнено. */
+.lg-field {
+  position: relative;
+  width: 100%;
+  margin-top: 24px;
+  height: 54px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.035);
+  border: 1px solid var(--line);
+  cursor: text;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+.lg-field:focus-within {
+  border-color: rgb(143 178 255 / 0.55);
+  background: rgb(143 178 255 / 0.05);
+  box-shadow: 0 0 0 4px rgb(143 178 255 / 0.12), 0 0 24px rgb(143 178 255 / 0.18);
+}
+.is-bad .lg-field { border-color: rgb(255 123 123 / 0.7); box-shadow: 0 0 0 4px rgb(255 123 123 / 0.12); }
+.lg-lock {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--mute);
+  transition: color 180ms ease;
+}
+.lg-field:focus-within .lg-lock { color: var(--portal); }
+.lg-float {
+  position: absolute;
+  left: 38px;
+  top: 50%;
+  translate: 0 -50%;
+  font-size: 14px;
+  color: var(--mute);
+  pointer-events: none;
+  transform-origin: left center;
+  transition: top 180ms ease, font-size 180ms ease, color 180ms ease, letter-spacing 180ms ease;
+}
+.lg-field:focus-within .lg-float,
+.lg-field.filled .lg-float {
+  top: 15px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(143 178 255 / 0.85);
+}
+.lg-field.filled:not(:focus-within) .lg-float { color: var(--mute); }
+.lg-field input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 4px 6px 38px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: 14px var(--font-mono);
+  letter-spacing: 0.06em;
+  caret-color: var(--portal);
+}
+.lg-eye {
+  align-self: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--mute);
+  transition: color 150ms ease, background 150ms ease;
+}
+.lg-eye:hover { color: var(--ink); background: rgb(255 255 255 / 0.05); }
+
+.lg-error { min-height: 18px; margin-top: 8px; align-self: flex-start; font-size: 12.5px; color: var(--bad); }
+
+/* Кнопка: графит с тонкой светящейся кромкой. Наведение — по кромке
+   проходит блик, нажатие — вдавливается. */
+.lg-go {
+  position: relative;
+  width: 100%;
+  height: 46px;
+  margin-top: 4px;
+  border-radius: 12px;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #2a2f3b, #161a22);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    inset 0 0 0 1px rgb(143 178 255 / 0.28),
+    0 8px 24px rgb(0 0 0 / 0.45);
+  transition: box-shadow 200ms ease, transform 100ms ease, opacity 200ms ease;
+}
+.lg-go::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 35%, rgb(143 178 255 / 0.28) 50%, transparent 65%);
+  translate: -120% 0;
+  transition: translate 700ms cubic-bezier(.3, .7, .2, 1);
+}
+.lg-go:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    inset 0 0 0 1px rgb(143 178 255 / 0.55),
+    0 8px 28px rgb(0 0 0 / 0.45),
+    0 0 22px rgb(143 178 255 / 0.22);
+}
+.lg-go:hover:not(:disabled)::before { translate: 120% 0; }
+.lg-go:active:not(:disabled) { transform: translateY(1px) scale(0.99); }
+.lg-go:disabled { opacity: 0.45; }
+.is-busy .lg-go, .is-ok .lg-go { opacity: 1; }
+.lg-go-label { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; }
+.lg-spin { animation: lg-spin 800ms linear infinite; }
+
+.lg-eye:focus-visible, .lg-go:focus-visible { outline: 2px solid var(--portal); outline-offset: 2px; }
+
+@keyframes lg-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+@keyframes lg-spin { to { rotate: 360deg; } }
+@keyframes lg-pulse-a { 40% { transform: scale(0.94); filter: brightness(1.45) saturate(1.2); } }
+@keyframes lg-pulse-b { 40% { transform: scale(0.94); filter: brightness(1.45) saturate(1.2); } }
+
+@media (max-width: 480px) {
+  .lg-card { margin-top: -4vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-card, .lg-scene-in, .lg-spin { animation: none !important; }
+  .lg-scene-in, .lg-card, .lg-go::before { transition: none; }
+}
+.lg-field input::selection { background: rgb(143 178 255 / 0.35); color: #fff; }
+

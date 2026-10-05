@@ -270,13 +270,16 @@ test('такт работника не поднимает отправщик о�
   // Включён в памяти, хотя пользователь уже отключён (u2 — с прошлого теста).
   const { asUser } = await import('./ctx.ts')
   db.prepare(`update users set disabled_at = null where id = 'u2'`).run()
-  asUser('u2', () => autopilot.setAutopilot('b1', { on: true }))
+  const on: any = asUser('u2', () => autopilot.setAutopilot('b1', { on: true }))
+  assert.equal(on.error, undefined, 'работник включён: ' + JSON.stringify(on))
+  assert.equal(unitState(accounts.byId('b1')!).enabled, true)
   db.prepare(`update users set disabled_at = ? where id = 'u2'`).run(Date.now())
   // Сеть закрыта: такт не должен никуда ходить за отключённого.
   const realFetch = globalThis.fetch
   globalThis.fetch = (async () => { throw new Error('сеть закрыта в тесте') }) as any
   try { await autopilot.tick(() => { }) } finally { globalThis.fetch = realFetch }
   assert.equal(unitState(accounts.byId('b1')!).enabled, false, 'работник отключённого выключен')
+  assert.equal(unitState(accounts.byId('b1')!).why, 'доступ пользователя отключён', 'выключен именно за отключение, такт его не трогал')
   assert.equal(sender.senderState('b1').running, false, 'отправщик не поднят')
 })
 
@@ -300,4 +303,32 @@ test('общие поля в личных настройках (запись в 
   assert.equal(s.goal, 555, 'личное действует')
   assert.equal(s.tick, shared.tick, 'общее — от сервера')
   assert.equal(s.invTtl, shared.invTtl)
+})
+
+test('одновременные привязки двух пользователей с одной меткой — разные id и файлы сессии', async () => {
+  const { asUser } = await import('./ctx.ts')
+  db.prepare(`update users set disabled_at = null, limits_json = ? where id = 'u2'`).run(JSON.stringify({ accounts: 5, senders: 1 }))
+  db.prepare(`insert or ignore into users (id, steamid, name, role, created_at) values ('u4', null, 'гэ', 'пользователь', ?)`).run(Date.now())
+  const runs: { args: string[]; c: any }[] = []
+  mock.method(accounts.proc, 'spawn', (_cmd: string, args: string[]) => {
+    const c: any = new EventEmitter()
+    c.stdout = new EventEmitter(); c.stderr = new EventEmitter(); c.exitCode = null
+    c.kill = () => { c.exitCode = 1; return true }
+    runs.push({ args, c })
+    return c
+  })
+  const a: any = asUser('u2', () => accounts.linkStart('общая метка', () => { }))
+  const b: any = asUser('u4', () => accounts.linkStart('общая метка', () => { }))
+  assert.equal(a.ok, true, JSON.stringify(a))
+  assert.equal(b.ok, true, JSON.stringify(b))
+  assert.notEqual(a.id, b.id, 'id разные')
+  const tokenOf = (args: string[]) => args[args.indexOf('--token') + 1]
+  assert.notEqual(tokenOf(runs[0].args), tokenOf(runs[1].args), 'файлы сессии разные')
+  // Обе завершились — два разных аккаунта, каждый у своего пользователя.
+  runs[0].c.stdout.emit('data', Buffer.from('STEAMID 76561198000000021\n'))
+  runs[1].c.stdout.emit('data', Buffer.from('STEAMID 76561198000000022\n'))
+  assert.equal(accounts.byId(a.id)?.user, 'u2')
+  assert.equal(accounts.byId(b.id)?.user, 'u4')
+  assert.notEqual(accounts.byId(a.id)?.token, accounts.byId(b.id)?.token)
+  mock.restoreAll()
 })

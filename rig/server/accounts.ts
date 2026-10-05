@@ -195,7 +195,11 @@ export function linkStart(label: string, onChange: () => void, relink: string | 
   const max = accountsHooks.maxAccounts(user)
   if (!target && listFor(user).length >= max) return { error: 'достигнут предел рабочих аккаунтов: ' + max }
   const clean = target ? target.label : (String(label || '').trim() || 'второй')
-  const id = target ? target.id : slug(clean, reg.list.map(a => a.id))
+  // id — и имя файла сессии — уникален среди сохранённых аккаунтов И идущих
+  // привязок всех пользователей (ревью PR #33): две одновременные привязки с
+  // одной меткой иначе получили бы один id и писали бы в один файл токена.
+  const pending = [...links.values()].filter(l => !l.done && !l.relink).map(l => l.id)
+  const id = target ? target.id : slug(clean, [...reg.list.map(a => a.id), ...pending])
   // Новый токен — во временный файл: прежний не трогаем, пока не убедимся,
   // что вошли тем же Steam. Старый хвост от прошлой попытки убираем, иначе
   // отправщик вошёл бы по нему без QR — возможно, чужим аккаунтом.

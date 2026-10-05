@@ -363,6 +363,14 @@ async function run(job: Job, user: string, lines: Line[], key: string, currency:
           // Сколько стоит прямо сейчас: дешёвые лоты кончаются по мере
           // скупки, и цена ползёт вверх во время самой закупки.
           const res: any = await bestOffer(key, w.name)
+          // Пока узнавали цену, могли остановить или отключить (ревью PR #33):
+          // перед покупкой — ещё раз.
+          const stopped = () => job.cancel || !purchaseHooks.userActive(user)
+          if (stopped()) {
+            note(job, { ts: Date.now(), gem: w.gem, ok: false, price: w.price, reason: 'остановлено' })
+            mark(i)
+            return
+          }
           const now = lowest(res, currency)
           const call = decideBuy(w.price, now, tolerance)
 
@@ -379,7 +387,13 @@ async function run(job: Job, user: string, lines: Line[], key: string, currency:
               : res?.success ? 'предложений не осталось' : 'площадка: ' + String(res?.error ?? 'нет ответа').slice(0, 60)
           } else {
             const customId = 'gt-' + Date.now() + '-' + w.left
-            const r: any = await buyOne(key, w.name, call.price, currency, customId)
+            // И в самый момент отправки — после ожидания ограничителя площадки.
+            const r: any = await buyOne(key, w.name, call.price, currency, customId, () => !stopped())
+            if (r?.notSent) {
+              note(job, { ts: Date.now(), gem: w.gem, ok: false, price: w.price, reason: 'остановлено', detail: 'покупка не отправлена' })
+              mark(i)
+              return
+            }
 
             // Ответ потерялся: лот мог уже списаться. Второго buy нет ни при
             // каком исходе — закупка встаёт, а что стало с этой покупкой,

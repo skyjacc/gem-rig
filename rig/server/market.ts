@@ -179,16 +179,26 @@ const scrub = (s: string, key: string) => (key ? s.split(key).join('***') : s)
 // с новым custom_id, то есть могла пройти дважды.
 //
 // Ключ — только заголовком X-API-KEY: в адресе он оседает в логах и истории.
-async function call(method: string, key: string, params: Record<string, string | number>) {
+// go — последняя проверка в момент отправки, уже после ожидания ограничителя
+// (ревью PR #33): закупку остановили или пользователя отключили, пока запрос
+// ждал своей очереди, — запрос не уходит вовсе. Это не «неясно»: на площадку
+// ничего не отправлено.
+class NotSent extends Error {}
+
+async function call(method: string, key: string, params: Record<string, string | number>, go?: () => boolean) {
   const q = String(new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))))
   const url = API + method + (q ? '?' + q : '')
   let status = 0
   let text = ''
   try {
-    const r = await marketLimiter.run(key, () => fetch(url, { headers: { 'User-Agent': 'gemtrack', 'X-API-KEY': key } }))
+    const r = await marketLimiter.run(key, () => {
+      if (go && !go()) throw new NotSent()
+      return fetch(url, { headers: { 'User-Agent': 'gemtrack', 'X-API-KEY': key } })
+    })
     status = r.status
     text = await r.text()
   } catch (e: any) {
+    if (e instanceof NotSent) return { success: false, notSent: true, error: 'не отправлено: закупку остановили' }
     return { success: false, ambiguous: true, error: 'нет связи с площадкой: ' + scrub(String(e?.message ?? e), key).slice(0, 120) }
   }
   if (status === 429) {
@@ -226,14 +236,14 @@ export const bestOffer = (key: string, hashName: string) =>
 // Цена передаётся потолком: площадка возьмёт самый дешёвый лот не дороже
 // неё. Поэтому потолок — это защита, а не заявка: если цена подскочила,
 // покупка просто не состоится.
-export function buyOne(key: string, hashName: string, max: number, currency: Currency, customId?: string) {
+export function buyOne(key: string, hashName: string, max: number, currency: Currency, customId?: string, go?: () => boolean) {
   const price = units(max, currency)
   if (!price) return Promise.resolve({ success: false, error: 'нулевая цена' })
   return call('buy', key, {
     hash_name: hashName,
     price,
     ...(customId ? { custom_id: customId } : {}),
-  })
+  }, go)
 }
 
 // Что стало с покупкой, ответ на которую потерялся. custom_id мы сами

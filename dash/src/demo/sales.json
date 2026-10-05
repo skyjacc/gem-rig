@@ -1,5 +1,5 @@
 {
- "_note": "Составлено руками для показа экрана «Продажи» (план 2.6, решение 8). Не запись с сервера: все суммы, id, даты и количества вымышлены. Форма — как у /api/money (журнал операций) и /api/keys (снимок ключей TF2).",
+ "_note": "Составлено руками для показа экрана «Продажи» (план 2.6, решение 8). Не запись с сервера: все суммы, id, даты и количества вымышлены. Форма — как у /api/money (журнал операций) и /api/keys (снимок ключей TF2). Выплаты Clover (план 3.2) — выдуманные: USD, USDT с оценкой владельца, сторнированная и её исправление, сторнированная без исправления.",
  "money": [
   {
    "id": 55,
@@ -1015,5 +1015,115 @@
     "state": "можно передать"
    }
   ]
+ },
+ "payouts": {
+  "ops": [
+   {
+    "id": 58,
+    "account_id": "main",
+    "type": "выплата Clover",
+    "source": "Clover.tf",
+    "external_id": "v1:0xdemo00000000000000000000000000000000000000000000000000000000a1",
+    "happened_at": 1790950440000,
+    "currency": "USD",
+    "gross": null,
+    "fee_steam": null,
+    "fee_game": null,
+    "net": 830,
+    "status": null,
+    "raw_ref": "{\"entry\": \"вручную\", \"tx\": \"0xdemo00000000000000000000000000000000000000000000000000000000a1\", \"version\": 1, \"corrects\": null, \"asset\": \"USDT\", \"assetAmount\": \"8.31\", \"network\": \"BEP20\", \"usdBy\": \"владелец\", \"keys\": 5}"
+   },
+   {
+    "id": 59,
+    "account_id": "main",
+    "type": "выплата Clover",
+    "source": "Clover.tf",
+    "external_id": "v1:demo-payout-2",
+    "happened_at": 1791022440000,
+    "currency": "USD",
+    "gross": null,
+    "fee_steam": null,
+    "fee_game": null,
+    "net": 1660,
+    "status": null,
+    "raw_ref": "{\"entry\": \"вручную\", \"tx\": \"demo-payout-2\", \"version\": 1, \"corrects\": null, \"asset\": \"USD\", \"usdBy\": \"получено\", \"keys\": 10, \"note\": \"PayPal\"}"
+   },
+   {
+    "id": 60,
+    "account_id": "main",
+    "type": "выплата Clover",
+    "source": "Clover.tf",
+    "external_id": "v1:demo-payout-3",
+    "happened_at": 1791058440000,
+    "currency": "USD",
+    "gross": null,
+    "fee_steam": null,
+    "fee_game": null,
+    "net": 1200,
+    "status": null,
+    "raw_ref": "{\"entry\": \"вручную\", \"tx\": \"demo-payout-3\", \"version\": 1, \"corrects\": null, \"asset\": \"USDT\", \"assetAmount\": \"12.40\", \"network\": \"TRC-20\", \"usdBy\": \"владелец\", \"keys\": 7}"
+   },
+   {
+    "id": 61,
+    "account_id": "main",
+    "type": "сторно",
+    "source": "вручную",
+    "external_id": "storno:60",
+    "happened_at": 1791062040000,
+    "currency": "USD",
+    "gross": null,
+    "fee_steam": null,
+    "fee_game": null,
+    "net": -1200,
+    "status": null,
+    "raw_ref": "{\"reverses\": 60, \"reason\": \"опечатка в сумме\"}"
+   },
+   {
+    "id": 62,
+    "account_id": "main",
+    "type": "выплата Clover",
+    "source": "Clover.tf",
+    "external_id": "v2:demo-payout-3",
+    "happened_at": 1791058440000,
+    "currency": "USD",
+    "gross": null,
+    "fee_steam": null,
+    "fee_game": null,
+    "net": 1240,
+    "status": null,
+    "raw_ref": "{\"entry\": \"вручную\", \"tx\": \"demo-payout-3\", \"version\": 2, \"corrects\": 60, \"asset\": \"USDT\", \"assetAmount\": \"12.40\", \"network\": \"TRC-20\", \"usdBy\": \"владелец\", \"keys\": 7}"
+   },
+   {
+    "id": 63,
+    "account_id": "main",
+    "type": "выплата Clover",
+    "source": "Clover.tf",
+    "external_id": "v1:demo-payout-4",
+    "happened_at": 1791101640000,
+    "currency": "USD",
+    "gross": null,
+    "fee_steam": null,
+    "fee_game": null,
+    "net": 500,
+    "status": null,
+    "raw_ref": "{\"entry\": \"вручную\", \"tx\": \"demo-payout-4\", \"version\": 1, \"corrects\": null, \"asset\": \"USDC\", \"assetAmount\": \"5.00\", \"network\": \"ERC-20\", \"usdBy\": \"владелец\", \"keys\": 3}"
+   },
+   {
+    "id": 64,
+    "account_id": "main",
+    "type": "сторно",
+    "source": "вручную",
+    "external_id": "storno:63",
+    "happened_at": 1791102240000,
+    "currency": "USD",
+    "gross": null,
+    "fee_steam": null,
+    "fee_game": null,
+    "net": -500,
+    "status": null,
+    "raw_ref": "{\"reverses\": 63, \"reason\": \"внесена не на тот аккаунт\"}"
+   }
+  ],
+  "complete": true
  }
 }

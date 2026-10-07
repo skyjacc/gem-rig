@@ -29,6 +29,7 @@ import { SettingsPage } from './components/Settings'
 import { Toasts, type Toast } from './components/Toasts'
 import { RadarSweep } from './components/icons'
 import { Button, LiveDot } from './components/ui'
+import { proofState } from './lib/dealDisplay'
 
 type Tab = 'offers' | 'guard' | 'charts' | 'sources' | 'journal' | 'settings'
 
@@ -191,14 +192,21 @@ export default function App() {
             }),
           5000,
         )
-        // Only a priced, profitable plan is worth interrupting for.
-        if (finding.deal && finding.deal.net > 0) {
+        // A background alert must not make an unverified estimate sound spendable.
+        const deal = finding.deal
+        const isActionable =
+          deal?.priced &&
+          deal.net > 0 &&
+          deal.complete &&
+          !deal.optimistic &&
+          proofState(finding).ok
+        if (isActionable && deal) {
           chime()
           toast(
-            `${finding.item_name} — вложить ${rub(finding.deal.invested)}, результат +${rub(
-              finding.deal.net,
-            )}`,
+            `${finding.item_name} — вложить ${rub(deal.invested)}, результат +${rub(deal.net)}`,
           )
+        } else if (deal?.net && deal.net > 0) {
+          toast(`${finding.item_name} — новая оценка требует проверки`)
         }
       } else if (e.type === 'trade_alert') {
         void refresh()

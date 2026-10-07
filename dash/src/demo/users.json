@@ -1,0 +1,17 @@
+{
+ "_note": "Составлено руками для показа экрана «Пользователи» (план 7.3). Не запись с сервера: имена, steamid, числа и даты вымышлены.",
+ "users": {
+  "users": [
+   { "id": "owner", "name": "владелец", "role": "владелец", "steamid": "7656…0001", "disabled": false, "active": true, "lastSeen": 1791380000000, "accounts": 1, "running": 0, "buying": false, "limits": null },
+   { "id": "u-demo1", "name": "Дима", "role": "пользователь", "steamid": "7656…4821", "disabled": false, "active": true, "lastSeen": 1791372800000, "accounts": 2, "running": 1, "buying": false, "limits": { "accounts": 3, "senders": 1 } },
+   { "id": "u-demo2", "name": "приёмка", "role": "пользователь", "steamid": "7656…0077", "disabled": true, "active": false, "lastSeen": 1791300000000, "accounts": 1, "running": 0, "buying": false, "limits": { "accounts": 3, "senders": 1 } }
+  ],
+  "entryOpen": false,
+  "permit": { "steamid": "7656…0077", "expiresAt": 1791440000000 },
+  "load": { "users": 3, "accounts": 4, "running": 1, "dbBytes": 262144000 }
+ },
+ "invites": [
+  { "id": 2, "name": "Саша", "createdAt": 1791370000000, "expiresAt": 1791974800000, "state": "ждёт", "limits": { "accounts": 3, "senders": 1 } },
+  { "id": 1, "name": "Дима", "createdAt": 1791200000000, "expiresAt": 1791804800000, "state": "использовано", "limits": { "accounts": 3, "senders": 1 } }
+ ]
+}

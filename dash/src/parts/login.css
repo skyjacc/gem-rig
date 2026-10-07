@@ -224,3 +224,10 @@
 }
 .lg-steam:hover:not(:disabled) { border-color: rgb(255 255 255 / 0.28); color: #fff; }
 .lg-steam:disabled { opacity: 0.5; cursor: default; }
+
+/* Вход по приглашению (план 7.3). */
+.lg-invite { max-width: 380px; gap: 10px; }
+.lg-text { margin: 0; font-size: 13.5px; line-height: 1.5; color: rgb(236 235 232 / 0.85); text-align: left; }
+.lg-warn { margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: rgb(242 180 74 / 0.08); color: #f6d29a; font-size: 12.5px; line-height: 1.5; text-align: left; }
+.lg-warn b { color: #fbe2b8; }
+.lg-fine { margin: 6px 0 0; font-size: 11.5px; color: rgb(236 235 232 / 0.55); text-align: left; }

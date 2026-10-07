@@ -18,7 +18,11 @@ type Phase = 'idle' | 'busy' | 'ok' | 'bad'
 const PortalScene = lazy(() => import('./PortalScene.tsx').then(m => ({ default: m.PortalScene })))
 
 // steam — сервер умеет вход через Steam (задан внешний адрес панели).
-export function Login({ steam = false }: { steam?: boolean }) {
+export function Login({ steam = false, invite = null }: { steam?: boolean; invite?: string | null }) {
+  return invite ? <InviteLogin token={invite} /> : <TokenLogin steam={steam} />
+}
+
+function TokenLogin({ steam }: { steam: boolean }) {
   const [token, setToken] = useState('')
   const [show, setShow] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
@@ -139,6 +143,68 @@ export function Login({ steam = false }: { steam?: boolean }) {
           </button>
         ) : null}
       </form>
+    </main>
+  )
+}
+
+// ── вход по приглашению (план 7.3, макет 8 «по приглашению») ──
+//
+// Ссылка проверяется сервером (действует ли, открыт ли вход для
+// приглашённых); вход — через Steam, с подтверждением «это вы?» на странице
+// возврата. Токен из адреса уходит только в эти два запроса.
+
+type InviteInfo = { name: string; expiresAt: number; open: boolean; steamLogin: boolean }
+
+function InviteLogin({ token }: { token: string }) {
+  const [info, setInfo] = useState<InviteInfo | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    void fetch('/api/invite?token=' + encodeURIComponent(token))
+      .then(async r => { const d = await r.json().catch(() => ({})); if (r.ok) setInfo(d); else setError(d?.error ?? 'панель ответила ' + r.status) })
+      .catch(() => setError('нет связи с панелью'))
+  }, [token])
+
+  const go = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await fetch('/api/auth/steam/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ purpose: 'приглашение', invite: token }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (d?.url) { location.href = d.url; return }
+      setError(d?.error ?? 'панель ответила ' + r.status)
+    } catch {
+      setError('нет связи с панелью')
+    }
+    setBusy(false)
+  }
+
+  const until = info ? new Date(info.expiresAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''
+  return (
+    <main className="lg is-idle">
+      <div className="lg-card lg-invite">
+        <Gem className="lg-mark" size={18} strokeWidth={1.5} aria-hidden="true" />
+        <h1 className="lg-title">{info ? 'Вас пригласили' : 'Gemtrack'}</h1>
+        {info ? (
+          <>
+            <p className="lg-text">Владелец приглашает вас как <b>«{info.name}»</b>. Ссылка одноразовая, действует до {until}.</p>
+            <p className="lg-text">Войдите своим Steam — этот профиль и станет вашим входом. Рабочие аккаунты добавите внутри.</p>
+            <p className="lg-warn" role="note"><b>Прочитайте до входа.</b> Накрутка — автоматизация, которую соглашение Steam запрещает. Valve может закрыть рабочий аккаунт без предупреждения, с вещами и кошельком на нём. Рискуют ваши рабочие аккаунты. Панель работает на компьютере владельца: ваши сессии Steam и ключ площадки будут храниться у него.</p>
+            {!info.open ? <p className="lg-error" role="status">Вход для приглашённых владелец ещё не открыл — ссылка подождёт до {until}.</p> : null}
+            {!info.steamLogin ? <p className="lg-error" role="status">Вход через Steam на этой панели выключен — напишите владельцу.</p> : null}
+            <button type="button" className="lg-go" disabled={busy || !info.open || !info.steamLogin} onClick={() => void go()}>
+              <span className="lg-go-label">{busy ? <LoaderCircle className="lg-spin" size={17} strokeWidth={2} aria-label="Открываем Steam" /> : 'Войти через Steam'}</span>
+            </button>
+            <p className="lg-fine">Вход через официальную страницу Steam. Пароль панель не видит и не хранит — Steam сообщает только номер профиля.</p>
+          </>
+        ) : null}
+        <p className="lg-error" role="alert">{error ?? ''}</p>
+      </div>
     </main>
   )
 }

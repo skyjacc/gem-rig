@@ -22,6 +22,8 @@ import { purchaseState, startPurchase, stopPurchase, vetLines } from './purchase
 // сервера (accountList2) — только для его собственной работы.
 import { ACCOUNT, active as activeAccount, activeId as activeAccountId, own as accountById, list as accountList2, listFor } from './accounts.ts'
 import { asUser, currentUser } from './ctx.ts'
+import { activePermit, createInvite, entryOpen, grantPermit, inviteByToken, listInvites, revokeInvite, revokePermit, setEntryOpen } from './access.ts'
+import { DB_FILE } from './db.ts'
 import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
 import { listOps, migrateMoney, MONEY_DDL } from './money.ts'
 import {
@@ -168,8 +170,8 @@ export async function buildApp(opts: AppOpts) {
   // завершение — со своей страницы возврата.
   app.post('/api/auth/steam/start', async (req: any, reply) => {
     if (!PANEL_URL) return { error: 'вход через Steam выключен: не задан PANEL_URL' }
-    const purpose = req.body?.purpose === 'привязка владельца' ? 'привязка владельца' : 'вход'
-    const a = startAttempt(db, purpose, presented(req) || null)
+    const purpose = req.body?.purpose === 'привязка владельца' ? 'привязка владельца' : req.body?.purpose === 'приглашение' ? 'приглашение' : 'вход'
+    const a = startAttempt(db, purpose, presented(req) || null, Date.now(), String(req.body?.invite ?? ''))
     if ('error' in a) return a
     reply.header('set-cookie', attemptCookie(a.binding, isHttps(req)))
     return { url: authUrl(PANEL_URL, a.state) }
@@ -189,17 +191,41 @@ export async function buildApp(opts: AppOpts) {
     if ('error' in r) return page('<p>Не вошли: ' + esc(r.error) + '. <a style="color:#8fb2ff" href="/">На главную</a></p>')
     // Завершение — новым запросом с этой страницы: для браузера он уже не
     // с чужого сайта, и кука сессии (Strict) в нём есть.
-    return page('<p id="m">Входим…</p><script>fetch("/api/auth/steam/finish",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({state:'
-      + JSON.stringify(q.state ?? '').replace(/</g, '\\u003c') + '})}).then(r=>r.json()).then(d=>{if(d&&(d.ok||d.bound))location.replace("/");else document.getElementById("m").textContent="Не вошли: "+((d&&d.error)||"ошибка")}).catch(()=>{document.getElementById("m").textContent="Нет связи с панелью"})</script>')
+    // Вход по приглашению сначала спрашивает «это вы?» (§18): какой Steam
+    // станет входом. Подтвердили — второй finish с confirm.
+    return page('<div style="max-width:420px;text-align:center"><p id="m">Входим…</p><p id="who"></p><p id="act"></p></div><script>'
+      + 'const S=' + JSON.stringify(q.state ?? '').replace(/</g, '\\u003c') + ';'
+      + 'const m=document.getElementById("m"),who=document.getElementById("who"),act=document.getElementById("act");'
+      + 'const go=c=>fetch("/api/auth/steam/finish",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({state:S,confirm:c})}).then(r=>r.json()).then(d=>{'
+      + 'if(d&&(d.ok||d.bound))return location.replace("/");'
+      + 'if(d&&d.confirm){m.textContent="Это вы?";who.textContent="Входом станет Steam "+d.confirm.steamid+" — приглашение «"+d.confirm.name+"». Проверьте профиль: steamcommunity.com/profiles/"+d.confirm.steamid;'
+      + 'act.innerHTML="";const y=document.createElement("button");y.textContent="Да, это я";y.onclick=()=>{act.textContent="Входим…";go(true)};'
+      + 'const n=document.createElement("a");n.textContent="Нет — войти другим Steam";n.href="/";n.style.cssText="display:block;margin-top:12px;color:#8fb2ff";'
+      + 'y.style.cssText="font:inherit;padding:10px 18px;border-radius:10px;border:0;background:#b8f25c;color:#0c0c0e;cursor:pointer";act.append(y,n);return}'
+      + 'm.textContent="Не вошли: "+((d&&d.error)||"ошибка");act.innerHTML="<a style=\\"color:#8fb2ff\\" href=\\"/\\">На главную</a>"}).catch(()=>{m.textContent="Нет связи с панелью"});'
+      + 'go(false)</script>')
   })
 
   app.post('/api/auth/steam/finish', async (req: any, reply) => {
-    const r = handleFinish(db, String(req.body?.state ?? ''), cookieValue(req.headers.cookie, ATTEMPT_COOKIE), presented(req) || null)
+    const r = handleFinish(db, String(req.body?.state ?? ''), cookieValue(req.headers.cookie, ATTEMPT_COOKIE), presented(req) || null, Date.now(), req.body?.confirm === true)
+    // «Это вы?» — попытка ещё нужна: кука попытки остаётся до ответа.
+    if ('confirm' in r) return r
     const cookies = [attemptCookieClear()]
     if ('session' in r) cookies.push(loginCookie(r.session.token, isHttps(req), STEAM_TTL / 1000))
     reply.header('set-cookie', cookies)
     if ('error' in r) return r
     return 'bound' in r ? { bound: true } : { ok: true }
+  })
+
+  // Ссылка-приглашение (план 7.3): действует ли — без входа. Не чаще 5 раз в
+  // минуту с адреса. Через tailscale serve все приходят с 127.0.0.1 — предел
+  // тогда общий: перебору это не помогает, а приглашённому хватает.
+  const inviteTries = attemptLimiter(5, 60_000)
+  app.get('/api/invite', async (req: any, reply) => {
+    if (!inviteTries.allow(String(req.ip ?? ''))) return reply.code(429).send({ error: 'слишком много попыток — подождите минуту' })
+    const inv = inviteByToken(db, String(req.query?.token ?? ''))
+    if (!inv) return reply.code(404).send({ error: 'приглашение недействительно: истекло, отозвано или уже использовано' })
+    return { name: inv.name, expiresAt: inv.expiresAt, open: entryOpen(db), steamLogin: !!PANEL_URL }
   })
 
 
@@ -618,6 +644,104 @@ export async function buildApp(opts: AppOpts) {
   app.post('/api/users/enable', async (req: any, reply) => {
     if (ownerOnly(reply)) return reply
     return markEnabled(db, String(req.body?.id ?? ''))
+  })
+
+  // Пользователи и нагрузка (план 7.3, макет 8). Владелец видит только
+  // счётчики: ни чужих аккаунтов, ни ключей, ни денег.
+  app.get('/api/users', async (_req, reply) => {
+    if (ownerOnly(reply)) return reply
+    const rows = db.prepare(`select id, steamid, name, role, limits_json, disabled_at, created_at from users order by (role = 'владелец') desc, created_at`).all() as any[]
+    const seen = db.prepare('select max(last_seen_at) t from sessions where user_id = ?')
+    const list = rows.map(u => {
+      const accs = accountList2().filter(a => (a.user || OWNER_ID) === u.id)
+      return {
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        steamid: u.steamid ? u.steamid.slice(0, 4) + '…' + u.steamid.slice(-4) : null,
+        disabled: u.disabled_at != null,
+        active: userActive(db, u.id),
+        lastSeen: (seen.get(u.id) as any)?.t ?? null,
+        accounts: accs.length,
+        running: accs.filter(a => senderState(a.id).running).length,
+        buying: asUser(u.id, () => purchaseState()).active,
+        limits: u.role === 'владелец' ? null : limitsOf(db, u.id),
+      }
+    })
+    let dbBytes: number | null = null
+    try { dbBytes = fs.statSync(DB_FILE).size } catch { }
+    const p = activePermit(db)
+    return {
+      users: list,
+      entryOpen: entryOpen(db),
+      permit: p ? { steamid: p.steamid.slice(0, 4) + '…' + p.steamid.slice(-4), expiresAt: p.expires_at } : null,
+      load: { users: list.length, accounts: list.reduce((n, u) => n + u.accounts, 0), running: list.reduce((n, u) => n + u.running, 0), dbBytes },
+    }
+  })
+
+  app.get('/api/users/invites', async (_req, reply) => {
+    if (ownerOnly(reply)) return reply
+    return listInvites(db)
+  })
+
+  // Ссылка показывается один раз — в базе только хэш токена.
+  app.post('/api/users/invite', async (req: any, reply) => {
+    if (ownerOnly(reply)) return reply
+    const b = req.body ?? {}
+    const r = createInvite(db, { name: String(b.name ?? ''), days: Number(b.days), limits: b.limits }, OWNER_ID)
+    if ('error' in r) return r
+    return { id: r.id, expiresAt: r.expiresAt, link: (PANEL_URL || '') + '/i/' + r.token, panelUrl: !!PANEL_URL }
+  })
+
+  app.post('/api/users/invite/revoke', async (req: any, reply) => {
+    if (ownerOnly(reply)) return reply
+    return revokeInvite(db, Number(req.body?.id), OWNER_ID)
+  })
+
+  app.post('/api/users/limits', async (req: any, reply) => {
+    if (ownerOnly(reply)) return reply
+    const id = String(req.body?.id ?? '')
+    const u = userById(db, id)
+    if (!u || u.role === 'владелец') return { error: 'нет такого пользователя' }
+    const n = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 50 ? (v as number) : null)
+    const accounts = n(req.body?.accounts)
+    const senders = n(req.body?.senders)
+    if (accounts == null || senders == null) return { error: 'пределы — целые от 0 до 50' }
+    db.prepare('update users set limits_json = ? where id = ?').run(JSON.stringify({ accounts, senders }), id)
+    push()
+    return { ok: true, limits: { accounts, senders } }
+  })
+
+  // Вход для приглашённых (решение 16) — только действием владельца, после
+  // живой приёмки. Закрыли — сессии и работа впущенных встают: их потоки
+  // закрываются сразу, остальное — проверкой «активен ли» в каждом модуле.
+  app.post('/api/users/entry', async (req: any, reply) => {
+    if (ownerOnly(reply)) return reply
+    const open = req.body?.open === true
+    setEntryOpen(db, open, OWNER_ID)
+    if (!open) for (const u of db.prepare(`select id from users where role = 'пользователь'`).all() as any[]) hub.closeUser(u.id)
+    push()
+    return { ok: true, open }
+  })
+
+  // Допуск для приёмки (решение 16): один steamid на 24 часа.
+  app.post('/api/users/permit', async (req: any, reply) => {
+    if (ownerOnly(reply)) return reply
+    const sid = String(req.body?.steamid ?? '').trim()
+    if (sid && sid === userById(db, OWNER_ID)?.steamid) return { error: 'это Steam владельца — нужен второй, тестовый' }
+    const r = grantPermit(db, sid, OWNER_ID)
+    if ('error' in r) return r
+    return { ok: true, expiresAt: r.expiresAt }
+  })
+
+  app.post('/api/users/permit/revoke', async (_req, reply) => {
+    if (ownerOnly(reply)) return reply
+    const r = revokePermit(db, OWNER_ID)
+    if ('error' in r) return r
+    const u = db.prepare('select id from users where steamid = ?').get(r.steamid) as { id: string } | undefined
+    if (u) hub.closeUser(u.id)
+    push()
+    return { ok: true }
   })
 
   // История счётчиков — по вещам всех аккаунтов сервера, без деления по

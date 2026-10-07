@@ -112,7 +112,7 @@ export type Req = {
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
 // Пути, открытые без входа: проверка входа, вход токеном и вход через Steam.
-const OPEN = new Set(['/api/auth', '/api/login', '/api/auth/steam/start', '/api/auth/steam/return', '/api/auth/steam/finish'])
+const OPEN = new Set(['/api/auth', '/api/login', '/api/auth/steam/start', '/api/auth/steam/return', '/api/auth/steam/finish', '/api/invite'])
 
 // Решение по запросу. Без ввода-вывода — проверяется тестами.
 // authed — строка (сравнение с токеном, для тестов) или проверка сессии.

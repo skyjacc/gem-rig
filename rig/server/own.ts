@@ -21,6 +21,7 @@ export const ROUTES: Record<string, Kind> = {
   'POST /api/auth/steam/start': 'вход',
   'GET /api/auth/steam/return': 'вход',
   'POST /api/auth/steam/finish': 'вход',
+  'GET /api/invite': 'вход',
 
   'GET /api/stream': 'свой',
   'GET /api/state': 'свой',
@@ -68,4 +69,12 @@ export const ROUTES: Record<string, Kind> = {
   'GET /api/counters': 'владелец',
   'POST /api/users/disable': 'владелец',
   'POST /api/users/enable': 'владелец',
+  'GET /api/users': 'владелец',
+  'GET /api/users/invites': 'владелец',
+  'POST /api/users/invite': 'владелец',
+  'POST /api/users/invite/revoke': 'владелец',
+  'POST /api/users/limits': 'владелец',
+  'POST /api/users/entry': 'владелец',
+  'POST /api/users/permit': 'владелец',
+  'POST /api/users/permit/revoke': 'владелец',
 }

@@ -22,6 +22,7 @@
 import crypto from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { checkResponse, NONCE_AGE, returnTo, verifySignature } from './openid.ts'
+import { ACCESS_DDL, entryOpen, hashToken, inviteByToken, permitAllows, useInvite } from './access.ts'
 
 export const OWNER_ID = 'owner'
 const MIN = 60_000
@@ -59,7 +60,8 @@ export const USERS_DDL = `
     id              integer primary key autoincrement,
     state_hash      text not null unique,
     binding_hash    text not null,
-    purpose         text not null check (purpose in ('вход', 'привязка владельца')),
+    purpose         text not null check (purpose in ('вход', 'привязка владельца', 'приглашение')),
+    invite_hash     text,
     session_id      integer,
     created_at      integer not null,
     expires_at      integer not null,
@@ -76,7 +78,7 @@ export const USERS_DDL = `
     what   text not null,
     detail text
   );
-`
+` + ACCESS_DDL
 
 export type User = { id: string; steamid: string | null; name: string; role: 'владелец' | 'пользователь'; disabled_at: number | null }
 type Fail = { error: string }
@@ -106,12 +108,17 @@ export function limitsOf(db: DatabaseSync, userId: string): { accounts: number; 
   return { accounts: n(l.accounts, DEFAULT_LIMITS.accounts), senders: n(l.senders, DEFAULT_LIMITS.senders) }
 }
 
-// Активен ли пользователь: есть и не отключён. Пустой id — запрос без входа.
-export function userActive(db: DatabaseSync, userId: string): boolean {
+// Активен ли пользователь: есть, не отключён и пущен (план 7.3, решение 16):
+// владелец — всегда; остальные — пока открыт вход для приглашённых или пока
+// действует допуск для приёмки на его steamid. Пустой id — запрос без входа.
+export function userActive(db: DatabaseSync, userId: string, now = Date.now()): boolean {
   if (!userId) return false
   const u = userById(db, userId)
-  return !!u && u.disabled_at == null
+  return !!u && u.disabled_at == null && admitted(db, u, now)
 }
+
+const admitted = (db: DatabaseSync, u: User, now: number) =>
+  u.role === 'владелец' || entryOpen(db) || permitAllows(db, u.steamid, now)
 
 // Пометка и сессии. Остальное (потоки, работники, закупка, QR) гасит
 // app.ts — у него эти части сервера.
@@ -176,6 +183,11 @@ function alive(db: DatabaseSync, s: Session | undefined, now: number): User | nu
   }
   const user = userById(db, s.user_id)
   if (!user || user.disabled_at != null) return null
+  // Не пущен (закрыли вход, истёк или снят допуск) — сессия гасится.
+  if (!admitted(db, user, now)) {
+    db.prepare('update sessions set revoked_at = ? where id = ?').run(now, s.id)
+    return null
+  }
   return user
 }
 
@@ -224,15 +236,21 @@ export function attemptLimiter(n: number, windowMs: number) {
 // ── попытка входа через Steam ──
 
 type Attempt = {
-  id: number; binding_hash: string; purpose: 'вход' | 'привязка владельца'; session_id: number | null
+  id: number; binding_hash: string; purpose: 'вход' | 'привязка владельца' | 'приглашение'; session_id: number | null; invite_hash: string | null
   expires_at: number; verified_steamid: string | null; used_at: number | null
 }
 
 const STALE = 'попытка входа не из этого браузера или устарела — начните вход заново'
 
-export function startAttempt(db: DatabaseSync, purpose: Attempt['purpose'], sessionToken: string | null, now = Date.now()):
+export function startAttempt(db: DatabaseSync, purpose: Attempt['purpose'], sessionToken: string | null, now = Date.now(), invite = ''):
   { state: string; binding: string } | Fail {
   let sessionId: number | null = null
+  // Вход по приглашению (план 7.3): ссылка действует и вход для
+  // приглашённых открыт; иначе — не начинаем.
+  if (purpose === 'приглашение') {
+    if (!entryOpen(db)) return { error: 'вход в панель пока закрыт' }
+    if (!inviteByToken(db, invite, now)) return { error: 'приглашение недействительно: истекло, отозвано или уже использовано' }
+  }
   if (purpose === 'привязка владельца') {
     const who = sessionUser(db, sessionToken ?? '', now)
     if (!who || who.user.role !== 'владелец') return { error: 'войдите в панель владельцем, чтобы привязать Steam' }
@@ -240,13 +258,13 @@ export function startAttempt(db: DatabaseSync, purpose: Attempt['purpose'], sess
   }
   const state = secret()
   const binding = secret()
-  db.prepare(`insert into login_attempts (state_hash, binding_hash, purpose, session_id, created_at, expires_at) values (?,?,?,?,?,?)`)
-    .run(hash(state), hash(binding), purpose, sessionId, now, now + ATTEMPT_TTL)
+  db.prepare(`insert into login_attempts (state_hash, binding_hash, purpose, session_id, invite_hash, created_at, expires_at) values (?,?,?,?,?,?,?)`)
+    .run(hash(state), hash(binding), purpose, sessionId, purpose === 'приглашение' ? hashToken(invite) : null, now, now + ATTEMPT_TTL)
   return { state, binding }
 }
 
 const attemptOf = (db: DatabaseSync, state: string) =>
-  db.prepare('select id, binding_hash, purpose, session_id, expires_at, verified_steamid, used_at from login_attempts where state_hash = ?')
+  db.prepare('select id, binding_hash, purpose, session_id, invite_hash, expires_at, verified_steamid, used_at from login_attempts where state_hash = ?')
     .get(hash(state)) as Attempt | undefined
 
 const burn = (db: DatabaseSync, id: number, now: number) =>
@@ -310,11 +328,14 @@ export async function handleReturn(
 
 // Завершение со своей страницы. Попытка гасится до действия — второй
 // finish получит отказ.
-export function handleFinish(db: DatabaseSync, state: string, binding: string, sessionToken: string | null, now = Date.now()):
-  { session: { token: string; expiresAt: number }; user: User } | { bound: string } | Fail {
+// confirm — вход по приглашению (§18, «это вы?»): первый вызов показывает,
+// какой Steam войдёт, и ничего не создаёт; пользователь создаётся только
+// со вторым, подтверждённым.
+export function handleFinish(db: DatabaseSync, state: string, binding: string, sessionToken: string | null, now = Date.now(), confirm = false):
+  { session: { token: string; expiresAt: number }; user: User } | { bound: string } | { confirm: { steamid: string; name: string } } | Fail {
   db.exec('begin immediate')
   try {
-    const r = finish(db, state, binding, sessionToken, now)
+    const r = finish(db, state, binding, sessionToken, now, confirm)
     db.exec('commit')
     return r
   } catch (e: any) {
@@ -323,9 +344,10 @@ export function handleFinish(db: DatabaseSync, state: string, binding: string, s
   }
 }
 
-function finish(db: DatabaseSync, state: string, binding: string, sessionToken: string | null, now: number) {
+function finish(db: DatabaseSync, state: string, binding: string, sessionToken: string | null, now: number, confirm: boolean) {
   const a = attemptOf(db, state)
   if (!usable(db, a, binding, now) || !a.verified_steamid) return { error: STALE }
+  if (a.purpose === 'приглашение') return finishInvite(db, a, now, confirm)
   if (a.purpose === 'привязка владельца') {
     const who = sessionUser(db, sessionToken ?? '', now)
     if (!who || who.sessionId !== a.session_id || who.user.role !== 'владелец') { burn(db, a.id, now); return { error: STALE } }
@@ -337,10 +359,42 @@ function finish(db: DatabaseSync, state: string, binding: string, sessionToken: 
     return { bound: a.verified_steamid }
   }
   burn(db, a.id, now)
-  // Решение 16: пока изоляции нет, входит только владелец.
-  const u = db.prepare('select id, steamid, name, role, disabled_at from users where steamid = ?').get(a.verified_steamid) as User | undefined
-  if (!u || u.role !== 'владелец') { logAuth(db, 'вход закрыт', now); return { error: 'вход в панель пока закрыт' } }
-  if (u.disabled_at != null) return { error: 'доступ отключён владельцем' }
+  // Решение 16: владелец — всегда; остальные — пока открыт вход или действует
+  // допуск для приёмки на этот steamid.
+  const sid = a.verified_steamid
+  let u = db.prepare('select id, steamid, name, role, disabled_at from users where steamid = ?').get(sid) as User | undefined
+  if (u?.disabled_at != null && u) return { error: 'доступ отключён владельцем' }
+  if (!u && permitAllows(db, sid, now)) u = createUser(db, sid, 'приёмка', null, now)
+  if (!u) { logAuth(db, 'вход: не приглашён', now); return { error: entryOpen(db) ? 'этот Steam не приглашён' : 'вход в панель пока закрыт' } }
+  if (!admitted(db, u, now)) { logAuth(db, 'вход закрыт', now); return { error: 'вход в панель пока закрыт' } }
   logAuth(db, 'вход через Steam', now)
+  return { session: newSession(db, u.id, 'steam', now), user: u }
+}
+
+function createUser(db: DatabaseSync, steamid: string, name: string, limits: object | null, now: number): User {
+  const id = 'u-' + crypto.randomBytes(6).toString('hex')
+  db.prepare(`insert into users (id, steamid, name, role, limits_json, created_at) values (?, ?, ?, 'пользователь', ?, ?)`)
+    .run(id, steamid, name, limits ? JSON.stringify(limits) : null, now)
+  return userById(db, id)!
+}
+
+// Вход по приглашению. Подтверждение — до всяких записей; само создание —
+// в одной транзакции с погашением приглашения и попытки.
+function finishInvite(db: DatabaseSync, a: Attempt, now: number, confirm: boolean) {
+  const sid = a.verified_steamid!
+  const inv = db.prepare('select id, name, limits_json, expires_at, used_at, revoked_at from invites where token_hash = ?').get(a.invite_hash ?? '') as
+    { id: number; name: string; limits_json: string | null; expires_at: number; used_at: number | null; revoked_at: number | null } | undefined
+  if (!inv || inv.used_at != null || inv.revoked_at != null || now > inv.expires_at) { burn(db, a.id, now); return { error: 'приглашение недействительно: истекло, отозвано или уже использовано' } }
+  if (!entryOpen(db)) { burn(db, a.id, now); return { error: 'вход в панель пока закрыт' } }
+  const existing = db.prepare('select id, role from users where steamid = ?').get(sid) as { id: string; role: string } | undefined
+  if (existing) { burn(db, a.id, now); return { error: 'этот Steam уже пользователь панели — входите обычной кнопкой «Войти через Steam»; приглашение не потрачено' } }
+  if (!confirm) return { confirm: { steamid: sid, name: inv.name } }
+  burn(db, a.id, now)
+  const used = useInvite(db, inv.id, sid, now)
+  if ('error' in used) return used
+  let limits: object | null = null
+  try { limits = JSON.parse(inv.limits_json ?? 'null') } catch { }
+  const u = createUser(db, sid, inv.name, limits, now)
+  logAuth(db, 'вход по приглашению', now, u.id)
   return { session: newSession(db, u.id, 'steam', now), user: u }
 }

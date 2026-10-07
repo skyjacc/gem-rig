@@ -30,6 +30,10 @@ const { ROUTES } = await import('./own.ts')
 const { unitState } = await import('./autopilot.ts')
 
 prepareDb()
+// Приёмка изоляции — среди впущенных пользователей: вход для приглашённых
+// открыт (план 7.3, решение 16). Закрытый вход проверяется в users.access.test.ts.
+const { setEntryOpen } = await import('./access.ts')
+setEntryOpen(db, true, 'owner')
 db.prepare(`insert or ignore into users (id, steamid, name, role, limits_json, created_at) values ('u2', null, 'бэ', 'пользователь', ?, ?)`)
   .run(JSON.stringify({ accounts: 2, senders: 1 }), Date.now())
 const sessA = users.newSession(db, users.OWNER_ID, 'токен').token
@@ -136,11 +140,24 @@ test('списки и состояние B — только его: ни мет�
   assert.ok((await as(sessA, 'GET', '/api/arrivals')).body.includes('asset-of-a'))
 })
 
-test('только владельцу: B получает 403', async () => {
-  for (const [method, url, payload] of [['GET', '/api/counters'], ['POST', '/api/users/disable', { id: 'owner' }], ['POST', '/api/users/enable', { id: 'u2' }]] as const) {
-    const r = await as(sessB, method as any, url, payload as any)
-    assert.equal(r.statusCode, 403, url)
+test('только владельцу: каждый маршрут вида «владелец» из таблицы — B получает 403, ничего не меняется', async () => {
+  const before = db.prepare('select count(*) c from invites').get()
+  const flags = db.prepare('select count(*) c from server_flags').get()
+  for (const key of Object.keys(ROUTES).filter(k => ROUTES[k] === 'владелец')) {
+    const [method, url] = key.split(' ')
+    const r = await as(sessB, method as any, url, method === 'POST' ? { id: 'u2', open: true, steamid: '76561198000000099', name: 'взлом', days: 7 } : undefined)
+    assert.equal(r.statusCode, 403, key + ': ' + r.body)
   }
+  assert.deepEqual(db.prepare('select count(*) c from invites').get(), before, 'приглашений не создано')
+  assert.deepEqual(db.prepare('select count(*) c from server_flags').get(), flags, 'вход не тронут')
+})
+
+test('экран «Пользователи» у владельца — счётчики без чужих меток, аккаунтов и ключей', async () => {
+  const r = await as(sessA, 'GET', '/api/users')
+  assert.equal(r.statusCode, 200, r.body)
+  const b = r.json().users.find((u: any) => u.id === 'u2')
+  assert.equal(b.accounts, 2)
+  for (const s of ['бэ-один', 'бэ-два', SB1, SB2]) assert.equal(r.body.includes(s), false, 'владелец видит только счётчики: ' + s)
 })
 
 test('поток: каждый получает своё состояние, данные A в поток B не попадают', async () => {

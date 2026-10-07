@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
 import { streamHub, logoutAllFor, logoutFor } from './streams.ts'
+import { setEntryOpen } from './access.ts'
 import { ensureOwner, IDLE, newSession, OWNER_ID, sessionUser, TOKEN_TTL, USERS_DDL } from './users.ts'
 
 // Поток состояния и сессии (ревью PR #32, P1): выход, «выйти везде» и
@@ -15,6 +16,7 @@ function fresh() {
   db.exec(USERS_DDL)
   ensureOwner(db, T0)
   db.prepare(`insert into users (id, steamid, name, role, created_at) values ('u2', null, 'второй', 'пользователь', ?)`).run(T0)
+  setEntryOpen(db, true, 'owner', T0)   // второй пользователь впущен (план 7.3)
   return db
 }
 

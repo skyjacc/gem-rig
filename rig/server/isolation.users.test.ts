@@ -30,12 +30,16 @@ const { ROUTES } = await import('./own.ts')
 const { unitState } = await import('./autopilot.ts')
 
 prepareDb()
+// Приёмка изоляции — среди впущенных пользователей: вход для приглашённых
+// открыт (план 7.3, решение 16). Закрытый вход проверяется в users.access.test.ts.
+const { setEntryOpen } = await import('./access.ts')
+setEntryOpen(db, true, 'owner')
 db.prepare(`insert or ignore into users (id, steamid, name, role, limits_json, created_at) values ('u2', null, 'бэ', 'пользователь', ?, ?)`)
   .run(JSON.stringify({ accounts: 2, senders: 1 }), Date.now())
 const sessA = users.newSession(db, users.OWNER_ID, 'токен').token
 let sessB = users.newSession(db, 'u2', 'steam').token
 
-const { app, hub, push } = await buildApp({ token: 'x'.repeat(48), allowed: allowedHosts({}), dist: null })
+const { app, hub, push, enforceAccess } = await buildApp({ token: 'x'.repeat(48), allowed: allowedHosts({}), dist: null })
 after(() => app.close())
 
 const H = (s: string) => ({ host: 'localhost:4322', origin: 'http://localhost:4322', cookie: 'rig_auth=' + s })
@@ -136,11 +140,24 @@ test('списки и состояние B — только его: ни мет�
   assert.ok((await as(sessA, 'GET', '/api/arrivals')).body.includes('asset-of-a'))
 })
 
-test('только владельцу: B получает 403', async () => {
-  for (const [method, url, payload] of [['GET', '/api/counters'], ['POST', '/api/users/disable', { id: 'owner' }], ['POST', '/api/users/enable', { id: 'u2' }]] as const) {
-    const r = await as(sessB, method as any, url, payload as any)
-    assert.equal(r.statusCode, 403, url)
+test('только владельцу: каждый маршрут вида «владелец» из таблицы — B получает 403, ничего не меняется', async () => {
+  const before = db.prepare('select count(*) c from invites').get()
+  const flags = db.prepare('select count(*) c from server_flags').get()
+  for (const key of Object.keys(ROUTES).filter(k => ROUTES[k] === 'владелец')) {
+    const [method, url] = key.split(' ')
+    const r = await as(sessB, method as any, url, method === 'POST' ? { id: 'u2', open: true, steamid: '76561198000000099', name: 'взлом', days: 7 } : undefined)
+    assert.equal(r.statusCode, 403, key + ': ' + r.body)
   }
+  assert.deepEqual(db.prepare('select count(*) c from invites').get(), before, 'приглашений не создано')
+  assert.deepEqual(db.prepare('select count(*) c from server_flags').get(), flags, 'вход не тронут')
+})
+
+test('экран «Пользователи» у владельца — счётчики без чужих меток, аккаунтов и ключей', async () => {
+  const r = await as(sessA, 'GET', '/api/users')
+  assert.equal(r.statusCode, 200, r.body)
+  const b = r.json().users.find((u: any) => u.id === 'u2')
+  assert.equal(b.accounts, 2)
+  for (const s of ['бэ-один', 'бэ-два', SB1, SB2]) assert.equal(r.body.includes(s), false, 'владелец видит только счётчики: ' + s)
 })
 
 test('поток: каждый получает своё состояние, данные A в поток B не попадают', async () => {
@@ -330,5 +347,91 @@ test('одновременные привязки двух пользовате�
   assert.equal(accounts.byId(a.id)?.user, 'u2')
   assert.equal(accounts.byId(b.id)?.user, 'u4')
   assert.notEqual(accounts.byId(a.id)?.token, accounts.byId(b.id)?.token)
+  mock.restoreAll()
+})
+
+// ── доступ кончился — сразу, без единого запроса пользователя (ревью PR #34) ──
+
+const liveSessions = (id: string) => (db.prepare('select count(*) c from sessions where user_id = ? and revoked_at is null').get(id) as any).c as number
+
+test('закрыли вход: сессии B отозваны сразу, работник и QR остановлены; снова открыли — старая сессия не действует', async () => {
+  const { unitOn } = await import('./autopilot.ts')
+  db.prepare(`update users set disabled_at = null, limits_json = ? where id = 'u2'`).run(JSON.stringify({ accounts: 9, senders: 2 }))
+  const s = users.newSession(db, 'u2', 'steam').token
+  mock.method(accounts.proc, 'spawn', () => {
+    const c: any = new EventEmitter()
+    c.stdout = new EventEmitter(); c.stderr = new EventEmitter(); c.exitCode = null
+    c.kill = () => { c.exitCode = 1; return true }
+    return c
+  })
+  assert.equal((await as(s, 'POST', '/api/autopilot', { id: 'b1', on: true })).json().error, undefined)
+  assert.equal((await as(s, 'POST', '/api/accounts/link', { label: 'ещё один' })).json().ok, true)
+  assert.ok(liveSessions('u2') > 0)
+
+  await as(sessA, 'POST', '/api/users/entry', { open: false })
+  assert.equal(liveSessions('u2'), 0, 'сессии отозваны в базе сразу')
+  assert.equal(unitOn('b1'), false, 'работник выключен сразу')
+  assert.equal(accounts.linkState('u2')!.done, true, 'QR отменён сразу')
+
+  await as(sessA, 'POST', '/api/users/entry', { open: true })
+  assert.equal((await as(s, 'GET', '/api/accounts')).statusCode, 401, 'повторное открытие старую сессию не оживляет')
+  mock.restoreAll()
+})
+
+test('снятие допуска — сессии отозваны сразу; истечение по сроку — проверкой раз в 15 с', async () => {
+  const SID6 = '76561198000000066'
+  await as(sessA, 'POST', '/api/users/entry', { open: false })
+  db.prepare(`insert or ignore into users (id, steamid, name, role, created_at) values ('u6', ?, 'приёмка', 'пользователь', ?)`).run(SID6, Date.now())
+  assert.equal((await as(sessA, 'POST', '/api/users/permit', { steamid: SID6 })).json().ok, true)
+  await new Promise(r => setTimeout(r, 5))
+  const s = users.newSession(db, 'u6', 'steam').token
+  assert.equal((await as(s, 'GET', '/api/accounts')).statusCode, 200, 'допущенный входит')
+  await as(sessA, 'POST', '/api/users/permit/revoke')
+  assert.equal(liveSessions('u6'), 0, 'снятие — сразу')
+
+  assert.equal((await as(sessA, 'POST', '/api/users/permit', { steamid: SID6 })).json().ok, true)
+  await new Promise(r => setTimeout(r, 5))
+  users.newSession(db, 'u6', 'steam')
+  assert.ok(liveSessions('u6') > 0)
+  const ended = enforceAccess(Date.now() + 86_400_000 + 1_000)
+  assert.deepEqual(ended, ['u6'], 'по сроку — тот, чей допуск кончился')
+  assert.equal(liveSessions('u6'), 0)
+})
+
+test('конец доступа при уже отозванных сессиях: работает только веб-QR — процесс остановлен, временный файл удалён', async () => {
+  const { GC } = await import('./paths.ts')
+  const path = await import('node:path')
+  const SID7 = '76561198000000077'
+  db.prepare(`insert or ignore into users (id, steamid, name, role, created_at) values ('u7', ?, 'приёмка-7', 'пользователь', ?)`).run(SID7, Date.now())
+  accounts.addAccount({ id: 'w7', label: 'вэ-семь', steamid: '76561198000000071', token: 'token-w7.json', added: Date.now(), user: 'u7' })
+  // Допуск для приёмки — u7 входит и запускает веб-QR (допуск прошлых тестов снят).
+  const { revokePermit } = await import('./access.ts')
+  revokePermit(db, 'owner')
+  assert.equal((await as(sessA, 'POST', '/api/users/permit', { steamid: SID7 })).json().ok, true)
+  assert.equal(users.userActive(db, 'u7'), true)
+  const kids: any[] = []
+  mock.method(accounts.proc, 'spawn', () => {
+    const c: any = new EventEmitter()
+    c.stdout = new EventEmitter(); c.stderr = new EventEmitter(); c.exitCode = null; c.killed = false
+    c.kill = () => { c.killed = true; c.exitCode = 1; return true }
+    kids.push(c)
+    return c
+  })
+  const { asUser } = await import('./ctx.ts')
+  const r: any = asUser('u7', () => accounts.webLinkStart('w7', () => { }))
+  assert.equal(r.ok, true, JSON.stringify(r))
+  // Процесс веб-входа успел записать временный токен.
+  const tmp = path.join(GC, accounts.webTmpFile({ id: 'w7' }))
+  fs.writeFileSync(tmp, '{}')
+  // Доступ кончился «в обход» маршрута (тот сам остановил бы всё), сессий
+  // у u7 нет — работает только веб-QR.
+  users.revokeAll(db, 'u7')
+  db.prepare('update users set disabled_at = ? where id = ?').run(Date.now(), 'u7')
+  assert.equal(users.userActive(db, 'u7'), false)
+  const ended = enforceAccess()
+  assert.ok(ended.includes('u7'), 'веб-QR — незавершённая работа: ' + JSON.stringify(ended))
+  assert.equal(kids[0].killed, true, 'процесс веб-входа остановлен')
+  assert.equal(accounts.webLinkState('u7')!.done, true)
+  assert.equal(fs.existsSync(tmp), false, 'временный файл удалён')
   mock.restoreAll()
 })

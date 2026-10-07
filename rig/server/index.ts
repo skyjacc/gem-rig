@@ -48,7 +48,7 @@ const { token: PANEL_TOKEN, created: tokenCreated } = loadToken()
 const moved = importLegacy()
 if (!moved.skipped) console.log('перенёс из JSON:', moved)
 
-const { app, push, hub, ingestStatus, watchSender } = await buildApp({ token: PANEL_TOKEN, allowed: ALLOWED, dist: DIST })
+const { app, push, hub, ingestStatus, watchSender, enforceAccess } = await buildApp({ token: PANEL_TOKEN, allowed: ALLOWED, dist: DIST })
 
 // Пульс. Без него обрыв канала по дороге (сон машины, прокси, спящая
 // вкладка) выглядит для браузера как тишина: EventSource молчит, панель
@@ -58,6 +58,9 @@ const { app, push, hub, ingestStatus, watchSender } = await buildApp({ token: PA
 // отключённый пользователь — поток закрывается не позже чем через 15 с.
 setInterval(() => {
   hub.sweep(db)
+  // Допуск для приёмки истёк по сроку — сессии и работа того, кто им входил,
+  // встают не позже чем через 15 с (ревью PR #34).
+  enforceAccess()
   hub.broadcast(': ping\n\n')
 }, 15_000)
 

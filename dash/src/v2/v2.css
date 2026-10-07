@@ -987,6 +987,30 @@
 
 .v2 .v2-login-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
+/* ── Пользователи (план 7.3) ── */
+
+.v2 .v2-us { display: flex; flex-direction: column; gap: 14px; }
+.v2 .v2-us-load { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.v2 .v2-us-load .v2-tile { display: flex; flex-direction: column; gap: 4px; padding: 12px; }
+.v2 .v2-us-load .v2-tile span { font-size: 11.5px; color: var(--mute); }
+.v2 .v2-us-load .v2-tile b { font-size: 20px; font-weight: 500; }
+.v2 .v2-us-load .v2-tile small { font-size: 11px; color: var(--mute); }
+.v2 .v2-us-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.v2 .v2-us-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) auto; gap: 8px 16px; align-items: center; padding: 10px 12px; border-radius: 10px; background: var(--s2); }
+.v2 .v2-us-row.is-off { opacity: 0.6; }
+.v2 .v2-us-who { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.v2 .v2-us-who b { font-weight: 500; }
+.v2 .v2-us-num { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; }
+.v2 .v2-us-acts { display: flex; gap: 12px; justify-content: flex-end; }
+.v2 .v2-us-why { margin: 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
+.v2 .v2-us-why p { margin: 0; }
+.v2 div.v2-us-why { padding: 0; }
+.v2 .v2-us-dlg { max-width: 520px; }
+.v2 .v2-us-form, .v2 .v2-us-lim { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.v2 .v2-us-form:disabled, .v2 .v2-us-lim:disabled { opacity: 0.6; }
+.v2 .v2-us-link { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 8px; background: var(--s2); }
+.v2 .v2-us-link code { flex: 1; min-width: 0; font-size: 12px; word-break: break-all; }
+
 /* ── Окно «Настроить» (§5.7, план 9) и общее для окон ── */
 
 .v2 .v2-dialog .is-stop { color: var(--stop); }
@@ -1047,6 +1071,9 @@
 }
 
 @media (max-width: 767.98px) {
+  .v2 .v2-us-load { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2 .v2-us-row { grid-template-columns: minmax(0, 1fr); }
+  .v2 .v2-us-acts { justify-content: flex-start; }
   .v2 .v2-po-dlg .v2-po-fields { grid-template-columns: minmax(0, 1fr); }
   .v2 .v2-bay-h { grid-template-columns: auto auto 1fr; }
   .v2 .v2-bay-prog { grid-column: 1 / -1; }

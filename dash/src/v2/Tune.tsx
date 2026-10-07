@@ -19,7 +19,7 @@ import { icon, nf, useAction, type Settings, type State, type Unit } from '../li
 import { Btn, IconBtn } from './ui.tsx'
 import { ActionDialog } from './Dialog.tsx'
 import { useTrap } from './useTrap.ts'
-import { afterSave, get, GROUPS, patchOf, shown, type Rule } from './tuneModel.ts'
+import { afterSave, get, GROUPS, patchOf, SHARED, shown, type Rule } from './tuneModel.ts'
 
 export type TuneTab = 'run' | 'rules'
 
@@ -61,13 +61,15 @@ function left(until: number) {
   return h ? h + ' ч ' + m + ' мин' : m + ' мин'
 }
 
-export function TuneSheet({ tab, onTab, onClose, state, settings, onSaved }: {
+export function TuneSheet({ tab, onTab, onClose, state, settings, onSaved, owner = true }: {
   tab: TuneTab
   onTab: (t: TuneTab) => void
   onClose: () => void
   state: State
   settings: Settings | null
   onSaved: () => void
+  // Владелец меняет и общие ограничения сервера; пользователь — только свои (план 7.3).
+  owner?: boolean
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -89,7 +91,7 @@ export function TuneSheet({ tab, onTab, onClose, state, settings, onSaved }: {
         </div>
         <div className="v2-sheet-body" role="tabpanel">
           {tab === 'run' ? <Run state={state} unit={unit} floor={settings?.pace?.floor ?? null} />
-            : <Rules settings={settings} onSaved={onSaved} onReset={() => setConfirmReset(true)} />}
+            : <Rules settings={settings} onSaved={onSaved} onReset={() => setConfirmReset(true)} owner={owner} />}
         </div>
       </div>
       {confirmReset ? (
@@ -247,7 +249,7 @@ function Run({ state, unit, floor }: { state: State; unit: Unit; floor: number |
 
 // ── общие правила ──
 
-function Rules({ settings, onSaved, onReset }: { settings: Settings | null; onSaved: () => void; onReset: () => void }) {
+function Rules({ settings, onSaved, onReset, owner }: { settings: Settings | null; onSaved: () => void; onReset: () => void; owner: boolean }) {
   const act = useAction()
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [more, setMore] = useState(false)
@@ -279,11 +281,12 @@ function Rules({ settings, onSaved, onReset }: { settings: Settings | null; onSa
   const row = (r: Rule) => {
     const v = draft[r.path] ?? shown(r, Number(get(settings, r.path)))
     const isChanged = changed.includes(r.path)
+    const shared = !owner && SHARED.includes(r.path)
     return (
       <div key={r.path} className={'v2-tune-rule' + (isChanged ? ' is-changed' : '')}>
-        <div className="v2-acc-k">{r.label}<small>{r.hint}</small></div>
+        <div className="v2-acc-k">{r.label}<small>{shared ? 'общее ограничение сервера — меняет владелец' : !owner && r.path === 'pace.floor' ? r.hint + '; не ниже общего пола сервера' : r.hint}</small></div>
         <label className="v2-buy-field v2-tune-field">
-          <input value={v} placeholder="нет данных" onChange={e => { setDraft(d => ({ ...d, [r.path]: e.target.value })); setNote(null) }} inputMode="decimal" aria-label={r.label} />
+          <input value={v} placeholder="нет данных" readOnly={shared} onChange={e => { setDraft(d => ({ ...d, [r.path]: e.target.value })); setNote(null) }} inputMode="decimal" aria-label={r.label} />
           <span>{r.unit ?? ''}</span>
         </label>
       </div>

@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import { ago, DEMO, useJson, useLive, type Accounts, type Settings } from '../lib/api.ts'
 import { TuneSheet, type TuneTab } from './Tune.tsx'
 import { LinkDialog } from './LinkDialog.tsx'
-import { Rail, RailRow, SCREENS, type ScreenId } from './Rail.tsx'
+import { Rail, RailRow, screenLabel, type ScreenId } from './Rail.tsx'
+import { UsersScreen, UsersSide } from './users/Users.tsx'
+import { useUsers } from './users/data.ts'
 import { TopBar } from './TopBar.tsx'
 import { Pult } from './Pult.tsx'
 import { ConfirmBurn } from './ConfirmBurn.tsx'
@@ -69,6 +71,10 @@ export default function AppV2() {
   const [jrSel, setJrSel] = useState<string | null>(null)
   // Продажи: журнал операций и ключи активного аккаунта — только пока экран открыт.
   const sales = useSales(state, screen === 'sales', accounts)
+  // Кто вошёл (план 7.3): экран «Пользователи» и общие правила — владельцу.
+  const auth = useJson<{ user: { role: string } | null }>(DEMO ? null : '/api/auth', 0)
+  const owner = DEMO || auth.data?.user?.role === 'владелец'
+  const usersData = useUsers(owner && screen === 'users', state?.ts)
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), SECOND)
@@ -87,7 +93,7 @@ export default function AppV2() {
       {stale ? <Pill tone="stop">данные устарели — {ago(live.at, now)} без связи</Pill> : null}
     </>
   )
-  const title = SCREENS.find(s => s.id === screen)!.label
+  const title = screenLabel(screen)
   // Цель — только из настроек (§3.2). Нет её — так и пишем, числа не подставляем.
   const goal = typeof settings?.goal === 'number' && settings.goal > 0 ? settings.goal : null
   // Аккаунтов нет (список пришёл и пуст) — показывать нечего, кроме первого шага.
@@ -97,7 +103,7 @@ export default function AppV2() {
     <>
       <div className="v2">
         <div className="v2-app">
-          <Rail screen={screen} onScreen={setScreen} onRules={() => setRules('rules')} />
+          <Rail screen={screen} onScreen={setScreen} onRules={() => setRules('rules')} owner={owner} />
           <TopBar
             state={state}
             accounts={accounts}
@@ -105,7 +111,7 @@ export default function AppV2() {
             status={status}
             bell={<Bell state={state} live={live} now={now} goal={goal} />}
           />
-          <RailRow screen={screen} onScreen={setScreen} />
+          <RailRow screen={screen} onScreen={setScreen} owner={owner} />
           <main className="v2-page" aria-label={title}>
             <div className="v2-page-scroll">
               {empty ? <FirstRun onLink={() => setLinking({ relink: null })} />
@@ -113,6 +119,7 @@ export default function AppV2() {
                 : screen === 'inventory' ? <Inventory state={state} goal={goal} sel={stack} onSel={setStack} />
                 : screen === 'buy' ? <BuyScreen state={state} buy={buy} />
                 : screen === 'sales' ? <SalesScreen data={sales} now={now} />
+                : screen === 'users' && owner ? <UsersScreen data={usersData} now={now} />
                 : screen === 'journal' ? (
                   <JournalScreen state={state} data={journal} tab={jrTab} onTab={setJrTab} sel={jrSel} onSel={setJrSel} top={settings?.treeTop ?? 12} />
                 )
@@ -137,6 +144,8 @@ export default function AppV2() {
               <ItemCard state={state} goal={goal} sel={stack} onOverview={g => { setGem(g); setScreen('overview') }} />
             ) : screen === 'buy' ? (
               <BuySide state={state} buy={buy} now={now} onRules={() => setRules('rules')} />
+            ) : screen === 'users' && owner ? (
+              <UsersSide />
             ) : screen === 'sales' ? (
               <SalesSide data={sales} />
             ) : screen === 'journal' ? (
@@ -151,7 +160,7 @@ export default function AppV2() {
         </div>
         {burning ? <ConfirmBurn state={state} goal={goal} onClose={() => setBurning(false)} /> : null}
         {linking ? <LinkDialog accounts={accounts} relink={linking.relink} onClose={() => setLinking(null)} /> : null}
-        {rules ? <TuneSheet tab={rules} onTab={setRules} onClose={() => setRules(null)} state={state} settings={settings} onSaved={settingsJson.reload} /> : null}
+        {rules ? <TuneSheet tab={rules} onTab={setRules} onClose={() => setRules(null)} state={state} settings={settings} onSaved={settingsJson.reload} owner={owner} /> : null}
       </div>
     </>
   )

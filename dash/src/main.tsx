@@ -13,6 +13,10 @@ const root = createRoot(document.getElementById('root')!)
 // Сначала спрашиваем, вошли ли мы. Без куки входа сервер отвечает 401 на
 // каждый /api/*, и панель показала бы вместо данных стену ошибок.
 // Показ работает без сервера — ему вход не нужен.
+// Ссылка-приглашение (план 7.3): /i/<токен>. Сервер отдаёт на неё ту же
+// страницу панели; токен уходит только в проверку и во вход через Steam.
+const invite = /^\/i\/([A-Za-z0-9_-]{20,})$/.exec(location.pathname)?.[1] ?? null
+
 async function boot() {
   let authed = DEMO
   let steam = false
@@ -28,7 +32,7 @@ async function boot() {
   }
   root.render(
     <StrictMode>
-      {authed ? <AppV2 /> : <Login steam={steam} />}
+      {authed ? <AppV2 /> : <Login steam={steam} invite={invite} />}
     </StrictMode>,
   )
 }

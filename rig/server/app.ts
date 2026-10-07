@@ -28,11 +28,11 @@ import { buyKey, checkKey, keyFor, removeKey, setKey } from './marketkeys.ts'
 import { listOps, migrateMoney, MONEY_DDL } from './money.ts'
 import {
   attemptLimiter, ensureOwner, getPersonalSettings, handleFinish, handleReturn, limitsOf, logAuth, markDisabled, markEnabled, migrateUsers,
-  newSession, OWNER_ID, sessionUser, setPersonalSettings, startAttempt, STEAM_TTL, TOKEN_TTL, userActive, userById, USERS_DDL,
+  newSession, OWNER_ID, revokeAll, sessionUser, setPersonalSettings, startAttempt, STEAM_TTL, TOKEN_TTL, userActive, userById, USERS_DDL,
 } from './users.ts'
-import { accountsHooks, linkCancel, webLinkCancel } from './accounts.ts'
+import { accountsHooks, linkCancel, linkState, webLinkCancel } from './accounts.ts'
 import { purchaseHooks } from './purchase.ts'
-import { autopilotHooks } from './autopilot.ts'
+import { autopilotHooks, unitOn } from './autopilot.ts'
 import { settingsHooks } from './settings.ts'
 import { authUrl } from './openid.ts'
 import { logoutAllFor, logoutFor, streamHub } from './streams.ts'
@@ -618,6 +618,16 @@ export async function buildApp(opts: AppOpts) {
   function disableUser(id: string) {
     const r = markDisabled(db, id)
     if ('error' in r) return r
+    endAccess(id)
+    push()
+    return { ok: true }
+  }
+
+  // Доступ кончился (ревью PR #34) — сразу, а не на следующей проверке:
+  // сессии отозваны, потоки закрыты, работники и отправщики остановлены,
+  // закупка и QR-входы отменены.
+  function endAccess(id: string) {
+    revokeAll(db, id)
     hub.closeUser(id)
     for (const a of accountList2().filter(x => (x.user || OWNER_ID) === id)) {
       setAutopilot(a.id, { on: false })
@@ -626,8 +636,25 @@ export async function buildApp(opts: AppOpts) {
     stopPurchase(id)
     linkCancel(id)
     webLinkCancel(id)
-    push()
-    return { ok: true }
+  }
+
+  // Все, кто сейчас не пущен (закрыт вход, кончился или снят допуск,
+  // отключён), — без живых сессий и работы. Зовётся при закрытии входа и
+  // снятии допуска и раз в 15 с (index.ts) — для допуска, истёкшего по сроку.
+  function enforceAccess(now = Date.now()) {
+    const ended: string[] = []
+    for (const u of db.prepare(`select id from users where role = 'пользователь'`).all() as { id: string }[]) {
+      if (userActive(db, u.id, now)) continue
+      const live = (db.prepare('select count(*) c from sessions where user_id = ? and revoked_at is null').get(u.id) as any).c > 0
+      const l = linkState(u.id)
+      const working = accountList2().some(a => a.user === u.id && (senderState(a.id).running || unitOn(a.id)))
+        || asUser(u.id, () => purchaseState()).active || (!!l && !l.done)
+      if (!live && !working && !hub.users().has(u.id)) continue
+      endAccess(u.id)
+      ended.push(u.id)
+    }
+    if (ended.length) push()
+    return ended
   }
 
   const ownerOnly = (reply: any) => {
@@ -719,7 +746,7 @@ export async function buildApp(opts: AppOpts) {
     if (ownerOnly(reply)) return reply
     const open = req.body?.open === true
     setEntryOpen(db, open, OWNER_ID)
-    if (!open) for (const u of db.prepare(`select id from users where role = 'пользователь'`).all() as any[]) hub.closeUser(u.id)
+    if (!open) enforceAccess()
     push()
     return { ok: true, open }
   })
@@ -738,8 +765,7 @@ export async function buildApp(opts: AppOpts) {
     if (ownerOnly(reply)) return reply
     const r = revokePermit(db, OWNER_ID)
     if ('error' in r) return r
-    const u = db.prepare('select id from users where steamid = ?').get(r.steamid) as { id: string } | undefined
-    if (u) hub.closeUser(u.id)
+    enforceAccess()
     push()
     return { ok: true }
   })
@@ -794,5 +820,5 @@ export async function buildApp(opts: AppOpts) {
   }
 
 
-  return { app, push, hub, ingestStatus, watchSender, disableUser }
+  return { app, push, hub, ingestStatus, watchSender, disableUser, enforceAccess }
 }

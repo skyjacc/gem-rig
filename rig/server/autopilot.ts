@@ -451,6 +451,9 @@ export async function tick(push: () => void) {
   for (const a of live) await asUser(ownerOf(a), () => tickOne(a, push))
 }
 
+// Включён ли работник аккаунта — без сборки всего состояния (app.ts, доступ).
+export const unitOn = (id: string) => unit(id).enabled
+
 export function unitState(a: Account) {
   const u = unit(a.id)
   const s = senderState(a.id)

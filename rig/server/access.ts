@@ -153,6 +153,18 @@ export const activePermit = (db: DatabaseSync, now = Date.now()) =>
 export const permitAllows = (db: DatabaseSync, steamid: string | null, now = Date.now()) =>
   !!steamid && activePermit(db, now)?.steamid === steamid
 
+// С каких моментов действует доступ этого steamid (ревью PR #34): начало
+// текущего открытия входа и начало действующего допуска. Сессия, созданная
+// раньше обоих, — от прошлого доступа: повторное открытие её не оживляет.
+export function accessStarts(db: DatabaseSync, steamid: string | null, now = Date.now()): number[] {
+  const out: number[] = []
+  const open = (db.prepare(`select value from server_flags where key = 'multiuser_open_at'`).get() as { value: string | null } | undefined)?.value
+  if (open != null) out.push(Number(open))
+  const p = activePermit(db, now)
+  if (p && steamid && p.steamid === steamid) out.push(p.created_at)
+  return out
+}
+
 export function grantPermit(db: DatabaseSync, steamid: string, by: string, now = Date.now()): { id: number; expiresAt: number } | Fail {
   const sid = String(steamid ?? '').trim()
   if (!/^\d{17}$/.test(sid)) return { error: 'steamid — 17 цифр' }

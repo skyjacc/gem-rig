@@ -22,7 +22,7 @@
 import crypto from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { checkResponse, NONCE_AGE, returnTo, verifySignature } from './openid.ts'
-import { ACCESS_DDL, entryOpen, hashToken, inviteByToken, permitAllows, useInvite } from './access.ts'
+import { ACCESS_DDL, accessStarts, entryOpen, hashToken, inviteByToken, permitAllows, useInvite } from './access.ts'
 
 export const OWNER_ID = 'owner'
 const MIN = 60_000
@@ -90,6 +90,43 @@ const secret = () => crypto.randomBytes(32).toString('base64url')
 export function migrateUsers(db: DatabaseSync) {
   const cols = (db.prepare(`pragma table_info(users)`).all() as any[]).map(c => c.name)
   if (cols.length && !cols.includes('settings_json')) db.exec(`alter table users add column settings_json text`)
+  migrateAttempts(db)
+}
+
+// Попытки входа этапа 7.1 (ревью PR #34): нет колонки invite_hash, и CHECK
+// не допускает цель «приглашение». CHECK в SQLite не меняется — таблица
+// пересоздаётся в одной транзакции, строки переносятся как есть.
+const ATTEMPTS_DDL = (name: string) => `
+  create table ${name} (
+    id              integer primary key autoincrement,
+    state_hash      text not null unique,
+    binding_hash    text not null,
+    purpose         text not null check (purpose in ('вход', 'привязка владельца', 'приглашение')),
+    session_id      integer,
+    invite_hash     text,
+    created_at      integer not null,
+    expires_at      integer not null,
+    verified_steamid text,
+    used_at         integer
+  );
+`
+
+export function migrateAttempts(db: DatabaseSync): { migrated: boolean } {
+  const cols = (db.prepare(`pragma table_info(login_attempts)`).all() as any[]).map(c => c.name)
+  if (!cols.length || cols.includes('invite_hash')) return { migrated: false }
+  db.exec('begin immediate')
+  try {
+    db.exec(ATTEMPTS_DDL('login_attempts_v2'))
+    db.exec(`insert into login_attempts_v2 (id, state_hash, binding_hash, purpose, session_id, created_at, expires_at, verified_steamid, used_at)
+             select id, state_hash, binding_hash, purpose, session_id, created_at, expires_at, verified_steamid, used_at from login_attempts`)
+    db.exec('drop table login_attempts')
+    db.exec('alter table login_attempts_v2 rename to login_attempts')
+    db.exec('commit')
+  } catch (e) {
+    db.exec('rollback')
+    throw e
+  }
+  return { migrated: true }
 }
 
 // ── пределы и отключение (план 7.2, решение 10) ──
@@ -170,7 +207,7 @@ export function newSession(db: DatabaseSync, userId: string, kind: 'steam' | 'т
   return { token, expiresAt }
 }
 
-type Session = { id: number; user_id: string; kind: 'steam' | 'токен'; last_seen_at: number; expires_at: number; revoked_at: number | null }
+type Session = { id: number; user_id: string; kind: 'steam' | 'токен'; created_at: number; last_seen_at: number; expires_at: number; revoked_at: number | null }
 
 // Жива ли сессия: не отозвана, не истекла по любому сроку, пользователь не
 // отключён. Истёкшая — гасится.
@@ -183,15 +220,18 @@ function alive(db: DatabaseSync, s: Session | undefined, now: number): User | nu
   }
   const user = userById(db, s.user_id)
   if (!user || user.disabled_at != null) return null
-  // Не пущен (закрыли вход, истёк или снят допуск) — сессия гасится.
-  if (!admitted(db, user, now)) {
+  // Не пущен (закрыли вход, истёк или снят допуск) или сессия от прошлого
+  // доступа (создана до текущего открытия входа и до текущего допуска) —
+  // гасится: повторное открытие старых сессий не оживляет (ревью PR #34).
+  const fresh = user.role === 'владелец' || accessStarts(db, user.steamid, now).some(t => s.created_at >= t)
+  if (!admitted(db, user, now) || !fresh) {
     db.prepare('update sessions set revoked_at = ? where id = ?').run(now, s.id)
     return null
   }
   return user
 }
 
-const SESSION_COLS = 'id, user_id, kind, last_seen_at, expires_at, revoked_at'
+const SESSION_COLS = 'id, user_id, kind, created_at, last_seen_at, expires_at, revoked_at'
 
 // Кто это — по предъявленному токену. Обращение продлевает только срок
 // бездействия.

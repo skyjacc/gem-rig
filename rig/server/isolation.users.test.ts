@@ -39,7 +39,7 @@ db.prepare(`insert or ignore into users (id, steamid, name, role, limits_json, c
 const sessA = users.newSession(db, users.OWNER_ID, 'токен').token
 let sessB = users.newSession(db, 'u2', 'steam').token
 
-const { app, hub, push } = await buildApp({ token: 'x'.repeat(48), allowed: allowedHosts({}), dist: null })
+const { app, hub, push, enforceAccess } = await buildApp({ token: 'x'.repeat(48), allowed: allowedHosts({}), dist: null })
 after(() => app.close())
 
 const H = (s: string) => ({ host: 'localhost:4322', origin: 'http://localhost:4322', cookie: 'rig_auth=' + s })
@@ -348,4 +348,52 @@ test('одновременные привязки двух пользовате�
   assert.equal(accounts.byId(b.id)?.user, 'u4')
   assert.notEqual(accounts.byId(a.id)?.token, accounts.byId(b.id)?.token)
   mock.restoreAll()
+})
+
+// ── доступ кончился — сразу, без единого запроса пользователя (ревью PR #34) ──
+
+const liveSessions = (id: string) => (db.prepare('select count(*) c from sessions where user_id = ? and revoked_at is null').get(id) as any).c as number
+
+test('закрыли вход: сессии B отозваны сразу, работник и QR остановлены; снова открыли — старая сессия не действует', async () => {
+  const { unitOn } = await import('./autopilot.ts')
+  db.prepare(`update users set disabled_at = null, limits_json = ? where id = 'u2'`).run(JSON.stringify({ accounts: 9, senders: 2 }))
+  const s = users.newSession(db, 'u2', 'steam').token
+  mock.method(accounts.proc, 'spawn', () => {
+    const c: any = new EventEmitter()
+    c.stdout = new EventEmitter(); c.stderr = new EventEmitter(); c.exitCode = null
+    c.kill = () => { c.exitCode = 1; return true }
+    return c
+  })
+  assert.equal((await as(s, 'POST', '/api/autopilot', { id: 'b1', on: true })).json().error, undefined)
+  assert.equal((await as(s, 'POST', '/api/accounts/link', { label: 'ещё один' })).json().ok, true)
+  assert.ok(liveSessions('u2') > 0)
+
+  await as(sessA, 'POST', '/api/users/entry', { open: false })
+  assert.equal(liveSessions('u2'), 0, 'сессии отозваны в базе сразу')
+  assert.equal(unitOn('b1'), false, 'работник выключен сразу')
+  assert.equal(accounts.linkState('u2')!.done, true, 'QR отменён сразу')
+
+  await as(sessA, 'POST', '/api/users/entry', { open: true })
+  assert.equal((await as(s, 'GET', '/api/accounts')).statusCode, 401, 'повторное открытие старую сессию не оживляет')
+  mock.restoreAll()
+})
+
+test('снятие допуска — сессии отозваны сразу; истечение по сроку — проверкой раз в 15 с', async () => {
+  const SID6 = '76561198000000066'
+  await as(sessA, 'POST', '/api/users/entry', { open: false })
+  db.prepare(`insert or ignore into users (id, steamid, name, role, created_at) values ('u6', ?, 'приёмка', 'пользователь', ?)`).run(SID6, Date.now())
+  assert.equal((await as(sessA, 'POST', '/api/users/permit', { steamid: SID6 })).json().ok, true)
+  await new Promise(r => setTimeout(r, 5))
+  const s = users.newSession(db, 'u6', 'steam').token
+  assert.equal((await as(s, 'GET', '/api/accounts')).statusCode, 200, 'допущенный входит')
+  await as(sessA, 'POST', '/api/users/permit/revoke')
+  assert.equal(liveSessions('u6'), 0, 'снятие — сразу')
+
+  assert.equal((await as(sessA, 'POST', '/api/users/permit', { steamid: SID6 })).json().ok, true)
+  await new Promise(r => setTimeout(r, 5))
+  users.newSession(db, 'u6', 'steam')
+  assert.ok(liveSessions('u6') > 0)
+  const ended = enforceAccess(Date.now() + 86_400_000 + 1_000)
+  assert.deepEqual(ended, ['u6'], 'по сроку — тот, чей допуск кончился')
+  assert.equal(liveSessions('u6'), 0)
 })

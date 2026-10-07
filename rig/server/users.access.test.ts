@@ -167,3 +167,35 @@ test('отключённый — «доступ отключён владель�
   db.prepare('update users set disabled_at = ? where id = ?').run(T0, s.user.id)
   refused((await viaSteam(db, FRIEND_SID)).fin!(), /доступ отключён владельцем/)
 })
+
+// ── повторное открытие не оживляет старые сессии (ревью PR #34) ──
+
+test('закрыли и снова открыли вход без единого запроса — старая сессия приглашённого не действует', async () => {
+  const db = fresh()
+  setEntryOpen(db, true, OWNER_ID, T0)
+  const inv = createInvite(db, { name: 'Дима', days: 7 }, OWNER_ID, T0) as any
+  const s = (await viaSteam(db, FRIEND_SID, { purpose: 'приглашение', invite: inv.token })).fin!(true) as any
+  setEntryOpen(db, false, OWNER_ID, T0 + 1)
+  setEntryOpen(db, true, OWNER_ID, T0 + 2)
+  assert.equal(sessionUser(db, s.session.token, T0 + 3), null, 'сессия от прошлого открытия')
+  // Новый вход после повторного открытия — действует.
+  const s2 = (await viaSteam(db, FRIEND_SID, { at: T0 + 4 })).fin!() as any
+  assert.ok(sessionUser(db, s2.session.token, T0 + 5))
+})
+
+test('допуск сняли и выдали снова — старая сессия допущенного не действует', async () => {
+  const db = fresh()
+  grantPermit(db, TEST_SID, OWNER_ID, T0)
+  const s = (await viaSteam(db, TEST_SID)).fin!() as any
+  revokePermit(db, OWNER_ID, T0 + 1)
+  grantPermit(db, TEST_SID, OWNER_ID, T0 + 2)
+  assert.equal(sessionUser(db, s.session.token, T0 + 3), null)
+})
+
+test('допуск истёк и выдан снова — старая сессия не действует', async () => {
+  const db = fresh()
+  grantPermit(db, TEST_SID, OWNER_ID, T0)
+  const s = (await viaSteam(db, TEST_SID)).fin!() as any
+  grantPermit(db, TEST_SID, OWNER_ID, T0 + DAY + 1)
+  assert.equal(sessionUser(db, s.session.token, T0 + DAY + 2), null)
+})

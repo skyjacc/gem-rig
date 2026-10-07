@@ -30,7 +30,7 @@ import {
   attemptLimiter, ensureOwner, getPersonalSettings, handleFinish, handleReturn, limitsOf, logAuth, markDisabled, markEnabled, migrateUsers,
   newSession, OWNER_ID, revokeAll, sessionUser, setPersonalSettings, startAttempt, STEAM_TTL, TOKEN_TTL, userActive, userById, USERS_DDL,
 } from './users.ts'
-import { accountsHooks, linkCancel, linkState, webLinkCancel } from './accounts.ts'
+import { accountsHooks, linkCancel, linkState, webLinkCancel, webLinkState } from './accounts.ts'
 import { purchaseHooks } from './purchase.ts'
 import { autopilotHooks, unitOn } from './autopilot.ts'
 import { settingsHooks } from './settings.ts'
@@ -646,9 +646,12 @@ export async function buildApp(opts: AppOpts) {
     for (const u of db.prepare(`select id from users where role = 'пользователь'`).all() as { id: string }[]) {
       if (userActive(db, u.id, now)) continue
       const live = (db.prepare('select count(*) c from sessions where user_id = ? and revoked_at is null').get(u.id) as any).c > 0
+      // Незавершённая работа — и игровой, и веб-вход по QR (ревью PR #34, P2):
+      // сессии уже могут быть отозваны, а процесс входа — идти.
       const l = linkState(u.id)
+      const w = webLinkState(u.id)
       const working = accountList2().some(a => a.user === u.id && (senderState(a.id).running || unitOn(a.id)))
-        || asUser(u.id, () => purchaseState()).active || (!!l && !l.done)
+        || asUser(u.id, () => purchaseState()).active || (!!l && !l.done) || (!!w && !w.done)
       if (!live && !working && !hub.users().has(u.id)) continue
       endAccess(u.id)
       ended.push(u.id)

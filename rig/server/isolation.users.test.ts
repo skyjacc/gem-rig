@@ -397,3 +397,41 @@ test('снятие допуска — сессии отозваны сразу; 
   assert.deepEqual(ended, ['u6'], 'по сроку — тот, чей допуск кончился')
   assert.equal(liveSessions('u6'), 0)
 })
+
+test('конец доступа при уже отозванных сессиях: работает только веб-QR — процесс остановлен, временный файл удалён', async () => {
+  const { GC } = await import('./paths.ts')
+  const path = await import('node:path')
+  const SID7 = '76561198000000077'
+  db.prepare(`insert or ignore into users (id, steamid, name, role, created_at) values ('u7', ?, 'приёмка-7', 'пользователь', ?)`).run(SID7, Date.now())
+  accounts.addAccount({ id: 'w7', label: 'вэ-семь', steamid: '76561198000000071', token: 'token-w7.json', added: Date.now(), user: 'u7' })
+  // Допуск для приёмки — u7 входит и запускает веб-QR (допуск прошлых тестов снят).
+  const { revokePermit } = await import('./access.ts')
+  revokePermit(db, 'owner')
+  assert.equal((await as(sessA, 'POST', '/api/users/permit', { steamid: SID7 })).json().ok, true)
+  assert.equal(users.userActive(db, 'u7'), true)
+  const kids: any[] = []
+  mock.method(accounts.proc, 'spawn', () => {
+    const c: any = new EventEmitter()
+    c.stdout = new EventEmitter(); c.stderr = new EventEmitter(); c.exitCode = null; c.killed = false
+    c.kill = () => { c.killed = true; c.exitCode = 1; return true }
+    kids.push(c)
+    return c
+  })
+  const { asUser } = await import('./ctx.ts')
+  const r: any = asUser('u7', () => accounts.webLinkStart('w7', () => { }))
+  assert.equal(r.ok, true, JSON.stringify(r))
+  // Процесс веб-входа успел записать временный токен.
+  const tmp = path.join(GC, accounts.webTmpFile({ id: 'w7' }))
+  fs.writeFileSync(tmp, '{}')
+  // Доступ кончился «в обход» маршрута (тот сам остановил бы всё), сессий
+  // у u7 нет — работает только веб-QR.
+  users.revokeAll(db, 'u7')
+  db.prepare('update users set disabled_at = ? where id = ?').run(Date.now(), 'u7')
+  assert.equal(users.userActive(db, 'u7'), false)
+  const ended = enforceAccess()
+  assert.ok(ended.includes('u7'), 'веб-QR — незавершённая работа: ' + JSON.stringify(ended))
+  assert.equal(kids[0].killed, true, 'процесс веб-входа остановлен')
+  assert.equal(accounts.webLinkState('u7')!.done, true)
+  assert.equal(fs.existsSync(tmp), false, 'временный файл удалён')
+  mock.restoreAll()
+})

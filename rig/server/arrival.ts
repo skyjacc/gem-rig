@@ -171,21 +171,29 @@ export function asideSet(target: DatabaseSync, account: string): Set<string> {
   }
 }
 
-export function setAside(target: DatabaseSync, assetid: string, aside: boolean) {
+// steamids — аккаунты пользователя (план 7.2): чужой приход не трогается.
+// Ответ — нашёлся ли свой приход.
+export function setAside(target: DatabaseSync, assetid: string, aside: boolean, steamids?: string[]): boolean {
   target.exec(ARRIVALS_DDL)
-  target.prepare(`update arrivals set aside = ? where assetid = ?`).run(aside ? 1 : 0, String(assetid))
+  const own = steamids ? ' and account in (' + steamids.map(() => '?').join(',') + ')' : ''
+  if (steamids && !steamids.length) return false
+  const r = target.prepare(`update arrivals set aside = ? where assetid = ?` + own).run(aside ? 1 : 0, String(assetid), ...(steamids ?? []))
+  return Number(r.changes) > 0
 }
+
+const inAccounts = (steamids?: string[]) =>
+  steamids ? (steamids.length ? ' and account in (' + steamids.map(() => '?').join(',') + ')' : ' and 0') : ''
 
 // Список приходов для панели. Старое не показываем: это не события,
 // а фон, который сканер застал при первом запуске.
-export function arrivalsOf(target: DatabaseSync, limit = 400) {
+export function arrivalsOf(target: DatabaseSync, limit = 400, steamids?: string[]) {
   target.exec(ARRIVALS_DDL)
   return (target.prepare(`
     select assetid, account, gem, item, carrier, value, expected, verdict, aside, ts
-    from arrivals where verdict != 'старое'
+    from arrivals where verdict != 'старое'` + inAccounts(steamids) + `
     order by (verdict = 'выигрыш') desc, (ts is null), ts desc
     limit ?
-  `).all(limit) as any[]).map(r => ({
+  `).all(...(steamids ?? []), limit) as any[]).map(r => ({
     assetid: String(r.assetid),
     account: r.account ? String(r.account) : null,
     gem: String(r.gem ?? '—'),
@@ -201,15 +209,15 @@ export function arrivalsOf(target: DatabaseSync, limit = 400) {
 }
 
 // Сводка для состояния: сколько выигрышей ждут решения.
-export function arrivalSummary(target: DatabaseSync) {
+export function arrivalSummary(target: DatabaseSync, steamids?: string[]) {
   try {
     const r = target.prepare(`
       select
         sum(case when verdict = 'выигрыш' and aside = 0 then 1 else 0 end) open,
         sum(case when verdict = 'выигрыш' then 1 else 0 end) wins,
         sum(case when verdict != 'старое' then 1 else 0 end) fresh
-      from arrivals
-    `).get() as any
+      from arrivals where 1` + inAccounts(steamids) + `
+    `).get(...(steamids ?? [])) as any
     return { open: r?.open ?? 0, wins: r?.wins ?? 0, fresh: r?.fresh ?? 0 }
   } catch {
     return { open: 0, wins: 0, fresh: 0 }

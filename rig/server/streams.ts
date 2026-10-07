@@ -29,6 +29,10 @@ export function streamHub() {
     remove: (res: Res) => { open.delete(res) },
     size: () => open.size,
     broadcast: (line: string) => { for (const res of [...open.keys()]) write(res, line) },
+    // Поток по пользователю (план 7.2, решение 6): у кого открыты потоки и
+    // отправка только его клиентам.
+    users: () => new Set([...open.values()].map(e => e.userId)),
+    sendTo: (userId: string, line: string) => { for (const [res, e] of [...open]) if (e.userId === userId) write(res, line) },
     closeSession: (sessionId: number) => { for (const [res, e] of [...open]) if (e.sessionId === sessionId) close(res) },
     closeUser: (userId: string) => { for (const [res, e] of [...open]) if (e.userId === userId) close(res) },
     sweep: (db: DatabaseSync, now = Date.now()) => {

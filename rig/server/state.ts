@@ -23,7 +23,8 @@ import { arrivalSummary, asideSet } from './arrival.ts'
 import { DUP_TRIES, entityStat } from './queue.ts'
 import { dupStats } from './ledger.ts'
 import { classifySupply } from './supply.ts'
-import { ACCOUNT } from './accounts.ts'
+import { ACCOUNT, listFor } from './accounts.ts'
+import { currentUser } from './ctx.ts'
 import { autopilotState } from './autopilot.ts'
 import { purchaseState } from './purchase.ts'
 
@@ -176,6 +177,6 @@ export function buildState() {
     keys,
     // Сводка сканера прихода: open — выигрыши, ждущие решения. Одно число
     // в состоянии дешевле, чем список: список живёт в /api/arrivals.
-    arrivals: arrivalSummary(db),
+    arrivals: arrivalSummary(db, listFor(currentUser()).map(a => a.steamid)),
   }
 }

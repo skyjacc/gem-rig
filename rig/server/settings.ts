@@ -11,6 +11,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { TOOLS, readJson } from './paths.ts'
+import { currentUser, OWNER } from './ctx.ts'
 
 export type Settings = {
   // Сколько просмотров считается товаром.
@@ -173,20 +174,75 @@ export function merge(base: Settings, patch: any): Settings {
   return out
 }
 
-const FILE = path.join(TOOLS, 'settings.json')
+// SETTINGS_FILE — только для тестов (testenv.ts): свой файл, рабочий не трогается.
+const FILE = process.env.SETTINGS_FILE || path.join(TOOLS, 'settings.json')
 
+// Файл — настройки владельца и общие ограничения сервера (как до этапа 7).
 let current: Settings = merge(DEFAULTS, readJson<any>(FILE, {}))
 
-export const settings = () => current
+// ── личные и общие (план 7.2, решение 9) ──
+//
+// Общие ограничения сервера — у всех одни, меняет только владелец: работа
+// отправщиков и нагрузка на общий ПК (tick, silentLimit, startLimit,
+// maxFailures), частота чтения Steam с общего адреса (invTtl, invStale),
+// вид дерева (treeTop). Пол паузы (pace.floor) — общий предел: личный может
+// быть только строже. Остальное — личное у каждого пользователя: экономика
+// и темп своей работы. Личные значения пользователя начинаются со значений
+// владельца.
+export const SHARED = ['tick', 'silentLimit', 'startLimit', 'maxFailures', 'invTtl', 'invStale', 'treeTop'] as const
+
+// Хранилище личных — снаружи (app.ts: users.settings_json). По умолчанию —
+// в памяти: тесты и запуск без базы.
+const memory = new Map<string, any>()
+export const settingsHooks = {
+  getPersonal: (user: string): any => memory.get(user) ?? null,
+  setPersonal: (user: string, v: any) => { if (v == null) memory.delete(user); else memory.set(user, v) },
+}
+
+// Действующие настройки пользователя: личные поверх значений владельца,
+// общие — от сервера, пол паузы — не ниже общего.
+export function effective(personal: any): Settings {
+  const out = merge(current, personal ?? {})
+  for (const k of SHARED) (out as any)[k] = (current as any)[k]
+  if (out.pace.floor < current.pace.floor) out.pace.floor = current.pace.floor
+  if (out.pace.ceil < out.pace.floor) out.pace.ceil = out.pace.floor
+  return out
+}
+
+// Только личные поля — то, что хранится у пользователя.
+function personalOf(s: Settings) {
+  const { tick: _t, silentLimit: _s, startLimit: _st, maxFailures: _m, invTtl: _i, invStale: _is, treeTop: _tt, ...own } = s
+  return own
+}
+
+export const settings = (): Settings => {
+  const user = currentUser()
+  return user === OWNER ? current : effective(settingsHooks.getPersonal(user))
+}
 
 export function update(patch: any): Settings {
-  current = merge(current, patch)
-  fs.writeFileSync(FILE, JSON.stringify(current, null, 2), 'utf8')
-  return current
+  const user = currentUser()
+  if (user === OWNER) {
+    current = merge(current, patch)
+    fs.writeFileSync(FILE, JSON.stringify(current, null, 2), 'utf8')
+    return current
+  }
+  // Пользователь меняет только личное; общие поля в правке не действуют.
+  const p = patch && typeof patch === 'object' ? { ...patch } : {}
+  for (const k of SHARED) delete p[k]
+  const next = effective(merge(effective(settingsHooks.getPersonal(user)), p))
+  settingsHooks.setPersonal(user, personalOf(next))
+  return next
 }
 
 export function reset(): Settings {
-  current = { ...DEFAULTS, pace: { ...DEFAULTS.pace }, spread: { ...DEFAULTS.spread } }
-  fs.writeFileSync(FILE, JSON.stringify(current, null, 2), 'utf8')
-  return current
+  const user = currentUser()
+  if (user === OWNER) {
+    current = { ...DEFAULTS, pace: { ...DEFAULTS.pace }, spread: { ...DEFAULTS.spread } }
+    fs.writeFileSync(FILE, JSON.stringify(current, null, 2), 'utf8')
+    return current
+  }
+  // У пользователя «по умолчанию» — значения владельца.
+  settingsHooks.setPersonal(user, null)
+  return effective(null)
 }

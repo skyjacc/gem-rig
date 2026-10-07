@@ -29,7 +29,8 @@ import { invOf, refreshInventory } from './steam.ts'
 import { queueFile, senderState, start as startSender, statusFile, stop as stopSender, writePace, forget } from './sender.ts'
 import { advise, creditRate, evenDelay, silenceLimit, type Sample } from './pace.ts'
 import { capFor, reached, spreadPlan, type Wave } from './spread.ts'
-import { ACCOUNT, active, list as accounts, type Account } from './accounts.ts'
+import { ACCOUNT, active, list as accounts, listFor, ownerOf, type Account } from './accounts.ts'
+import { asUser, currentUser } from './ctx.ts'
 import { settings } from './settings.ts'
 import { sessionStatus } from './steamweb.ts'
 
@@ -418,13 +419,36 @@ async function tickOne(a: Account, push: () => void) {
   }
 }
 
+// Что сервер знает о пользователях — снаружи (app.ts). По умолчанию — как
+// до этапа 7: все активны, предела нет.
+export const autopilotHooks = {
+  userActive: (_user: string) => true,
+  maxSenders: (_user: string) => Infinity,
+}
+
+// Работник отключённого пользователя (план 7.2, решение 10) гаснет на
+// ближайшем такте, даже если «включён» остался в памяти.
+function fenceDisabled(a: Account) {
+  if (autopilotHooks.userActive(ownerOf(a))) return false
+  const u = unit(a.id)
+  if (u.enabled || senderState(a.id).running) {
+    u.enabled = false
+    stopSender(a.id)
+    note(u, 'idle', 'доступ пользователя отключён')
+  }
+  return true
+}
+
 export async function tick(push: () => void) {
   // Инвентарь читается по каждому включённому аккаунту отдельно. Один общий
   // снимок означал бы, что второй работник жжёт по составу первого.
-  for (const a of accounts()) {
+  // Аккаунты отключённых пользователей в такт не входят вовсе (решение 10).
+  const live = accounts().filter(a => !fenceDisabled(a))
+  for (const a of live) {
     if (unit(a.id).enabled) await refreshInventory(a.steamid)
   }
-  for (const a of accounts()) await tickOne(a, push)
+  // Такт аккаунта — от имени его владельца: его личные настройки (план 7.2).
+  for (const a of live) await asUser(ownerOf(a), () => tickOne(a, push))
 }
 
 export function unitState(a: Account) {
@@ -507,7 +531,8 @@ export function autopilotState() {
     goal: GOAL(),
     objects: list.reduce((n, p) => n + p.objects, 0),
     gems: list.map(p => ({ gem: p.key, objects: p.objects })),
-    units: accounts().map(unitState),
+    // Работники — только своих аккаунтов (план 7.2).
+    units: listFor(currentUser()).map(unitState),
     pace: a ? paceAdvice(a.id) : null,
     // Поля активного аккаунта подняты наверх: дашборд смотрит на него.
     ...(a ? unitState(a) : {}),
@@ -588,6 +613,15 @@ export function setAutopilot(
       u.plan = spreadPlan(u.ordered, u.waves, id + ':' + u.ordered, settings().spread)
       u.target = u.plan[0].value
     }
+  }
+
+  // Предел одновременно работающих отправщиков пользователя (решение 10).
+  if (patch.on === true && !u.enabled) {
+    const owner = ownerOf(a)
+    const max = autopilotHooks.maxSenders(owner)
+    const busy = listFor(owner).filter(x => x.id !== id && (unit(x.id).enabled || senderState(x.id).running)).length
+    if (busy >= max) return { error: 'достигнут предел одновременно работающих отправщиков: ' + max }
+    if (!autopilotHooks.userActive(owner)) return { error: 'нет такого аккаунта' }
   }
 
   if (patch.on !== undefined) {
